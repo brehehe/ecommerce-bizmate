@@ -599,7 +599,7 @@
         <div class="md:hidden h-[92px]"></div>
 
         <div
-            class="flex-1 md:flex-none max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 w-full"
+            class="flex-1 md:flex-none max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-3 md:py-8 w-full"
         >
             <!-- Desktop Header (Desktop only, no tabs) -->
             <div

@@ -151,7 +151,7 @@
 </svelte:head>
 
 <StorefrontLayout hideMobileFooter={true}>
-    <div class="min-h-screen bg-slate-50 pb-20 dark:bg-slate-900 transition-colors">
+    <div class="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
         <!-- ── HEADER ── -->
         <div class="bg-white border-b border-slate-200 sticky top-0 z-30 dark:bg-slate-800 dark:border-slate-700">
             <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
@@ -173,7 +173,7 @@
             </div>
         </div>
 
-        <main class="max-w-6xl mx-auto px-4 py-6 pb-12">
+        <main class="max-w-6xl mx-auto px-4 py-4 pb-3 md:py-6 md:pb-8">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 
                 <!-- ── LEFT COLUMN: CAROUSEL CARD SELECTOR ── -->

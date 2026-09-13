@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 
 uses(RefreshDatabase::class);
 
@@ -80,4 +81,57 @@ test('buy now stores item in session and redirects to checkout without modifying
         'product_variant_id' => null,
         'quantity' => 1,
     ]);
+});
+
+test('cart and checkout pages provide non-zero unit_price and subtotal for products', function () {
+    $user = User::factory()->create();
+    $category = Category::create([
+        'name' => 'Olahraga',
+        'slug' => 'olahraga',
+    ]);
+
+    $product = Product::create([
+        'name' => 'Raket Yonex Astrox',
+        'slug' => 'raket-yonex-astrox',
+        'sku' => 'RAK-ASTROX',
+        'category_id' => $category->id,
+        'active' => true,
+    ]);
+    $product->productPrice()->create(['price' => 2450000, 'cost' => 1800000]);
+    ProductStock::create([
+        'product_id' => $product->id,
+        'stock' => 10,
+        'is_unlimited' => false,
+    ]);
+
+    CartItem::create([
+        'user_id' => $user->id,
+        'product_id' => $product->id,
+        'quantity' => 2,
+        'is_checked' => true,
+    ]);
+
+    // Test Cart Index
+    $cartResponse = $this->actingAs($user)->get(route('cart.index'));
+    $cartResponse->assertOk();
+    $cartResponse->assertInertia(fn (Assert $page) => $page
+        ->component('Storefront/Cart')
+        ->has('cartItems.0', fn (Assert $item) => $item
+            ->where('unit_price', 2450000)
+            ->where('subtotal', 4900000)
+            ->etc()
+        )
+    );
+
+    // Test Checkout Index
+    $checkoutResponse = $this->actingAs($user)->get(route('checkout.index'));
+    $checkoutResponse->assertOk();
+    $checkoutResponse->assertInertia(fn (Assert $page) => $page
+        ->component('Storefront/Checkout')
+        ->has('cartItems.0', fn (Assert $item) => $item
+            ->where('unit_price', 2450000)
+            ->where('subtotal', 4900000)
+            ->etc()
+        )
+    );
 });

@@ -440,7 +440,7 @@
     <!-- Spacer for mobile sticky bar -->
     <div class="md:hidden h-[138px]"></div>
 
-    <div class="flex-1 md:flex-none max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-8 md:py-8 w-full min-h-[calc(100dvh-138px)] md:min-h-0">
+    <div class="flex-1 md:flex-none max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-3 md:py-8 w-full min-h-[calc(100dvh-138px)] md:min-h-0">
         <!-- Desktop Header -->
         <div class="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>

@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\RefundRequest\ApproveRefundAction;
+use App\Actions\RefundRequest\RejectRefundAction;
 use App\Http\Controllers\Controller;
-use App\Models\CoinHistory;
+use App\Http\Requests\Admin\RefundRequest\ApproveRefundRequest;
+use App\Http\Requests\Admin\RefundRequest\RejectRefundRequest;
 use App\Models\Notification;
-use App\Models\ProductStock;
 use App\Models\RefundRequest;
 use App\Models\Setting;
-use App\Models\StockMovement;
-use App\Models\Transaction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -21,16 +21,18 @@ use Inertia\Response as InertiaResponse;
 
 class RefundController extends Controller
 {
+    public function __construct(
+        protected ApproveRefundAction $approveRefundAction,
+        protected RejectRefundAction $rejectRefundAction
+    ) {}
+
     /**
-     * List all cancellation and refund requests.
+     * Display a listing of cancellation/refund requests.
      */
     public function index(Request $request): InertiaResponse
     {
         $driver = DB::connection()->getDriverName();
         $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
-
-        $user = $request->user();
-        $isSeller = $user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
 
         $query = DB::table('refund_requests')
             ->leftJoin('users', 'refund_requests.user_id', '=', 'users.id')
@@ -40,23 +42,25 @@ class RefundController extends Controller
                 'refund_requests.refund_number',
                 'refund_requests.user_id',
                 'refund_requests.transaction_id',
-                'refund_requests.refund_amount',
+                'refund_requests.refund_amount as amount',
                 'refund_requests.refund_method',
                 'refund_requests.status',
                 'refund_requests.reason',
                 'refund_requests.created_at',
                 'users.name as user_name',
                 'users.email as user_email',
-                'transactions.transaction_number',
+                'transactions.transaction_number as transaction_number',
                 'transactions.grand_total as transaction_grand_total',
                 'transactions.status as transaction_status',
             ])
             ->orderBy('refund_requests.created_at', 'desc');
 
+        $user = $request->user();
+        $isSeller = $user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
         if ($isSeller) {
             $sellerProductIds = DB::table('products')->where('user_id', $user->id)->pluck('id');
-            $sellerTransactionIds = DB::table('transaction_items')->whereIn('product_id', $sellerProductIds)->pluck('transaction_id');
-            $query->whereIn('refund_requests.transaction_id', $sellerTransactionIds);
+            $sellerTxIds = DB::table('transaction_items')->whereIn('product_id', $sellerProductIds)->pluck('transaction_id');
+            $query->whereIn('refund_requests.transaction_id', $sellerTxIds);
         }
 
         if ($request->filled('status')) {
@@ -67,24 +71,27 @@ class RefundController extends Controller
             $query->where('refund_requests.refund_method', $request->refund_method);
         }
 
+        if ($request->filled('date_from')) {
+            $query->where('refund_requests.created_at', '>=', $request->date_from.' 00:00:00');
+        }
+        if ($request->filled('date_to')) {
+            $query->where('refund_requests.created_at', '<=', $request->date_to.' 23:59:59');
+        }
+
         if ($request->filled('search')) {
             $search = trim($request->search);
-            if (preg_match('/^(REF|TRX|BK|\d)/i', $search)) {
-                $query->where('refund_requests.refund_number', $likeOperator, "{$search}%")
-                    ->orWhere('transactions.transaction_number', $likeOperator, "{$search}%");
-            } else {
-                $query->where(function ($q) use ($search, $likeOperator) {
-                    $q->where('refund_requests.refund_number', $likeOperator, "{$search}%")
-                        ->orWhere('users.name', $likeOperator, "{$search}%")
-                        ->orWhere('transactions.transaction_number', $likeOperator, "{$search}%");
-                });
-            }
+            $query->where(function ($q) use ($search, $likeOperator) {
+                $q->where('refund_requests.refund_number', $likeOperator, "{$search}%")
+                    ->orWhere('transactions.transaction_number', $likeOperator, "{$search}%")
+                    ->orWhere('users.name', $likeOperator, "%{$search}%")
+                    ->orWhere('users.email', $likeOperator, "%{$search}%");
+            });
         }
 
         $rawPage = $request->input('page', 1);
         $cleanPage = (int) preg_replace('/\D/', '', (string) $rawPage) ?: 1;
         $page = max(1, $cleanPage);
-        $perPage = 20;
+        $perPage = 10;
 
         $getRefunds = function () use ($request, $query, $page, $perPage, $isSeller) {
             $isFiltered = $request->filled('status') || $request->filled('date_from') || $request->filled('date_to') || $request->filled('search');
@@ -167,89 +174,17 @@ class RefundController extends Controller
     }
 
     /**
-     * Approve a cancellation request, cancels transaction, restores stock, and processes coins if applicable.
+     * Approve a cancellation request.
      */
-    public function approve(Request $request, RefundRequest $refund): RedirectResponse
+    public function approve(ApproveRefundRequest $request, RefundRequest $refund): RedirectResponse
     {
         $this->authorizeSellerRefund($request, $refund);
-        if ($refund->status !== 'menunggu_konfirmasi') {
-            return back()->with('error', 'Pengajuan ini tidak dapat disetujui pada status saat ini.');
+
+        $result = $this->approveRefundAction->execute($refund, $request->input('notes_admin'), $request->user());
+
+        if (! $result['success']) {
+            return back()->with('error', $result['message']);
         }
-
-        $request->validate([
-            'notes_admin' => 'nullable|string|max:500',
-        ]);
-
-        $transaction = $refund->transaction;
-
-        if ($transaction->status === 'batal') {
-            return back()->with('error', 'Transaksi untuk pengajuan ini sudah dibatalkan sebelumnya.');
-        }
-
-        DB::transaction(function () use ($request, $refund, $transaction) {
-            // 1. Restore stock
-            $this->restoreStock($transaction, $request->user());
-
-            // 2. Cancel transaction
-            $transaction->update([
-                'status' => 'batal',
-                'cancel_reason' => 'Pengajuan Pembatalan Disetujui: '.$refund->reason,
-                'cancelled_at' => now(),
-            ]);
-
-            $refundStatus = 'disetujui';
-            $refundedAt = null;
-
-            // 3. Process refund based on method
-            if ($refund->refund_method === 'poin') {
-                $coinConversionRate = (float) (Setting::where('key', 'coin_conversion_rate')->value('value') ?? 1);
-                $coinsToCredit = (int) ($refund->refund_amount / $coinConversionRate);
-
-                $user = $refund->user;
-                if ($user) {
-                    $user->increment('coins_balance', $coinsToCredit);
-                    CoinHistory::create([
-                        'user_id' => $user->id,
-                        'transaction_id' => $transaction->id,
-                        'amount' => $coinsToCredit,
-                        'type' => 'refund',
-                        'description' => 'Refund pembatalan transaksi #'.$transaction->transaction_number.' ke Koin Toko',
-                    ]);
-                }
-
-                $refundStatus = 'selesai';
-                $refundedAt = now();
-
-                // Notify customer of points credit
-                Notification::create([
-                    'user_id' => $refund->user_id,
-                    'title' => 'Refund Koin Berhasil dikreditkan',
-                    'message' => 'Refund berupa koin untuk transaksi #'.$transaction->transaction_number.' sebesar '.number_format($coinsToCredit, 0, ',', '.').' koin telah berhasil dikreditkan ke saldo koin Anda.',
-                    'type' => 'refund_completed',
-                    'url' => '/refunds/'.$refund->id,
-                    'is_read' => false,
-                ]);
-            } else {
-                // Bank Transfer refund is approved and pending transfer completion by admin
-                Notification::create([
-                    'user_id' => $refund->user_id,
-                    'title' => 'Pengajuan Pembatalan Disetujui',
-                    'message' => 'Pengajuan pembatalan untuk transaksi #'.$transaction->transaction_number.' telah disetujui. Refund transfer bank sebesar Rp '.number_format($refund->refund_amount, 0, ',', '.').' sedang diproses.',
-                    'type' => 'refund_approved',
-                    'url' => '/refunds/'.$refund->id,
-                    'is_read' => false,
-                ]);
-            }
-
-            // 4. Update refund request
-            $refund->update([
-                'status' => $refundStatus,
-                'notes_admin' => $request->notes_admin,
-                'processed_by' => $request->user()->id,
-                'processed_at' => now(),
-                'refunded_at' => $refundedAt,
-            ]);
-        });
 
         return back()->with('success', 'Pengajuan pembatalan berhasil disetujui.');
     }
@@ -257,36 +192,16 @@ class RefundController extends Controller
     /**
      * Reject a cancellation/refund request.
      */
-    public function reject(Request $request, RefundRequest $refund): RedirectResponse
+    public function reject(RejectRefundRequest $request, RefundRequest $refund): RedirectResponse
     {
         $this->authorizeSellerRefund($request, $refund);
 
-        if ($refund->status !== 'menunggu_konfirmasi') {
-            return back()->with('error', 'Pengajuan ini tidak dapat ditolak pada status saat ini.');
+        $notes = $request->input('notes_admin') ?? $request->input('admin_notes') ?? $request->input('reject_reason') ?? '';
+        $result = $this->rejectRefundAction->execute($refund, $notes, $request->user());
+
+        if (! $result['success']) {
+            return back()->with('error', $result['message']);
         }
-
-        $request->validate([
-            'notes_admin' => 'required|string|max:500',
-        ], [
-            'notes_admin.required' => 'Catatan penolakan wajib diisi.',
-        ]);
-
-        $refund->update([
-            'status' => 'ditolak',
-            'notes_admin' => $request->notes_admin,
-            'processed_by' => $request->user()->id,
-            'processed_at' => now(),
-        ]);
-
-        // Notify customer
-        Notification::create([
-            'user_id' => $refund->user_id,
-            'title' => 'Pengajuan Pembatalan Ditolak',
-            'message' => 'Pengajuan pembatalan untuk transaksi #'.$refund->transaction->transaction_number.' ditolak. Catatan: '.$request->notes_admin,
-            'type' => 'refund_rejected',
-            'url' => '/refunds/'.$refund->id,
-            'is_read' => false,
-        ]);
 
         return back()->with('success', 'Pengajuan pembatalan ditolak.');
     }
@@ -306,11 +221,10 @@ class RefundController extends Controller
             'refunded_at' => now(),
         ]);
 
-        // Notify customer
         Notification::create([
             'user_id' => $refund->user_id,
             'title' => 'Refund Berhasil Ditransfer',
-            'message' => 'Dana refund sebesar Rp '.number_format($refund->refund_amount, 0, ',', '.').' untuk transaksi #'.$refund->transaction->transaction_number.' telah berhasil ditransfer ke rekening Anda.',
+            'message' => 'Dana refund sebesar Rp '.number_format((float) $refund->refund_amount, 0, ',', '.').' untuk transaksi #'.$refund->transaction->transaction_number.' telah berhasil ditransfer ke rekening Anda.',
             'type' => 'refund_completed',
             'url' => '/refunds/'.$refund->id,
             'is_read' => false,
@@ -320,7 +234,7 @@ class RefundController extends Controller
     }
 
     /**
-     * Approve multiple cancellation/refund requests.
+     * Bulk approve multiple refund / cancellation requests.
      */
     public function bulkApprove(Request $request): RedirectResponse
     {
@@ -330,8 +244,7 @@ class RefundController extends Controller
             'notes_admin' => 'nullable|string|max:500',
         ]);
 
-        $refunds = RefundRequest::with(['transaction', 'user'])
-            ->whereIn('id', $request->ids)
+        $refunds = RefundRequest::whereIn('id', $request->ids)
             ->where('status', 'menunggu_konfirmasi')
             ->get();
 
@@ -341,86 +254,10 @@ class RefundController extends Controller
 
         $count = 0;
         foreach ($refunds as $refund) {
-            $transaction = $refund->transaction;
-
-            if ($transaction->status === 'batal') {
-                continue;
+            $result = $this->approveRefundAction->execute($refund, $request->input('notes_admin'), $request->user());
+            if ($result['success']) {
+                $count++;
             }
-
-            DB::transaction(function () use ($request, $refund, $transaction) {
-                // 1. Restore stock
-                $this->restoreStock($transaction, $request->user());
-
-                // 2. Cancel transaction
-                $transaction->update([
-                    'status' => 'batal',
-                    'cancel_reason' => 'Pengajuan Pembatalan Disetujui: '.$refund->reason,
-                    'cancelled_at' => now(),
-                ]);
-
-                $refundStatus = 'disetujui';
-                $refundedAt = null;
-
-                // 3. Process refund based on method
-                if ($refund->refund_method === 'poin') {
-                    $coinConversionRate = (float) (Setting::where('key', 'coin_conversion_rate')->value('value') ?? 1);
-                    $coinsToCredit = (int) ($refund->refund_amount / $coinConversionRate);
-
-                    $user = $refund->user;
-                    if ($user) {
-                        $user->increment('coins_balance', $coinsToCredit);
-                        CoinHistory::create([
-                            'user_id' => $user->id,
-                            'transaction_id' => $transaction->id,
-                            'amount' => $coinsToCredit,
-                            'type' => 'refund',
-                            'description' => 'Refund pembatalan transaksi #'.$transaction->transaction_number.' ke Koin Toko',
-                        ]);
-                    }
-
-                    $refundStatus = 'selesai';
-                    $refundedAt = now();
-
-                    // Notify customer of points credit
-                    try {
-                        Notification::create([
-                            'user_id' => $refund->user_id,
-                            'title' => 'Refund Koin Berhasil dikreditkan',
-                            'message' => 'Refund berupa koin untuk transaksi #'.$transaction->transaction_number.' sebesar '.number_format($coinsToCredit, 0, ',', '.').' koin telah berhasil dikreditkan ke saldo koin Anda.',
-                            'type' => 'refund_completed',
-                            'url' => '/refunds/'.$refund->id,
-                            'is_read' => false,
-                        ]);
-                    } catch (\Throwable $e) {
-                        // Fail silently
-                    }
-                } else {
-                    // Bank Transfer refund
-                    try {
-                        Notification::create([
-                            'user_id' => $refund->user_id,
-                            'title' => 'Pengajuan Pembatalan Disetujui',
-                            'message' => 'Pengajuan pembatalan untuk transaksi #'.$transaction->transaction_number.' telah disetujui. Refund transfer bank sebesar Rp '.number_format($refund->refund_amount, 0, ',', '.').' sedang diproses.',
-                            'type' => 'refund_approved',
-                            'url' => '/refunds/'.$refund->id,
-                            'is_read' => false,
-                        ]);
-                    } catch (\Throwable $e) {
-                        // Fail silently
-                    }
-                }
-
-                // 4. Update refund request
-                $refund->update([
-                    'status' => $refundStatus,
-                    'notes_admin' => $request->notes_admin,
-                    'processed_by' => $request->user()->id,
-                    'processed_at' => now(),
-                    'refunded_at' => $refundedAt,
-                ]);
-            });
-
-            $count++;
         }
 
         return back()->with('success', "Berhasil menyetujui {$count} pengajuan pembatalan.");
@@ -453,12 +290,11 @@ class RefundController extends Controller
                 'refunded_at' => now(),
             ]);
 
-            // Notify customer
             try {
                 Notification::create([
                     'user_id' => $refund->user_id,
                     'title' => 'Refund Berhasil Ditransfer',
-                    'message' => 'Dana refund sebesar Rp '.number_format($refund->refund_amount, 0, ',', '.').' untuk transaksi #'.$refund->transaction->transaction_number.' telah berhasil ditransfer ke rekening Anda.',
+                    'message' => 'Dana refund sebesar Rp '.number_format((float) $refund->refund_amount, 0, ',', '.').' untuk transaksi #'.$refund->transaction->transaction_number.' telah berhasil ditransfer ke rekening Anda.',
                     'type' => 'refund_completed',
                     'url' => '/refunds/'.$refund->id,
                     'is_read' => false,
@@ -470,43 +306,7 @@ class RefundController extends Controller
             $count++;
         }
 
-        return back()->with('success', "Berhasil menyelesaikan {$count} transfer refund.");
-    }
-
-    /**
-     * Helper method to restore stock when transaction is cancelled.
-     */
-    private function restoreStock(Transaction $transaction, $adminUser): void
-    {
-        $transaction->load('items');
-
-        foreach ($transaction->items as $item) {
-            if ($item->is_gift_item) {
-                continue;
-            }
-
-            $stockRecord = $item->product_variant_id
-                ? ProductStock::where('product_variant_id', $item->product_variant_id)->first()
-                : ProductStock::where('product_id', $item->product_id)->whereNull('product_variant_id')->first();
-
-            if ($stockRecord && ! $stockRecord->is_unlimited) {
-                $stockBefore = $stockRecord->stock;
-                $stockAfter = $stockBefore + $item->quantity;
-                $stockRecord->update(['stock' => $stockAfter]);
-
-                StockMovement::create([
-                    'product_id' => $item->product_id,
-                    'product_variant_id' => $item->product_variant_id,
-                    'transaction_id' => $transaction->id,
-                    'type' => 'retur',
-                    'quantity' => $item->quantity,
-                    'stock_before' => $stockBefore,
-                    'stock_after' => $stockAfter,
-                    'notes' => 'Pembatalan transaksi - '.$transaction->transaction_number,
-                    'created_by' => $adminUser->id,
-                ]);
-            }
-        }
+        return back()->with('success', "Berhasil menyelesaikan {$count} pengajuan refund.");
     }
 
     /**
@@ -517,13 +317,9 @@ class RefundController extends Controller
         $user = $request->user();
         if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
             $sellerProductIds = DB::table('products')->where('user_id', $user->id)->pluck('id');
-            $hasProduct = DB::table('transaction_items')
-                ->where('transaction_id', $refund->transaction_id)
-                ->whereIn('product_id', $sellerProductIds)
-                ->exists();
-
+            $hasProduct = $refund->transaction->items()->whereIn('product_id', $sellerProductIds)->exists();
             if (! $hasProduct) {
-                abort(403, 'Anda tidak memiliki akses ke pengajuan refund ini.');
+                abort(403, 'Anda tidak memiliki akses ke pengajuan pembatalan ini.');
             }
         }
     }

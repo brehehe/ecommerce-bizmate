@@ -8,6 +8,7 @@ use App\Services\PadelGigsOAuthService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class PadelGigsAuthController extends Controller
 {
@@ -275,7 +276,11 @@ class PadelGigsAuthController extends Controller
             }
         }
 
-        // 4. If completely new, create User as standard Customer (can become seller later in profile)
+        // 4. If completely new, create User
+        $isSeller = $isSellerMode;
+        $storeName = $isSeller ? ($name.' Store') : null;
+        $storeSlug = $isSeller ? Str::slug($name.'-'.Str::random(4)) : null;
+
         $user = User::create([
             'padelgigs_user_id' => $padelgigsId ?: null,
             'name' => $name,
@@ -284,9 +289,9 @@ class PadelGigsAuthController extends Controller
             'avatar' => $avatar,
             'password' => null,
             'is_active' => true,
-            'is_seller' => false,
-            'store_name' => null,
-            'store_slug' => null,
+            'is_seller' => $isSeller,
+            'store_name' => $storeName,
+            'store_slug' => $storeSlug,
             'email_verified_at' => now(),
             'padelgigs_access_token' => $tokens['access_token'] ?? null,
             'padelgigs_refresh_token' => $tokens['refresh_token'] ?? null,

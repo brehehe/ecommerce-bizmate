@@ -222,6 +222,7 @@ test('admin can confirm payment and status becomes dikemas for Raja Ongkir when 
     $response->assertRedirect();
     $transaction->refresh();
     expect($transaction->status)->toBe('dikemas');
+    expect($transaction->payment_status)->toBe('paid');
 
     $this->assertDatabaseHas('transaction_payments', [
         'transaction_id' => $transaction->id,
@@ -469,6 +470,7 @@ test('admin can print shipping label', function () {
     $response = $this->actingAs($admin)->get(route('admin.transactions.print-shipping-label', $transaction));
     $response->assertOk();
     $response->assertViewIs('print.shipping-label');
+    $response->assertSee('id="qrcode"', false);
     $response->assertSee($transaction->transaction_number);
 });
 
@@ -728,4 +730,132 @@ test('admin updating digital item note automatically creates chat thread and pos
         'sender_type' => 'admin',
         'body' => "Informasi Pengiriman untuk {$item->product_name} (Pesanan #{$transaction->transaction_number}):\nAkses key: SECRET-12345",
     ]);
+});
+
+test('trackShipment returns internal status histories for store_courier and self_pickup without calling external API', function () {
+    ['transaction' => $transaction, 'admin' => $admin] = createTestTransaction();
+
+    $transaction->update(['shipping_courier' => 'store_courier']);
+    $transaction->statusHistories()->create([
+        'status' => 'diproses',
+        'description' => 'Pesanan sedang diproses.',
+        'created_by' => $admin->id,
+    ]);
+    $transaction->statusHistories()->create([
+        'status' => 'out_for_pickup',
+        'description' => 'Sudah dipick',
+        'created_by' => $admin->id,
+    ]);
+
+    $response = $this->actingAs($admin)->getJson(
+        route('admin.transactions.komerce.track', $transaction)
+    );
+
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+        'courier_type' => 'store_courier',
+    ]);
+    expect($response->json('history'))->toHaveCount(2);
+    expect($response->json('history.0.desc'))->toBe('Pesanan sedang diproses.');
+    expect($response->json('history.1.desc'))->toBe('Sudah dipick');
+});
+
+test('customer can complete self_pickup transaction when status is out_for_pickup', function () {
+    ['transaction' => $transaction, 'customer' => $customer] = createTestTransaction();
+
+    $transaction->update([
+        'shipping_courier' => 'self_pickup',
+        'status' => 'out_for_pickup',
+    ]);
+
+    $response = $this->actingAs($customer)->post(
+        route('transactions.complete', $transaction)
+    );
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success');
+    expect($transaction->fresh()->status)->toBe('selesai');
+});
+
+test('admin can print shipping label with store web logo and store url instead of biteship', function () {
+    ['transaction' => $transaction, 'admin' => $admin] = createTestTransaction();
+
+    Setting::updateOrCreate(['key' => 'store_name'], ['value' => 'Toko Keren']);
+    Setting::updateOrCreate(['key' => 'store_logo'], ['value' => '/logos/default-logo.png']);
+    Setting::updateOrCreate(['key' => 'store_email'], ['value' => 'support@tokokeren.com']);
+
+    $response = $this->actingAs($admin)->get(
+        route('admin.transactions.print-shipping-label', $transaction->id)
+    );
+
+    $response->assertOk();
+    $content = $response->getContent();
+
+    expect($content)->toContain('plat-logo');
+    expect($content)->toContain('www.tokokeren.com');
+    expect($content)->not->toContain('www.biteship.com');
+    expect($content)->not->toContain('bite<span>ship</span>');
+});
+
+test('admin can upload and delete delivery proof photos for transaction', function () {
+    Storage::fake('public');
+    ['transaction' => $transaction, 'admin' => $admin] = createTestTransaction();
+
+    $file1 = UploadedFile::fake()->image('proof1.jpg', 600, 600);
+    $file2 = UploadedFile::fake()->image('proof2.png', 600, 600);
+
+    $response = $this->actingAs($admin)->post(
+        route('admin.transactions.upload-delivery-photos', $transaction),
+        [
+            'photos' => [$file1, $file2],
+        ]
+    );
+
+    $response->assertRedirect();
+    $response->assertSessionHas('success');
+
+    $fresh = $transaction->fresh();
+    expect($fresh->delivery_photos)->toBeArray()->toHaveCount(2);
+    expect($fresh->delivery_arrived_at)->not->toBeNull();
+    Storage::disk('public')->assertExists($fresh->delivery_photos[0]);
+    Storage::disk('public')->assertExists($fresh->delivery_photos[1]);
+
+    // Delete photo at index 0
+    $photoToDelete = $fresh->delivery_photos[0];
+    $deleteResponse = $this->actingAs($admin)->delete(
+        route('admin.transactions.delete-delivery-photo', [$transaction, 0])
+    );
+
+    $deleteResponse->assertRedirect();
+    $deleteResponse->assertSessionHas('success');
+
+    $freshAfterDelete = $transaction->fresh();
+    expect($freshAfterDelete->delivery_photos)->toBeArray()->toHaveCount(1);
+    Storage::disk('public')->assertMissing($photoToDelete);
+});
+
+test('delivery_photos are correctly passed to inertia props for admin and customer show pages', function () {
+    ['transaction' => $transaction, 'admin' => $admin, 'customer' => $customer] = createTestTransaction();
+
+    $transaction->update([
+        'shipping_courier' => 'store_courier',
+        'delivery_photos' => ['delivery_photos/sample.jpg'],
+    ]);
+
+    // Admin show
+    $adminResponse = $this->actingAs($admin)->get(route('admin.transactions.show', $transaction));
+    $adminResponse->assertOk();
+    $adminResponse->assertInertia(fn (Assert $page) => $page
+        ->component('Admin/Transactions/Show')
+        ->where('transaction.delivery_photos', ['delivery_photos/sample.jpg'])
+    );
+
+    // Customer show
+    $customerResponse = $this->actingAs($customer)->get(route('transactions.show', $transaction));
+    $customerResponse->assertOk();
+    $customerResponse->assertInertia(fn (Assert $page) => $page
+        ->component('Storefront/TransactionDetail')
+        ->where('transaction.delivery_photos', ['delivery_photos/sample.jpg'])
+    );
 });

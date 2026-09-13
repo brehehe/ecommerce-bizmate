@@ -158,3 +158,70 @@ test('product update endpoint correctly updates photo, variation, and option sor
     expect($product->variations[0]->options[1]->name)->toBe('Brown');
     expect($product->variations[0]->options[1]->sort_order)->toBe(1);
 });
+
+test('product store endpoint attaches generated variants to their selected options', function () {
+    $response = $this->actingAs($this->user)->post(route('admin.products.store'), [
+        'name' => 'Kaos Polos',
+        'sku' => 'KAOS-POLOS-01',
+        'category_ids' => [$this->category->id],
+        'brand_ids' => [$this->brand->id],
+        'price' => 75000,
+        'stock' => 20,
+        'description' => 'Kaos dengan pilihan warna dan ukuran.',
+        'variations' => [
+            [
+                'name' => 'Warna',
+                'options' => [
+                    ['id' => 'warna-hitam', 'name' => 'Hitam'],
+                    ['id' => 'warna-putih', 'name' => 'Putih'],
+                ],
+            ],
+            [
+                'name' => 'Ukuran',
+                'options' => [
+                    ['id' => 'ukuran-m', 'name' => 'M'],
+                    ['id' => 'ukuran-l', 'name' => 'L'],
+                ],
+            ],
+        ],
+        'variants' => [
+            [
+                'id' => 'warna-hitam_ukuran-m',
+                'sku' => 'KAOS-POLOS-01-HITAM-M',
+                'is_custom' => true,
+                'custom_price' => true,
+                'custom_stock' => true,
+                'custom_weight' => true,
+                'price' => 85000,
+                'cost' => 50000,
+                'stock' => 8,
+                'min_stock' => 2,
+                'min_purchase' => 2,
+                'weight' => 350,
+                'length' => 30,
+                'width' => 20,
+                'height' => 5,
+            ],
+            ['id' => 'warna-hitam_ukuran-l', 'sku' => 'KAOS-POLOS-01-HITAM-L'],
+            ['id' => 'warna-putih_ukuran-m', 'sku' => 'KAOS-POLOS-01-PUTIH-M'],
+            ['id' => 'warna-putih_ukuran-l', 'sku' => 'KAOS-POLOS-01-PUTIH-L'],
+        ],
+    ]);
+
+    $response->assertRedirect(route('admin.products.index'));
+
+    $product = Product::with('variants.options')->where('sku', 'KAOS-POLOS-01')->firstOrFail();
+
+    expect($product->variants)->toHaveCount(4);
+    $blackMedium = $product->variants->firstWhere('sku', 'KAOS-POLOS-01-HITAM-M');
+
+    expect($blackMedium->options->pluck('name')->all())
+        ->toEqualCanonicalizing(['Hitam', 'M']);
+    expect($blackMedium->weight)->toBe(350);
+    expect($blackMedium->length)->toBe(30);
+    expect($blackMedium->productPrice->price)->toBe(85000);
+    expect($blackMedium->productPrice->cost)->toBe(50000);
+    expect($blackMedium->productStock->stock)->toBe(8);
+    expect($blackMedium->productStock->min_stock)->toBe(2);
+    expect($blackMedium->productStock->min_purchase)->toBe(2);
+});

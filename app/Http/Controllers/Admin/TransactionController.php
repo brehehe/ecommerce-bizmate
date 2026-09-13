@@ -2,7 +2,20 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Transaction\BulkUpdateStatusAction;
+use App\Actions\Transaction\BulkUpdateTrackingAction;
+use App\Actions\Transaction\ConfirmPaymentAction;
+use App\Actions\Transaction\CreateAdminTransactionAction;
+use App\Actions\Transaction\RejectPaymentAction;
+use App\Actions\Transaction\UpdateTrackingAction;
+use App\Actions\Transaction\UpdateTransactionStatusAction;
+use App\Helpers\ImageHelper;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Transaction\BulkStatusRequest;
+use App\Http\Requests\Admin\Transaction\BulkTrackingRequest;
+use App\Http\Requests\Admin\Transaction\StoreAdminTransactionRequest;
+use App\Http\Requests\Admin\Transaction\UpdateStatusRequest;
+use App\Http\Requests\Admin\Transaction\UpdateTrackingRequest;
 use App\Mail\DigitalProductDelivered;
 use App\Models\Category;
 use App\Models\Chat;
@@ -10,7 +23,6 @@ use App\Models\ChatMessage;
 use App\Models\Courier;
 use App\Models\PaymentMethod;
 use App\Models\Product;
-use App\Models\ProductStock;
 use App\Models\Setting;
 use App\Models\StockMovement;
 use App\Models\Transaction;
@@ -20,6 +32,7 @@ use App\Services\BiteshipService;
 use App\Services\KomerceService;
 use App\Services\MidtransService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -28,17 +41,29 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Inertia\Response;
+use Spatie\Permission\Models\Role;
 
 class TransactionController extends Controller
 {
+    public function __construct(
+        protected CreateAdminTransactionAction $createAdminTransactionAction,
+        protected UpdateTransactionStatusAction $updateTransactionStatusAction,
+        protected ConfirmPaymentAction $confirmPaymentAction,
+        protected RejectPaymentAction $rejectPaymentAction,
+        protected UpdateTrackingAction $updateTrackingAction,
+        protected BulkUpdateStatusAction $bulkUpdateStatusAction,
+        protected BulkUpdateTrackingAction $bulkUpdateTrackingAction
+    ) {}
+
     /**
      * Show POS / Cashier Direct Transaction Creation page.
      */
-    public function create(Request $request)
+    public function create(Request $request): Response
     {
-        // Sync Komerce payment methods to ensure they reflect current setting status and admin fees
         KomerceService::syncPaymentMethods();
 
         $user = $request->user();
@@ -60,34 +85,17 @@ class TransactionController extends Controller
             $productQuery->where('user_id', $user->id);
         }
 
-        $products = $productQuery
-            ->orderBy('name', 'asc')
-            ->get();
-
+        $products = $productQuery->orderBy('name', 'asc')->get();
         $categories = Category::orderBy('name', 'asc')->get();
+        $customers = User::select('id', 'name', 'email', 'phone_number')->orderBy('name', 'asc')->get();
+        $sellers = User::where('is_seller', true)->select('id', 'name', 'store_name', 'email')->orderBy('name', 'asc')->get();
+        $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('name', 'asc')->get();
 
-        $customers = User::select('id', 'name', 'email', 'phone_number')
-            ->orderBy('name', 'asc')
-            ->get();
-
-        $sellers = User::where('is_seller', true)
-            ->select('id', 'name', 'store_name', 'email')
-            ->orderBy('name', 'asc')
-            ->get();
-
-        $paymentMethods = PaymentMethod::where('is_active', true)
-            ->orderBy('name', 'asc')
-            ->get();
-
-        // Midtrans settings
         $midtransEnabled = config('app.midtrans_enabled', true) && Setting::where('key', 'midtrans_api_enabled')->value('value') === '1';
         $midtransEnabledMethods = $midtransEnabled ? MidtransService::getEnabledMethods() : [];
         $midtransAdminFee = (float) (Setting::where('key', 'midtrans_admin_fee')->value('value') ?? 0);
 
-        $couriers = Courier::where('is_active', true)
-            ->orderBy('name', 'asc')
-            ->get();
-
+        $couriers = Courier::where('is_active', true)->orderBy('name', 'asc')->get();
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
 
         return Inertia::render('Admin/Transactions/Create', [
@@ -107,173 +115,19 @@ class TransactionController extends Controller
     /**
      * Store POS / Cashier Direct Transaction.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreAdminTransactionRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'user_id' => 'nullable|exists:users,id',
-            'customer_name' => 'nullable|string|max:255',
-            'customer_email' => 'nullable|email|max:255',
-            'customer_phone' => 'nullable|string|max:255',
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.variant_id' => 'nullable|exists:product_variants,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.unit_price' => 'required|numeric|min:0',
-            'payment_method_id' => 'nullable|exists:payment_methods,id',
-            'payment_method_name' => 'nullable|string|max:255',
-            'payment_status' => 'required|string|in:paid,unpaid,pending',
-            'status' => 'nullable|string',
-            'delivery_type' => 'required|string|in:direct_cashier,pickup,courier',
-            'shipping_cost' => 'nullable|numeric|min:0',
-            'discount_amount' => 'nullable|numeric|min:0',
-            'notes' => 'nullable|string|max:1000',
-        ]);
+        $transaction = $this->createAdminTransactionAction->execute($request->validated(), $request->user());
 
-        return DB::transaction(function () use ($validated, $request) {
-            $user = $request->user();
-            $targetUserId = ! empty($validated['user_id']) ? $validated['user_id'] : $user->id;
-
-            // Generate unique transaction number TRX-POS-YYYYMMDD-XXXXX
-            $datePrefix = now()->format('Ymd');
-            $randomString = strtoupper(Str::random(5));
-            $trxNumber = 'TRX-POS-'.$datePrefix.'-'.$randomString;
-
-            // Calculate item subtotal
-            $subtotal = 0;
-            $itemsData = [];
-
-            foreach ($validated['items'] as $itemInput) {
-                $product = Product::with(['productPrice', 'images', 'variants.productPrice', 'variants.options'])->findOrFail($itemInput['product_id']);
-                $unitPrice = (float) $itemInput['unit_price'];
-                $qty = (int) $itemInput['quantity'];
-                $itemSubtotal = $unitPrice * $qty;
-                $subtotal += $itemSubtotal;
-
-                $variantId = $itemInput['variant_id'] ?? null;
-                $variantName = null;
-                $sku = $product->sku ?: ('SKU-'.$product->id);
-                $productImage = $product->images->first()?->url ?? $product->images->first()?->path ?? $product->image;
-
-                if ($variantId) {
-                    $matchedVar = $product->variants->firstWhere('id', $variantId);
-                    if ($matchedVar) {
-                        $variantName = $matchedVar->options->pluck('value')->join(', ') ?: $matchedVar->sku;
-                        if (! empty($matchedVar->sku)) {
-                            $sku = $matchedVar->sku;
-                        }
-                    }
-                }
-
-                $itemsData[] = [
-                    'product_id' => $product->id,
-                    'product_variant_id' => $variantId,
-                    'product_name' => $product->name,
-                    'product_sku' => $sku,
-                    'variant_name' => $variantName,
-                    'product_image' => $productImage,
-                    'harga_jual' => $unitPrice,
-                    'harga_akhir' => $unitPrice,
-                    'diskon_item' => 0,
-                    'hpp' => 0,
-                    'quantity' => $qty,
-                    'subtotal' => $itemSubtotal,
-                ];
-            }
-
-            $shippingCost = (float) ($validated['shipping_cost'] ?? 0);
-            $discountAmount = (float) ($validated['discount_amount'] ?? 0);
-
-            // Tax from setting if enabled
-            $taxEnabled = filter_var(Setting::where('key', 'tax_enabled')->value('value') ?? config('app.tax_enabled', false), FILTER_VALIDATE_BOOLEAN);
-            $taxPct = (float) (Setting::where('key', 'tax_percentage')->value('value') ?? 0);
-            $taxAmount = $taxEnabled ? round($subtotal * ($taxPct / 100)) : 0;
-
-            $grandTotal = max(0, $subtotal + $shippingCost + $taxAmount - $discountAmount);
-
-            // Resolve transaction & payment status
-            $requestedStatus = $validated['status'] ?? null;
-            if ($requestedStatus) {
-                $status = $requestedStatus;
-                $isPaid = in_array($status, ['selesai', 'diproses', 'dikirim']);
-            } else {
-                $isPaid = $validated['payment_status'] === 'paid';
-                $status = $isPaid ? ($validated['delivery_type'] === 'direct_cashier' ? 'selesai' : 'diproses') : 'belum_bayar';
-            }
-            $paymentStatus = $isPaid ? 'paid' : ($validated['payment_status'] ?? 'unpaid');
-
-            $transaction = Transaction::create([
-                'user_id' => $targetUserId,
-                'transaction_number' => $trxNumber,
-                'status' => $status,
-                'payment_status' => $paymentStatus,
-                'payment_method_id' => $validated['payment_method_id'] ?? null,
-                'subtotal' => $subtotal,
-                'shipping_cost' => $shippingCost,
-                'tax_amount' => $taxAmount,
-                'discount_amount' => $discountAmount,
-                'grand_total' => $grandTotal,
-                'notes' => $validated['notes'] ?? 'Transaksi Kasir POS',
-                'customer_name' => $validated['customer_name'] ?? null,
-                'customer_email' => $validated['customer_email'] ?? null,
-                'customer_phone' => $validated['customer_phone'] ?? null,
-            ]);
-
-            // Save items & deduct stock
-            foreach ($itemsData as $item) {
-                TransactionItem::create([
-                    'transaction_id' => $transaction->id,
-                    'product_id' => $item['product_id'],
-                    'product_variant_id' => $item['product_variant_id'],
-                    'product_name' => $item['product_name'],
-                    'product_sku' => $item['product_sku'],
-                    'variant_name' => $item['variant_name'],
-                    'product_image' => $item['product_image'],
-                    'harga_jual' => $item['harga_jual'],
-                    'harga_akhir' => $item['harga_akhir'],
-                    'diskon_item' => $item['diskon_item'],
-                    'hpp' => $item['hpp'],
-                    'quantity' => $item['quantity'],
-                    'subtotal' => $item['subtotal'],
-                ]);
-
-                // Deduct Product Stock
-                if ($item['product_variant_id']) {
-                    $stockRecord = ProductStock::where('product_variant_id', $item['product_variant_id'])->first();
-                } else {
-                    $stockRecord = ProductStock::where('product_id', $item['product_id'])->whereNull('product_variant_id')->first();
-                }
-
-                if ($stockRecord) {
-                    $prevQty = (int) ($stockRecord->stock ?? 0);
-                    $newQty = max(0, $prevQty - $item['quantity']);
-                    $stockRecord->update(['stock' => $newQty]);
-
-                    StockMovement::create([
-                        'product_id' => $item['product_id'],
-                        'product_variant_id' => $item['product_variant_id'],
-                        'transaction_id' => $transaction->id,
-                        'type' => 'keluar',
-                        'quantity' => -$item['quantity'],
-                        'stock_before' => $prevQty,
-                        'stock_after' => $newQty,
-                        'notes' => 'Penjualan POS - '.$trxNumber,
-                        'created_by' => $user->id,
-                    ]);
-                }
-            }
-
-            return redirect()->route('admin.transactions.show', $transaction->id)
-                ->with('success', 'Transaksi Kasir POS #'.$trxNumber.' berhasil dibuat!');
-        });
+        return redirect()->route('admin.transactions.show', $transaction->id)
+            ->with('success', 'Transaksi Kasir berhasil dibuat.');
     }
 
     /**
-     * Display list of all transactions.
+     * Display a listing of transactions.
      */
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
-        @set_time_limit(300);
-
         $driver = DB::connection()->getDriverName();
         $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
 
@@ -283,11 +137,11 @@ class TransactionController extends Controller
             ->select([
                 'transactions.id',
                 'transactions.transaction_number',
-                'transactions.user_id',
-                'transactions.payment_method_id',
                 'transactions.status',
                 'transactions.grand_total',
                 'transactions.created_at',
+                'transactions.user_id',
+                'transactions.payment_method_id',
                 'users.name as user_name',
                 'users.email as user_email',
                 'users.phone_number as user_phone',
@@ -307,12 +161,10 @@ class TransactionController extends Controller
             });
         }
 
-        // Filter by status
         if ($request->filled('status')) {
             $query->where('transactions.status', $request->status);
         }
 
-        // Filter by date range
         if ($request->filled('date_from')) {
             $query->where('transactions.created_at', '>=', $request->date_from.' 00:00:00');
         }
@@ -320,7 +172,6 @@ class TransactionController extends Controller
             $query->where('transactions.created_at', '<=', $request->date_to.' 23:59:59');
         }
 
-        // Smart Big-Data Search Optimization:
         if ($request->filled('search')) {
             $search = trim($request->search);
             if (preg_match('/^(TRX|BK|\d)/i', $search)) {
@@ -334,7 +185,6 @@ class TransactionController extends Controller
             }
         }
 
-        // Page resolution
         $rawPage = $request->input('page', 1);
         $cleanPage = (int) preg_replace('/\D/', '', (string) $rawPage) ?: 1;
         $page = max(1, $cleanPage);
@@ -391,7 +241,6 @@ class TransactionController extends Controller
             $itemsFormatted = $rawTransactions->map(function ($tx) use ($paymentsMap, $itemsMap) {
                 $payment = $paymentsMap[$tx->id] ?? null;
                 $items = $itemsMap[$tx->id] ?? [];
-
                 $itemNames = collect($items)->map(fn ($it) => $it['product']['name'] ?? null)->filter()->all();
                 $itemsSummary = ! empty($itemNames) ? implode(', ', $itemNames) : '—';
                 $createdAtFormatted = $tx->created_at ? Carbon::parse($tx->created_at)->translatedFormat('d M Y H:i') : '—';
@@ -433,8 +282,7 @@ class TransactionController extends Controller
             );
         };
 
-        $settings = Setting::whereIn('key', ['store_name', 'store_logo'])
-            ->pluck('value', 'key');
+        $settings = Setting::whereIn('key', ['store_name', 'store_logo'])->pluck('value', 'key');
 
         return Inertia::render('Admin/Transactions/Index', [
             'transactions' => app()->runningUnitTests() ? $getTransactions() : Inertia::defer(fn () => $getTransactions()),
@@ -448,7 +296,7 @@ class TransactionController extends Controller
     /**
      * Display a single transaction detail.
      */
-    public function show(Transaction $transaction)
+    public function show(Transaction $transaction): Response
     {
         $user = auth()->user();
         if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
@@ -468,13 +316,19 @@ class TransactionController extends Controller
             'payments.paymentMethod',
             'stockMovements.product:id,name',
             'courierUser',
+            'statusHistories' => fn ($q) => $q->orderBy('created_at', 'asc'),
         ]);
 
-        $settings = Setting::whereIn('key', ['store_name', 'store_logo'])
-            ->pluck('value', 'key');
-
+        $settings = Setting::whereIn('key', ['store_name', 'store_logo'])->pluck('value', 'key');
         $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('name', 'asc')->get();
         $midtransEnabledMethods = MidtransService::getEnabledMethods();
+        $storeCouriers = Role::where('name', 'Kurir Toko')->where('guard_name', 'web')->exists()
+            ? User::role('Kurir Toko')
+                ->where('is_active', true)
+                ->select('id', 'name', 'phone_number', 'email')
+                ->orderBy('name')
+                ->get()
+            : collect();
 
         return Inertia::render('Admin/Transactions/Show', [
             'transaction' => $transaction,
@@ -484,11 +338,12 @@ class TransactionController extends Controller
             'biteshipEnabled' => BiteshipService::isEnabled(),
             'paymentMethods' => $paymentMethods,
             'midtransEnabledMethods' => $midtransEnabledMethods,
+            'storeCouriers' => $storeCouriers,
         ]);
     }
 
     /**
-     * Change payment method for a transaction (Admin & Staff).
+     * Change payment method for a transaction.
      */
     public function changePaymentMethod(Request $request, Transaction $transaction): RedirectResponse
     {
@@ -512,7 +367,6 @@ class TransactionController extends Controller
             'notes' => $notes,
         ]);
 
-        // If Midtrans method chosen and midtransKey present, trigger charge
         if ($midtransKey && str_contains(strtolower($paymentMethod->name), 'midtrans')) {
             $user = $transaction->user ?? $request->user();
             $result = MidtransService::charge(
@@ -554,7 +408,7 @@ class TransactionController extends Controller
     /**
      * Find transaction by transaction number, booking code, or tracking number.
      */
-    public function findByNumber($number)
+    public function findByNumber(string $number): JsonResponse
     {
         $transaction = Transaction::where('transaction_number', $number)
             ->orWhere('booking_code', $number)
@@ -578,46 +432,17 @@ class TransactionController extends Controller
     /**
      * Update the status of a transaction.
      */
-    public function updateStatus(Request $request, Transaction $transaction)
+    public function updateStatus(UpdateStatusRequest $request, Transaction $transaction): RedirectResponse
     {
-        if (in_array($transaction->status, ['selesai', 'batal'])) {
-            return back()->with('error', 'Transaksi yang sudah selesai atau batal tidak dapat diubah statusnya lagi.');
-        }
+        $result = $this->updateTransactionStatusAction->execute(
+            $transaction,
+            $request->input('status'),
+            $request->input('cancel_reason'),
+            $request->user()
+        );
 
-        $request->validate([
-            'status' => 'required|in:belum_bayar,menunggu,diproses,dikemas,out_for_pickup,dikirim,selesai,batal',
-            'cancel_reason' => 'required_if:status,batal|nullable|string|max:500',
-        ]);
-
-        $newStatus = $request->status;
-
-        $statusOrder = [
-            'belum_bayar',
-            'menunggu',
-            'diproses',
-            'dikemas',
-            'out_for_pickup',
-            'dikirim',
-            'selesai',
-        ];
-
-        $currentIndex = array_search($transaction->status, $statusOrder);
-        $newIndex = array_search($newStatus, $statusOrder);
-
-        if ($newStatus !== 'batal' && $currentIndex !== false && $newIndex !== false && $newIndex < $currentIndex) {
-            return back()->with('error', 'Status transaksi tidak dapat diubah kembali ke status sebelumnya.');
-        }
-
-        // If cancelling, restore stock
-        if ($newStatus === 'batal' && $transaction->status !== 'batal') {
-            $this->restoreStock($transaction, $request->user());
-            $transaction->update([
-                'status' => $newStatus,
-                'cancel_reason' => $request->cancel_reason,
-                'cancelled_at' => now(),
-            ]);
-        } else {
-            $transaction->update(['status' => $newStatus]);
+        if (! $result['success']) {
+            return back()->with('error', $result['message']);
         }
 
         return back()->with('success', 'Status transaksi berhasil diperbarui.');
@@ -626,32 +451,13 @@ class TransactionController extends Controller
     /**
      * Confirm customer's payment proof.
      */
-    public function confirmPayment(Request $request, Transaction $transaction)
+    public function confirmPayment(Request $request, Transaction $transaction): RedirectResponse
     {
-        if (in_array($transaction->status, ['selesai', 'batal'])) {
-            return back()->with('error', 'Transaksi yang sudah selesai atau batal tidak dapat menerima konfirmasi pembayaran.');
+        $result = $this->confirmPaymentAction->execute($transaction, $request->input('notes'), $request->user());
+
+        if (! $result['success']) {
+            return back()->with('error', $result['message']);
         }
-
-        $payment = $transaction->payment;
-
-        if (! $payment) {
-            return back()->with('error', 'Data pembayaran tidak ditemukan.');
-        }
-
-        $payment->update([
-            'status' => 'confirmed',
-            'confirmed_at' => now(),
-            'confirmed_by' => $request->user()->id,
-            'notes' => $request->notes,
-        ]);
-
-        $newStatus = 'diproses';
-        $isRajaOngkir = ! in_array($transaction->shipping_courier, ['self_pickup', 'digital', 'store_courier']);
-        if ($isRajaOngkir && ! KomerceService::isDeliveryEnabled()) {
-            $newStatus = 'dikemas';
-        }
-
-        $transaction->update(['status' => $newStatus]);
 
         return back()->with('success', 'Pembayaran berhasil dikonfirmasi.');
     }
@@ -659,69 +465,29 @@ class TransactionController extends Controller
     /**
      * Reject customer's payment proof.
      */
-    public function rejectPayment(Request $request, Transaction $transaction)
+    public function rejectPayment(Request $request, Transaction $transaction): RedirectResponse
     {
-        if (in_array($transaction->status, ['selesai', 'batal'])) {
-            return back()->with('error', 'Transaksi yang sudah selesai atau batal tidak dapat menerima penolakan pembayaran.');
+        $request->validate(['notes' => 'required|string|max:500']);
+
+        $result = $this->rejectPaymentAction->execute($transaction, $request->input('notes'), $request->user());
+
+        if (! $result['success']) {
+            return back()->with('error', $result['message']);
         }
-
-        $request->validate([
-            'notes' => 'required|string|max:500',
-        ]);
-
-        $payment = $transaction->payment;
-
-        if (! $payment) {
-            return back()->with('error', 'Data pembayaran tidak ditemukan.');
-        }
-
-        $payment->update([
-            'status' => 'rejected',
-            'confirmed_at' => now(),
-            'confirmed_by' => $request->user()->id,
-            'notes' => $request->notes,
-        ]);
-
-        $transaction->update(['status' => 'belum_bayar']);
 
         return back()->with('success', 'Pembayaran ditolak. Customer perlu upload ulang bukti bayar.');
     }
 
     /**
-     * Update tracking number (resi) and automatically set status to 'dikirim'.
+     * Update tracking number (resi).
      */
-    public function updateTracking(Request $request, Transaction $transaction)
+    public function updateTracking(UpdateTrackingRequest $request, Transaction $transaction): RedirectResponse
     {
-        if (in_array($transaction->status, ['selesai', 'batal'])) {
-            return back()->with('error', 'Tidak dapat memperbarui resi untuk transaksi yang sudah selesai atau batal.');
-        }
+        $result = $this->updateTrackingAction->execute($transaction, $request->validated());
 
-        $request->validate([
-            'tracking_number' => 'nullable|string|max:100',
-            'courier_name' => 'nullable|string|max:100',
-            'booking_code' => 'nullable|string|max:100',
-            'status' => 'nullable|string|max:50',
-        ]);
-
-        $updateData = [];
-        if ($request->has('tracking_number')) {
-            $updateData['tracking_number'] = $request->tracking_number;
+        if (! $result['success']) {
+            return back()->with('error', $result['message']);
         }
-        if ($request->has('courier_name')) {
-            $updateData['courier_name'] = $request->courier_name;
-        }
-        if ($request->has('booking_code')) {
-            $updateData['booking_code'] = $request->booking_code;
-        }
-
-        // If tracking number is set and status is not already shipped/completed, default to dikirim
-        if (! empty($request->tracking_number) && $transaction->shipping_courier !== 'store_courier' && ! in_array($transaction->status, ['dikirim', 'selesai'])) {
-            $updateData['status'] = 'dikirim';
-        } elseif ($request->filled('status')) {
-            $updateData['status'] = $request->status;
-        }
-
-        $transaction->update($updateData);
 
         return back()->with('success', 'Informasi pengiriman berhasil diperbarui.');
     }
@@ -729,11 +495,9 @@ class TransactionController extends Controller
     /**
      * Add custom delivery log history for store courier.
      */
-    public function addDeliveryHistory(Request $request, Transaction $transaction)
+    public function addDeliveryHistory(Request $request, Transaction $transaction): RedirectResponse
     {
-        $request->validate([
-            'description' => 'required|string|max:500',
-        ]);
+        $request->validate(['description' => 'required|string|max:500']);
 
         $transaction->statusHistories()->create([
             'status' => $transaction->status,
@@ -745,95 +509,199 @@ class TransactionController extends Controller
     }
 
     /**
-     * Bulk update status of multiple transactions.
+     * Upload delivery photos for transaction.
      */
-    public function bulkStatus(Request $request)
+    public function uploadDeliveryPhotos(Request $request, Transaction $transaction): RedirectResponse
     {
         $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'exists:transactions,id',
-            'status' => 'required|in:belum_bayar,menunggu,diproses,dikemas,out_for_pickup,dikirim,selesai,batal',
-            'cancel_reason' => 'nullable|string|max:500',
+            'photos' => 'required|array|min:1',
+            'photos.*' => 'image|max:5120',
         ]);
 
-        $ids = $request->ids;
-        $newStatus = $request->status;
+        $currentPhotos = $transaction->delivery_photos ?? [];
+        foreach ($request->file('photos') as $file) {
+            $currentPhotos[] = ImageHelper::compressAndStore($file, 'delivery_photos', 'public');
+        }
 
-        $statusOrder = [
-            'belum_bayar',
-            'menunggu',
-            'diproses',
-            'dikemas',
-            'out_for_pickup',
-            'dikirim',
-            'selesai',
-        ];
+        $updateData = ['delivery_photos' => $currentPhotos];
+        if (empty($transaction->delivery_arrived_at)) {
+            $updateData['delivery_arrived_at'] = now();
+        }
 
-        \DB::transaction(function () use ($ids, $newStatus, $statusOrder, $request) {
-            $transactions = Transaction::whereIn('id', $ids)->get();
+        $transaction->update($updateData);
 
-            foreach ($transactions as $transaction) {
-                // Skip if status is already the same or completed/cancelled
-                if ($transaction->status === $newStatus || in_array($transaction->status, ['selesai', 'batal'])) {
-                    continue;
-                }
-
-                $currentIndex = array_search($transaction->status, $statusOrder);
-                $newIndex = array_search($newStatus, $statusOrder);
-
-                if ($newStatus !== 'batal' && $currentIndex !== false && $newIndex !== false && $newIndex < $currentIndex) {
-                    continue;
-                }
-
-                // If cancelling, restore stock
-                if ($newStatus === 'batal') {
-                    $this->restoreStock($transaction, $request->user());
-                    $transaction->update([
-                        'status' => $newStatus,
-                        'cancel_reason' => $request->cancel_reason ?: 'Pembatalan massal oleh Admin',
-                        'cancelled_at' => now(),
-                    ]);
-                } else {
-                    $transaction->update(['status' => $newStatus]);
-                }
-            }
-        });
-
-        return back()->with('success', count($ids).' transaksi berhasil diperbarui.');
+        return back()->with('success', 'Foto bukti pengiriman berhasil diunggah.');
     }
 
     /**
-     * Bulk update tracking numbers and set status to 'dikirim'.
+     * Delete a delivery photo from transaction.
      */
-    public function bulkTracking(Request $request)
+    public function deleteDeliveryPhoto(Transaction $transaction, int $index): RedirectResponse
     {
-        $request->validate([
-            'tracking_data' => 'required|array',
-            'tracking_data.*.id' => 'required|exists:transactions,id',
-            'tracking_data.*.tracking_number' => 'required|string|max:100',
-            'tracking_data.*.courier_name' => 'nullable|string|max:100',
+        $currentPhotos = $transaction->delivery_photos ?? [];
+        if (isset($currentPhotos[$index])) {
+            $photoPath = $currentPhotos[$index];
+            if (Storage::disk('public')->exists($photoPath)) {
+                Storage::disk('public')->delete($photoPath);
+            }
+            array_splice($currentPhotos, $index, 1);
+            $transaction->update([
+                'delivery_photos' => empty($currentPhotos) ? null : array_values($currentPhotos),
+            ]);
+        }
+
+        return back()->with('success', 'Foto bukti pengiriman berhasil dihapus.');
+    }
+
+    /**
+     * Bulk update status of multiple transactions.
+     */
+    public function bulkStatus(BulkStatusRequest $request): RedirectResponse
+    {
+        $this->bulkUpdateStatusAction->execute(
+            $request->input('ids'),
+            $request->input('status'),
+            $request->input('cancel_reason'),
+            $request->user()
+        );
+
+        return back()->with('success', count($request->input('ids')).' transaksi berhasil diperbarui.');
+    }
+
+    /**
+     * Bulk update tracking numbers for multiple transactions.
+     */
+    public function bulkTracking(BulkTrackingRequest $request): RedirectResponse
+    {
+        $this->bulkUpdateTrackingAction->execute($request->input('tracking_data'));
+
+        return back()->with('success', 'Nomor resi untuk '.count($request->input('tracking_data')).' transaksi berhasil disimpan.');
+    }
+
+    /**
+     * Display stock movements report.
+     */
+    public function stockMovements(Request $request)
+    {
+        $user = $request->user();
+        $query = StockMovement::with([
+            'product:id,name,sku',
+            'productVariant:id,sku',
+            'transaction:id,transaction_number',
+            'createdByUser:id,name',
+        ])->latest();
+
+        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            $sellerProductIds = DB::table('products')->where('user_id', $user->id)->pluck('id');
+            $query->whereIn('product_id', $sellerProductIds);
+        }
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        if ($request->filled('product_id')) {
+            $query->where('product_id', $request->product_id);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $perPage = (int) $request->input('per_page', 25);
+        if ($perPage < 10) {
+            $perPage = 10;
+        }
+
+        $movements = $query->paginate($perPage)->withQueryString();
+
+        $settings = Setting::whereIn('key', ['store_name', 'store_logo'])
+            ->pluck('value', 'key');
+
+        return Inertia::render('Admin/StockMovements/Index', [
+            'movements' => $movements,
+            'filters' => array_merge(
+                $request->only(['type', 'product_id', 'date_from', 'date_to']),
+                ['per_page' => $perPage]
+            ),
+            'storeName' => $settings->get('store_name') ?? config('app.name'),
+            'storeLogo' => $settings->get('store_logo'),
         ]);
+    }
 
-        \DB::transaction(function () use ($request) {
-            $ids = collect($request->tracking_data)->pluck('id');
-            $transactions = Transaction::whereIn('id', $ids)->get()->keyBy('id');
+    /**
+     * Update digital delivery note and notify customer via email & chat.
+     */
+    public function updateDigitalNote(Request $request, TransactionItem $item): RedirectResponse
+    {
+        $request->validate(['note' => 'required|string|max:5000']);
 
-            foreach ($request->tracking_data as $data) {
-                $transaction = $transactions->get($data['id']);
+        $item->update(['note' => $request->note]);
 
-                if (! $transaction || in_array($transaction->status, ['selesai', 'batal'])) {
-                    continue;
+        $transaction = $item->transaction;
+        if ($transaction && $transaction->user) {
+            try {
+                $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+                Mail::to($transaction->user->email)->queue(new DigitalProductDelivered($transaction, $item, $storeName));
+
+                $chat = Chat::where('user_id', $transaction->user_id)
+                    ->where('product_id', $item->product_id)
+                    ->first();
+
+                if (! $chat) {
+                    $chat = Chat::create([
+                        'user_id' => $transaction->user_id,
+                        'subject' => 'Pesanan #'.$transaction->transaction_number,
+                        'status' => 'open',
+                        'product_id' => $item->product_id,
+                    ]);
                 }
 
-                $transaction->update([
-                    'tracking_number' => $data['tracking_number'],
-                    'courier_name' => $data['courier_name'] ?? null,
-                    'status' => 'dikirim',
+                ChatMessage::create([
+                    'chat_id' => $chat->id,
+                    'sender_type' => 'admin',
+                    'sender_id' => auth()->id() ?? 1,
+                    'body' => "Informasi Pengiriman untuk {$item->product_name} (Pesanan #{$transaction->transaction_number}):\n{$item->note}",
+                    'is_read' => false,
                 ]);
-            }
-        });
 
-        return back()->with('success', 'Nomor resi untuk '.count($request->tracking_data).' transaksi berhasil disimpan.');
+                $chat->update(['last_message_at' => now()]);
+            } catch (\Throwable $e) {
+                Log::error('Gagal mengirim email/chat produk digital: '.$e->getMessage());
+            }
+        }
+
+        return back()->with('success', 'Catatan produk digital berhasil diperbarui, email telah dikirim, dan pesan chat telah terkirim.');
+    }
+
+    /**
+     * Update item note (digital product delivery note) from route binding.
+     */
+    public function updateItemNote(Request $request, Transaction $transaction, TransactionItem $item): RedirectResponse
+    {
+        $request->validate(['note' => 'required|string|max:5000']);
+
+        $item->update(['note' => $request->note]);
+
+        if ($transaction->user_id) {
+            $chat = Chat::firstOrCreate([
+                'user_id' => $transaction->user_id,
+                'product_id' => $item->product_id,
+            ]);
+
+            ChatMessage::create([
+                'chat_id' => $chat->id,
+                'sender_type' => 'admin',
+                'sender_id' => $request->user()?->id ?? $transaction->user_id,
+                'body' => "Informasi Pengiriman untuk {$item->product_name} (Pesanan #{$transaction->transaction_number}):\n{$request->note}",
+                'is_read' => false,
+            ]);
+        }
+
+        return back()->with('success', 'Catatan produk berhasil diperbarui.');
     }
 
     /**
@@ -874,15 +742,42 @@ class TransactionController extends Controller
             'items',
         ]);
 
-        $settings = Setting::whereIn('key', ['store_name', 'store_phone', 'address', 'regency_name'])
+        $settings = Setting::whereIn('key', ['store_name', 'store_logo', 'store_phone', 'store_email', 'store_website', 'store_url', 'address', 'regency_name'])
             ->pluck('value', 'key');
 
         $storeName = $settings->get('store_name') ?? config('app.name');
+        $storeLogo = $settings->get('store_logo');
         $storePhone = $settings->get('store_phone') ?? '-';
         $storeAddress = $settings->get('address') ?? 'Gudang Utama BIZMATE';
         $storeCity = $settings->get('regency_name') ?? 'DKI Jakarta';
 
-        return view('print.shipping-label', compact('transaction', 'storeName', 'storePhone', 'storeAddress', 'storeCity'));
+        $customUrl = $settings->get('store_website') ?? $settings->get('store_url');
+        if (! empty($customUrl)) {
+            $storeUrl = preg_replace('#^https?://#', '', rtrim($customUrl, '/'));
+        } else {
+            $host = parse_url(config('app.url'), PHP_URL_HOST);
+            if (! empty($host) && ! in_array($host, ['localhost', '127.0.0.1'])) {
+                $storeUrl = $host;
+            } else {
+                $email = $settings->get('store_email');
+                $emailDomain = $email ? substr(strrchr($email, '@'), 1) : null;
+                if ($emailDomain && ! in_array($emailDomain, ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com'])) {
+                    $storeUrl = 'www.'.$emailDomain;
+                } else {
+                    $storeUrl = request()->getHttpHost();
+                }
+            }
+        }
+
+        return view('print.shipping-label', compact(
+            'transaction',
+            'storeName',
+            'storeLogo',
+            'storePhone',
+            'storeAddress',
+            'storeCity',
+            'storeUrl'
+        ));
     }
 
     /**
@@ -922,157 +817,5 @@ class TransactionController extends Controller
             'storeAddress',
             'storeCity',
         ));
-    }
-
-    /**
-     * Display stock movements report.
-     */
-    public function stockMovements(Request $request)
-    {
-        $user = $request->user();
-        $query = StockMovement::with([
-            'product:id,name,sku',
-            'productVariant:id,sku',
-            'transaction:id,transaction_number',
-            'createdByUser:id,name',
-        ])->latest();
-
-        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
-            $sellerProductIds = DB::table('products')->where('user_id', $user->id)->pluck('id');
-            $query->whereIn('product_id', $sellerProductIds);
-        }
-
-        // Filter by type
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
-        }
-
-        // Filter by product
-        if ($request->filled('product_id')) {
-            $query->where('product_id', $request->product_id);
-        }
-
-        // Filter by date range
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
-        $perPage = (int) $request->input('per_page', 25);
-        if ($perPage < 10) {
-            $perPage = 10;
-        }
-
-        $movements = $query->paginate($perPage)->withQueryString();
-
-        $settings = Setting::whereIn('key', ['store_name', 'store_logo'])
-            ->pluck('value', 'key');
-
-        return Inertia::render('Admin/StockMovements/Index', [
-            'movements' => $movements,
-            'filters' => array_merge(
-                $request->only(['type', 'product_id', 'date_from', 'date_to']),
-                ['per_page' => $perPage]
-            ),
-            'storeName' => $settings->get('store_name') ?? config('app.name'),
-            'storeLogo' => $settings->get('store_logo'),
-        ]);
-    }
-
-    /**
-     * Update digital product note / delivery information for a transaction item.
-     */
-    public function updateItemNote(Request $request, Transaction $transaction, TransactionItem $item): RedirectResponse
-    {
-        $request->validate([
-            'note' => 'nullable|string|max:500',
-        ]);
-
-        if ($item->transaction_id !== $transaction->id) {
-            abort(404);
-        }
-
-        $item->update([
-            'note' => $request->note,
-        ]);
-
-        $transaction->loadMissing('user');
-        if ($item->note && $transaction->user && $transaction->user->email) {
-            try {
-                $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
-                $storeLogo = Setting::where('key', 'store_logo')->value('value');
-
-                Mail::to($transaction->user->email)->queue(
-                    new DigitalProductDelivered($transaction, $item, $storeName, $storeLogo)
-                );
-
-                // Auto-post information to Chat thread
-                $chat = Chat::where('user_id', $transaction->user_id)
-                    ->where('status', 'open')
-                    ->orderByDesc('last_message_at')
-                    ->first();
-
-                if (! $chat) {
-                    $chat = Chat::create([
-                        'user_id' => $transaction->user_id,
-                        'subject' => 'Pesanan #'.$transaction->transaction_number,
-                        'status' => 'open',
-                        'product_id' => $item->product_id,
-                    ]);
-                }
-
-                ChatMessage::create([
-                    'chat_id' => $chat->id,
-                    'sender_type' => 'admin',
-                    'sender_id' => auth()->id() ?? 1,
-                    'body' => "Informasi Pengiriman untuk {$item->product_name} (Pesanan #{$transaction->transaction_number}):\n{$item->note}",
-                    'is_read' => false,
-                ]);
-
-                $chat->update(['last_message_at' => now()]);
-            } catch (\Throwable $e) {
-                Log::error('Gagal mengirim email/chat produk digital: '.$e->getMessage());
-            }
-        }
-
-        return back()->with('success', 'Catatan produk digital berhasil diperbarui, email telah dikirim, dan pesan chat telah terkirim.');
-    }
-
-    /**
-     * Restore stock when a transaction is cancelled.
-     */
-    private function restoreStock(Transaction $transaction, $adminUser): void
-    {
-        $transaction->load('items');
-
-        foreach ($transaction->items as $item) {
-            if ($item->is_gift_item) {
-                continue;
-            }
-
-            $stockRecord = $item->product_variant_id
-                ? ProductStock::where('product_variant_id', $item->product_variant_id)->first()
-                : ProductStock::where('product_id', $item->product_id)->whereNull('product_variant_id')->first();
-
-            if ($stockRecord && ! $stockRecord->is_unlimited) {
-                $stockBefore = $stockRecord->stock;
-                $stockAfter = $stockBefore + $item->quantity;
-                $stockRecord->update(['stock' => $stockAfter]);
-
-                StockMovement::create([
-                    'product_id' => $item->product_id,
-                    'product_variant_id' => $item->product_variant_id,
-                    'transaction_id' => $transaction->id,
-                    'type' => 'retur',
-                    'quantity' => $item->quantity,
-                    'stock_before' => $stockBefore,
-                    'stock_after' => $stockAfter,
-                    'notes' => 'Pembatalan transaksi - '.$transaction->transaction_number,
-                    'created_by' => $adminUser->id,
-                ]);
-            }
-        }
     }
 }

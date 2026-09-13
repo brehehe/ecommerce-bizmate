@@ -5540,7 +5540,7 @@
 <!-- ====== MOBILE BOTTOM NAVIGATION BAR ====== -->
 {#if !hideMobileBottomNav}
     <nav
-        class="md:hidden fixed bottom-0 left-0 right-0 z-[990] bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] pb-safe transition-all duration-300"
+        class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] pb-safe transition-all duration-300"
     >
         <div
             class="max-w-md mx-auto px-2 h-16 flex items-center justify-around relative"

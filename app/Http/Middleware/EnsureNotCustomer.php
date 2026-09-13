@@ -20,11 +20,10 @@ class EnsureNotCustomer
             return redirect('/login');
         }
 
-        $isAdmin = $user->hasAnyRole(['Super Admin', 'Admin']);
         $isSellerEnabled = (bool) config('app.is_seller', false);
 
-        if (! $isAdmin) {
-            if (! $isSellerEnabled || ($user->hasRole('Customer') && ! $user->is_seller)) {
+        if ($user->hasRole('Customer') && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
+            if (! $isSellerEnabled || ! $user->is_seller) {
                 return redirect('/')->with('error', 'Fitur penjual sedang dinonaktifkan.');
             }
         }

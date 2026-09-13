@@ -144,6 +144,7 @@
         appliedVoucher: initialAppliedVoucher = null,
         couriers = [],
         isNewUser = false,
+        biteshipEnabled = false,
     } = $props();
 
     const primary = $derived(
@@ -323,7 +324,7 @@
 
     // Shipping
     const availableCouriers = $derived.by(() => {
-        const list = couriers.map((c: any) => c.code);
+        const list = biteshipEnabled ? couriers.map((c: any) => c.code) : [];
         if (storeSettings.store_courier_enabled) {
             list.push('store_courier');
         }
@@ -658,7 +659,17 @@
     const subtotal = $derived(
         cartItems.reduce(
             (acc: number, item: any) =>
-                acc + Number(item.unit_price ?? 0) * item.quantity,
+                acc +
+                Number(
+                    item.subtotal ??
+                        (item.unit_price ??
+                            item.computed_price ??
+                            item.price ??
+                            item.product?.product_price?.price ??
+                            item.product?.productPrice?.price ??
+                            0) *
+                            item.quantity,
+                ),
             0,
         ),
     );
@@ -887,7 +898,7 @@
                 body: JSON.stringify({
                     destination:
                         selectedCourier === 'self_pickup'
-                            ? ''
+                            ? 'self_pickup'
                             : isInternational
                               ? selectedCountryId
                               : (selectedAddress?.city_id ??
@@ -943,7 +954,7 @@
                     selectedCourier,
                 ]);
                 shippingError =
-                    data.error ?? 'Tidak ada layanan pengiriman tersedia.';
+                    data.error ?? data.message ?? 'Tidak ada layanan pengiriman tersedia.';
             }
         } catch {
             shippingError = 'Gagal memuat ongkir. Coba lagi.';
@@ -1549,7 +1560,16 @@
                                                     class="text-sm font-bold"
                                                     style="color:{primary}"
                                                     >{fmt(
-                                                        item.unit_price,
+                                                        item.unit_price ??
+                                                            item.computed_price ??
+                                                            item.price ??
+                                                            item.product
+                                                                ?.product_price
+                                                                ?.price ??
+                                                            item.product
+                                                                ?.productPrice
+                                                                ?.price ??
+                                                            0,
                                                     )}</span
                                                 >
                                             </div>

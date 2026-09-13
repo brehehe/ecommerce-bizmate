@@ -21,6 +21,12 @@
     const secondary = $derived(
         (page.props as any).theme?.secondary_color ?? '#fa7315',
     );
+    const fromCheckout = $derived(
+        (page.url || '').includes('from=checkout') ||
+            (typeof window !== 'undefined' &&
+                new URLSearchParams(window.location.search).get('from') ===
+                    'checkout'),
+    );
 
     // Navigation & Step state
     // 'list' | 'search' | 'map' | 'form'
@@ -156,15 +162,12 @@
                 step = 'map';
             }
         } else if (step === 'list') {
-            const urlParams =
-                typeof window !== 'undefined'
-                    ? new URLSearchParams(window.location.search)
-                    : null;
-            const fromParam = urlParams ? urlParams.get('from') : null;
-            if (fromParam === 'checkout') {
+            if (fromCheckout) {
                 router.visit('/checkout', { replace: true });
+            } else if (typeof window !== 'undefined' && window.history.length > 1) {
+                window.history.back();
             } else {
-                router.visit('/', { replace: true });
+                router.visit('/profile', { replace: true });
             }
         }
     }
@@ -895,7 +898,12 @@
     }
 </script>
 
-<AccountLayout activeMenu="addresses">
+<AccountLayout
+    activeMenu="addresses"
+    hideMobileHeader={true}
+    hideMobileBottomNav={true}
+    hideSidebarOnMobile={true}
+>
     <!-- Desktop: full-width two-col grid | Mobile: narrow card -->
     <div class="w-full">
         <!-- Mobile card wrapper -->
@@ -920,7 +928,9 @@
                         <h1
                             class="font-outfit font-black text-lg text-slate-800"
                         >
-                            Detail Alamat
+                            {fromCheckout
+                                ? 'Pilih Alamat Pengiriman'
+                                : 'Detail Alamat'}
                         </h1>
                     </div>
                     <button
@@ -1086,16 +1096,30 @@
 
                 <!-- Sticky Bottom Action (Mobile only) -->
                 <div
-                    class="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-slate-100 z-30"
+                    class="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white border-t border-slate-100 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
                 >
-                    <button
-                        onclick={confirmPilihAlamat}
-                        disabled={!selectedAddressId}
-                        class="w-full py-3.5 rounded-2xl font-bold text-white shadow-lg transition flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50"
-                        style="background-color: {primary};"
-                    >
-                        Pilih Alamat
-                    </button>
+                    {#if addresses.length === 0}
+                        <button
+                            onclick={startAddAddress}
+                            class="w-full py-3.5 rounded-2xl font-bold text-white shadow-lg transition flex items-center justify-center gap-2 hover:opacity-90 cursor-pointer"
+                            style="background-color: {primary};"
+                        >
+                            <i class="ti ti-plus text-base"></i>
+                            Tambah Alamat Baru
+                        </button>
+                    {:else}
+                        <button
+                            onclick={confirmPilihAlamat}
+                            disabled={!selectedAddressId}
+                            class="w-full py-3.5 rounded-2xl font-bold text-white shadow-lg transition flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 cursor-pointer"
+                            style="background-color: {primary};"
+                        >
+                            <i class="ti ti-check text-base"></i>
+                            {fromCheckout
+                                ? 'Pilih Alamat Pengiriman'
+                                : 'Pilih Alamat'}
+                        </button>
+                    {/if}
                 </div>
 
                 <!-- ====== STEP 2: SEARCH VIEW ====== -->
@@ -1884,7 +1908,7 @@
 
                 <!-- Sticky Bottom Save -->
                 <div
-                    class="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 bg-white border-t border-slate-100 z-30"
+                    class="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white border-t border-slate-100 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
                 >
                     <button
                         onclick={saveAddress}
@@ -1902,7 +1926,7 @@
                                   !formDistrictId ||
                                   !formVillageId) ||
                             !formPostalCode.trim()}
-                        class="w-full py-3.5 rounded-2xl font-bold text-white shadow-lg transition flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50"
+                        class="w-full py-3.5 rounded-2xl font-bold text-white shadow-lg transition flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 cursor-pointer"
                         style="background-color: {primary};"
                     >
                         Simpan
@@ -1923,20 +1947,32 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
                         <div>
                             <h1 class="font-outfit font-black text-2xl text-slate-900 tracking-tight">
-                                Alamat Saya
+                                {fromCheckout ? 'Pilih Alamat Pengiriman' : 'Alamat Saya'}
                             </h1>
                             <p class="text-xs text-slate-500 mt-1">
-                                Kelola alamat pengiriman kamu untuk mempermudah proses transaksi checkout.
+                                {fromCheckout
+                                    ? 'Pilih alamat yang ingin digunakan untuk pesanan Anda, atau tambah alamat baru.'
+                                    : 'Kelola alamat pengiriman kamu untuk mempermudah proses transaksi checkout.'}
                             </p>
                         </div>
-                        <button
-                            onclick={startAddAddress}
-                            class="px-5 py-2.5 rounded-xl font-bold text-white text-xs tracking-wide shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 self-start sm:self-auto cursor-pointer"
-                            style="background-color: {primary};"
-                        >
-                            <i class="ti ti-plus text-sm"></i>
-                            <span>Tambah Alamat Baru</span>
-                        </button>
+                        <div class="flex items-center gap-3">
+                            {#if fromCheckout}
+                                <Link
+                                    href="/checkout"
+                                    class="px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 text-xs transition"
+                                >
+                                    Kembali ke Checkout
+                                </Link>
+                            {/if}
+                            <button
+                                onclick={startAddAddress}
+                                class="px-5 py-2.5 rounded-xl font-bold text-white text-xs tracking-wide shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+                                style="background-color: {primary};"
+                            >
+                                <i class="ti ti-plus text-sm"></i>
+                                <span>Tambah Alamat Baru</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Search & Filter Controls -->
@@ -2067,10 +2103,22 @@
 
                                         <!-- Action Buttons -->
                                         <div class="flex items-center gap-2 shrink-0 self-end md:self-start pt-1">
-                                            {#if !addr.is_primary}
+                                            {#if fromCheckout}
+                                                <button
+                                                    onclick={() => {
+                                                        selectedAddressId = addr.id;
+                                                        confirmPilihAlamat();
+                                                    }}
+                                                    class="px-4 py-1.5 rounded-xl font-bold text-xs text-white shadow-xs hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer"
+                                                    style="background-color: {primary};"
+                                                >
+                                                    <i class="ti ti-check text-xs"></i>
+                                                    {addr.is_primary ? 'Pilih Alamat Ini' : 'Atur & Pilih Alamat'}
+                                                </button>
+                                            {:else if !addr.is_primary}
                                                 <button
                                                     onclick={() => selectAndSetPrimary(addr.id)}
-                                                    class="px-3 py-1.5 border border-slate-200 rounded-xl hover:bg-slate-50 font-bold text-xs text-slate-600 transition"
+                                                    class="px-3 py-1.5 border border-slate-200 rounded-xl hover:bg-slate-50 font-bold text-xs text-slate-600 transition cursor-pointer"
                                                 >
                                                     Atur Utama
                                                 </button>

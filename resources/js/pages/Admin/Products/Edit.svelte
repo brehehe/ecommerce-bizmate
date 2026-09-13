@@ -18,6 +18,7 @@
     import ProductImageSearchModal from '@/components/ProductImageSearchModal.svelte';
     import ProductAiImageModal from '@/components/ProductAiImageModal.svelte';
     import ProductCatalogBuilderModal from '@/components/ProductCatalogBuilderModal.svelte';
+    import ProductVariantsEditor from '@/components/ProductVariantsEditor.svelte';
 
     let {
         categories = [],
@@ -25,6 +26,7 @@
         product,
         ai_enabled = false,
         isSellerMode = false,
+        enableProductVariants = false,
         isAdmin = false,
         sellers = [],
     } = $props();
@@ -3321,6 +3323,9 @@
             enableVariants = !!(
                 product.variations && product.variations.length > 0
             );
+            if (enableProductVariants) {
+                enableVariants = true;
+            }
 
             variations = (product.variations || []).map((v, idx) => ({
                 id: v.id,
@@ -4158,7 +4163,7 @@
                     {/if}
                 </div>
 
-                {#if isSuperAdminOrAdmin}
+                {#if isSellerMode && isSuperAdminOrAdmin}
                 <!-- Card: Informasi Penjual & Kontak Person -->
                 <div class="bg-white rounded-xl border border-slate-200 p-5 sm:p-6 shadow-xs mb-6">
                     <h3 class="text-base font-semibold text-slate-900 border-b border-slate-150 pb-3 mb-4 flex items-center gap-2">
@@ -4596,6 +4601,20 @@
                     </div>
 
                 </div>
+
+                <ProductVariantsEditor
+                    {enableProductVariants}
+                    bind:enableVariants
+                    bind:variations
+                    bind:variants
+                    bind:globalCustomPrice
+                    bind:globalCustomStock
+                    bind:globalCustomWeight
+                    onAddVariation={addVariation}
+                    onRemoveVariation={removeVariation}
+                    onAddOption={addOption}
+                    onRemoveOption={removeOption}
+                />
 
                 <!-- Card: Master Harga & Stok -->
                 <div

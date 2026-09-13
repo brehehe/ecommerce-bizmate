@@ -3,6 +3,7 @@
     import { page, router, Deferred } from '@inertiajs/svelte';
     import { Html5Qrcode } from 'html5-qrcode';
     import { onDestroy } from 'svelte';
+    import { findByNumber } from '@/routes/admin/transactions';
     import { dragScroll } from '@/utils/dragScroll';
     import Pagination from '@/components/ui/Pagination.svelte';
     import { showToast } from '@/utils/toast';
@@ -419,9 +420,7 @@
         scanSubmitting = true;
         scanError = '';
 
-        fetch(
-            `/admin/transactions/find-by-number/${encodeURIComponent(scanInputValue.trim())}`,
-        )
+        fetch(findByNumber.url({ number: scanInputValue.trim() }))
             .then(async (resp) => {
                 const data = await resp.json();
                 if (resp.ok && data.success) {
@@ -429,7 +428,7 @@
                         'Kode berhasil ditemukan! Mengalihkan...',
                         'success',
                     );
-                    // Close modal and redirect
+                    void stopScanning();
                     showScanModal = false;
                     router.visit(data.redirect_url);
                 } else {
@@ -544,8 +543,6 @@
     onDestroy(async () => {
         await stopScanning();
     });
-    // scan modal state
-    let scanModalOpen = $state(false);
 </script>
 
 <svelte:head>
@@ -891,40 +888,73 @@
 
     </main>
 
-    <!-- QR Scan modal — preserved from original -->
-    {#if scanModalOpen}
+    {#if showScanModal}
         <div
             class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
             onclick={(e) => { if (e.target === e.currentTarget) closeScanModal(); }}
         >
-            <div class="w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <div class="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
                 <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-                    <h3 class="text-sm font-semibold text-slate-800">Scan QR / Barcode</h3>
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-800">Scan QR / Barcode</h3>
+                        <p class="mt-0.5 text-xs text-slate-500">Scan nomor transaksi, kode booking, atau resi.</p>
+                    </div>
                     <button
                         type="button"
                         onclick={closeScanModal}
-                        class="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                        class="flex h-11 w-11 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus:ring-2 focus:ring-slate-400 focus:outline-none"
                         aria-label="Tutup"
                     >
                         <i class="ti ti-x text-sm"></i>
                     </button>
                 </div>
-                <div class="p-5">
-                    <div id="qr-reader" class="rounded-xl overflow-hidden border border-slate-200"></div>
-                    {#if scanError}
-                        <p class="mt-3 text-center text-xs text-rose-500">{scanError}</p>
+                <div class="space-y-4 p-5">
+                    <div id="scanner-reader" class="overflow-hidden rounded-xl border border-slate-200 bg-slate-50"></div>
+                    {#if availableCameras.length > 1}
+                        <label class="block text-xs font-medium text-slate-600">
+                            Kamera
+                            <select
+                                value={selectedCameraId}
+                                onchange={(event) => changeCamera(event.currentTarget.value)}
+                                class="mt-1.5 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none"
+                            >
+                                {#each availableCameras as camera}
+                                    <option value={camera.id}>{camera.label || 'Kamera'}</option>
+                                {/each}
+                            </select>
+                        </label>
                     {/if}
-                    {#if scannedValue}
-                        <div class="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-center">
-                            <p class="text-xs font-semibold text-emerald-700">Ditemukan: {scannedValue}</p>
-                        </div>
+                    <div class="flex items-center gap-2 text-xs text-slate-400">
+                        <span class="h-px flex-1 bg-slate-200"></span>
+                        atau masukkan kode
+                        <span class="h-px flex-1 bg-slate-200"></span>
+                    </div>
+                    <div class="flex gap-2">
+                        <input
+                            bind:this={scannerInputEl}
+                            bind:value={scanInputValue}
+                            onkeydown={(event) => event.key === 'Enter' && submitScannedCode()}
+                            placeholder="Nomor transaksi / resi"
+                            class="h-11 min-w-0 flex-1 rounded-lg border border-slate-200 px-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 focus:outline-none"
+                        />
+                        <button
+                            type="button"
+                            onclick={submitScannedCode}
+                            disabled={scanSubmitting || !scanInputValue.trim()}
+                            class="h-11 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {scanSubmitting ? 'Mencari...' : 'Cari'}
+                        </button>
+                    </div>
+                    {#if scanError}
+                        <p class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{scanError}</p>
                     {/if}
                 </div>
                 <div class="border-t border-slate-100 px-5 py-3 text-right">
                     <button
                         type="button"
                         onclick={closeScanModal}
-                        class="rounded-lg border border-slate-200 px-4 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                        class="h-10 rounded-lg border border-slate-200 px-4 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 focus:ring-2 focus:ring-slate-400 focus:outline-none"
                     >
                         Tutup
                     </button>

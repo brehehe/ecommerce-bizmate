@@ -1,6 +1,8 @@
 <script>
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
-    import { page, inertia, router } from '@inertiajs/svelte';
+    import { updateRole } from '@/actions/App/Http/Controllers/Admin/MasterDataController';
+    import { roles as rolesIndex } from '@/routes/admin/master-data';
+    import { router } from '@inertiajs/svelte';
     import Pagination from '@/components/ui/Pagination.svelte';
 
     let { roles = { data: [], links: [] }, filters = {} } = $props();
@@ -8,16 +10,59 @@
     // svelte-ignore state_referenced_locally
     let searchQuery = $state(filters.search || '');
     let searchTimeout;
+    let editingRole = $state(null);
+    let roleName = $state('');
+    let savingRole = $state(false);
+    let roleError = $state('');
 
     function handleSearch() {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
             router.get(
-                '/admin/master-data/roles',
+                rolesIndex.url(),
                 { search: searchQuery },
                 { preserveState: true, replace: true },
             );
         }, 500);
+    }
+
+    function openEditRole(role) {
+        editingRole = role;
+        roleName = role.name;
+        roleError = '';
+    }
+
+    function closeEditRole(force = false) {
+        if (savingRole && !force) return;
+
+        editingRole = null;
+        roleName = '';
+        roleError = '';
+    }
+
+    function saveRole() {
+        if (!editingRole || !roleName.trim()) {
+            roleError = 'Nama role wajib diisi.';
+            return;
+        }
+
+        savingRole = true;
+        roleError = '';
+
+        router.put(
+            updateRole.url({ role: editingRole.id }),
+            { name: roleName.trim() },
+            {
+                preserveScroll: true,
+                onSuccess: () => closeEditRole(true),
+                onError: (errors) => {
+                    roleError = errors.name ?? 'Gagal memperbarui nama role.';
+                },
+                onFinish: () => {
+                    savingRole = false;
+                },
+            },
+        );
     }
 </script>
 
@@ -42,13 +87,6 @@
                         Kelola data pengguna, admin, pelanggan dan hak akses
                     </p>
                 </div>
-                <button
-                    type="button"
-                    class="px-5 py-2.5 bg-brand-blueRoyal text-white font-bold rounded-xl shadow-lg hover:bg-blue-800 transition flex items-center gap-2 text-sm"
-                >
-                    <i class="ti ti-plus"></i>
-                    <span>Tambah Role</span>
-                </button>
             </div>
 
             <!-- Search Bar -->
@@ -152,18 +190,11 @@
                                             >
                                                 <button
                                                     aria-label="Edit role"
+                                                    onclick={() => openEditRole(role)}
                                                     class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-brand-blueRoyal/10 hover:text-brand-blueRoyal transition"
                                                 >
                                                     <i
                                                         class="ti ti-edit text-lg"
-                                                    ></i>
-                                                </button>
-                                                <button
-                                                    aria-label="Delete role"
-                                                    class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 transition"
-                                                >
-                                                    <i
-                                                        class="ti ti-trash text-lg"
                                                     ></i>
                                                 </button>
                                             </div>
@@ -179,6 +210,76 @@
         </main>
     </div>
 </AdminLayout>
+
+{#if editingRole}
+    <div
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/45"
+        role="presentation"
+        onclick={closeEditRole}
+    >
+        <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-role-title"
+            class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            onclick={(event) => event.stopPropagation()}
+        >
+            <div class="mb-5 flex items-start justify-between gap-4">
+                <div>
+                    <h3 id="edit-role-title" class="text-lg font-black text-slate-800">
+                        Edit Nama Role
+                    </h3>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Pengguna dan akses yang sudah terhubung tetap dipertahankan.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    aria-label="Tutup"
+                    onclick={closeEditRole}
+                    class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                >
+                    <i class="ti ti-x text-xl"></i>
+                </button>
+            </div>
+
+            <label for="role-name" class="mb-2 block text-sm font-bold text-slate-700">
+                Nama Role
+            </label>
+            <input
+                id="role-name"
+                type="text"
+                bind:value={roleName}
+                onkeydown={(event) => event.key === 'Enter' && saveRole()}
+                class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm outline-none transition focus:border-brand-blueRoyal focus:ring-2 focus:ring-brand-blueRoyal/20"
+                class:border-red-400={roleError}
+                autofocus
+            />
+            {#if roleError}
+                <p class="mt-2 text-xs font-medium text-red-600">{roleError}</p>
+            {/if}
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button
+                    type="button"
+                    onclick={closeEditRole}
+                    disabled={savingRole}
+                    class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60"
+                >
+                    Batal
+                </button>
+                <button
+                    type="button"
+                    onclick={saveRole}
+                    disabled={savingRole}
+                    class="rounded-xl bg-brand-blueRoyal px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 disabled:opacity-60"
+                >
+                    {savingRole ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
+            </div>
+        </div>
+    </div>
+{/if}
 
 <style>
     @media (max-width: 640px) {

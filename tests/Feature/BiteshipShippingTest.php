@@ -213,7 +213,7 @@ test('biteship destination search returns mapped areas successfully', function (
     ]);
 });
 
-test('checkout shipping cost prioritizes komerce over biteship if both enabled', function () {
+test('checkout shipping cost prioritizes biteship over other shipping integrations', function () {
     $user = User::factory()->create();
     $address = CustomerAddress::create([
         'user_id' => $user->id,
@@ -231,37 +231,24 @@ test('checkout shipping cost prioritizes komerce over biteship if both enabled',
     Setting::updateOrCreate(['key' => 'shipping_delivery_enabled'], ['value' => '1']);
     Setting::updateOrCreate(['key' => 'shipping_delivery_key'], ['value' => 'dummy_komerce_key']);
 
-    // Mock Komerce and Biteship requests
+    // A standard shipment is always quoted by Biteship, even if an older integration remains configured.
     Http::fake([
-        '*destination/search*' => Http::response([
+        '*/maps/areas*' => Http::response([
             'success' => true,
-            'data' => [
-                [
-                    'id' => 12345,
-                    'city_name' => 'Surabaya',
-                    'district_name' => 'Wonokromo',
-                    'zip_code' => '60245',
-                    'postal_code' => '60245',
-                ],
-                [
-                    'id' => 67890,
-                    'city_name' => 'Jakarta Selatan',
-                    'district_name' => 'Tebet',
-                    'zip_code' => '12810',
-                    'postal_code' => '12810',
-                ],
-            ],
+            'areas' => [['id' => 'AREA-ID', 'name' => 'Area']],
         ], 200),
-        '*calculate*' => Http::response([
+        '*/rates/couriers' => Http::response([
             'success' => true,
-            'data' => [
-                'calculate_reguler' => [
-                    [
-                        'shipping_name' => 'JNE',
-                        'service_name' => 'REG',
-                        'shipping_cost' => 10000,
+            'couriers' => [
+                [
+                    'company_code' => 'jne',
+                    'company_name' => 'JNE',
+                    'available_services' => [[
+                        'service_code' => 'reg',
+                        'service_name' => 'Regular',
+                        'price' => 12000,
                         'etd' => '2-3 hari',
-                    ],
+                    ]],
                 ],
             ],
         ], 200),
@@ -276,7 +263,7 @@ test('checkout shipping cost prioritizes komerce over biteship if both enabled',
         ]);
 
     $response->assertOk();
-    $response->assertJsonPath('results.0.costs.0.cost.0.value', 10000);
+    $response->assertJsonPath('results.0.costs.0.cost.0.value', 12000);
 });
 
 test('biteship calculates domestic cost with coordinates and flat pricing format', function () {
@@ -388,7 +375,7 @@ test('biteship webhook updates transaction status to dikirim, selesai, or batal'
     expect($transaction->status)->toBe('selesai');
 });
 
-test('artisan command app:sync-shipment-status updates biteship transaction status', function () {
+test('artisan command app:sync-shipment-status uses the newest biteship tracking event', function () {
     $user = User::factory()->create();
     $paymentMethod = PaymentMethod::create([
         'name' => 'Transfer Mandiri',
@@ -413,6 +400,7 @@ test('artisan command app:sync-shipment-status updates biteship transaction stat
             'success' => true,
             'history' => [
                 ['updated_at' => '2026-06-10 12:00:00', 'status' => 'picked_up', 'note' => 'Paket telah di pick up oleh kurir'],
+                ['updated_at' => '2026-06-10 13:00:00', 'status' => 'delivered', 'note' => 'Paket telah berhasil diterima oleh penerima'],
             ],
         ], 200),
     ]);
@@ -420,5 +408,43 @@ test('artisan command app:sync-shipment-status updates biteship transaction stat
     Artisan::call('app:sync-shipment-status');
 
     $transaction->refresh();
-    expect($transaction->status)->toBe('dikirim');
+    expect($transaction->status)->toBe('selesai');
+});
+
+test('customer tracking refresh syncs a delivered Biteship shipment', function () {
+    $user = User::factory()->create();
+    $paymentMethod = PaymentMethod::create([
+        'name' => 'Transfer BNI',
+        'type' => 'manual',
+        'is_active' => true,
+        'admin_fee' => 0,
+    ]);
+    $transaction = Transaction::create([
+        'transaction_number' => Transaction::generateNumber(),
+        'user_id' => $user->id,
+        'payment_method_id' => $paymentMethod->id,
+        'status' => 'dikirim',
+        'subtotal' => 100000,
+        'shipping_fee' => 15000,
+        'grand_total' => 115000,
+        'booking_code' => 'BITESHIP-BOOK-789',
+        'tracking_number' => 'BITESHIP-TRACK-789',
+        'shipping_courier' => 'jne',
+    ]);
+
+    Http::fake([
+        '*/trackings/BITESHIP-TRACK-789/couriers/*' => Http::response([
+            'success' => true,
+            'history' => [
+                ['updated_at' => '2026-06-10 14:00:00', 'status' => 'delivered', 'note' => 'Paket telah berhasil diterima oleh penerima'],
+            ],
+        ], 200),
+    ]);
+
+    $this->actingAs($user)
+        ->getJson(route('transactions.komerce.track', $transaction))
+        ->assertOk()
+        ->assertJsonPath('transaction_status', 'selesai');
+
+    expect($transaction->refresh()->status)->toBe('selesai');
 });

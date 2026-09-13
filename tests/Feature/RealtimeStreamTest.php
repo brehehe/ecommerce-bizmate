@@ -8,6 +8,13 @@ use Spatie\Permission\Models\Role;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    config([
+        'broadcasting.default' => 'reverb',
+        'broadcasting.connections.reverb.key' => 'test-key',
+        'broadcasting.connections.reverb.secret' => 'test-secret',
+        'broadcasting.connections.reverb.app_id' => 'test-app-id',
+    ]);
+    require base_path('routes/channels.php');
     Role::firstOrCreate(['name' => 'Customer', 'guard_name' => 'web']);
 });
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Transaction\SyncShipmentTrackingStatusAction;
 use App\Http\Controllers\Controller;
 use App\Models\ProductStock;
 use App\Models\StockMovement;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Log;
 
 class BiteshipWebhookController extends Controller
 {
+    public function __construct(private readonly SyncShipmentTrackingStatusAction $syncShipmentTrackingStatus) {}
+
     /**
      * Handle incoming callback/webhook from Biteship.
      *
@@ -72,16 +75,8 @@ class BiteshipWebhookController extends Controller
         Log::info("Biteship Shipping Webhook: Transaction {$transaction->transaction_number} status is {$status}");
 
         // Handle status updates
-        if (in_array($status, ['delivered'])) {
-            if ($transaction->status !== 'selesai') {
-                $transaction->update(['status' => 'selesai']);
-                Log::info("Biteship Webhook: Transaction {$transaction->transaction_number} status updated to [selesai].");
-            }
-        } elseif (in_array($status, ['picked', 'picked_up', 'dropping_off', 'droppingoff', 'in_transit', 'intransit'])) {
-            if (in_array($transaction->status, ['diproses', 'dikemas', 'out_for_pickup'])) {
-                $transaction->update(['status' => 'dikirim']);
-                Log::info("Biteship Webhook: Transaction {$transaction->transaction_number} status updated to [dikirim].");
-            }
+        if ($newStatus = $this->syncShipmentTrackingStatus->updateFromDescription($transaction, $status)) {
+            Log::info("Biteship Webhook: Transaction {$transaction->transaction_number} status updated to [{$newStatus}].");
         } elseif (in_array($status, ['cancelled', 'rejected', 'courier_not_found', 'couriernotfound', 'returned', 'disposed'])) {
             if (! in_array($transaction->status, ['batal', 'selesai'])) {
                 DB::transaction(function () use ($transaction, $status) {

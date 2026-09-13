@@ -4,6 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Helpers\ImageHelper;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\MasterData\StoreAdminUserRequest;
+use App\Http\Requests\Admin\MasterData\StoreCustomerUserRequest;
+use App\Http\Requests\Admin\MasterData\UpdateAdminUserRequest;
+use App\Http\Requests\Admin\MasterData\UpdateCustomerUserRequest;
+use App\Http\Requests\Admin\MasterData\UpdateRoleRequest;
 use App\Models\Brand;
 use App\Models\ChatSticker;
 use App\Models\CoinHistory;
@@ -23,6 +28,7 @@ use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class MasterDataController extends Controller
 {
@@ -90,14 +96,9 @@ class MasterDataController extends Controller
     /**
      * Store a newly created admin.
      */
-    public function storeAdmin(Request $request)
+    public function storeAdmin(StoreAdminUserRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-            'role' => 'required|string|exists:roles,name',
-        ]);
+        $validated = $request->validated();
 
         $user = User::create([
             'name' => $validated['name'],
@@ -114,13 +115,9 @@ class MasterDataController extends Controller
     /**
      * Update the specified admin.
      */
-    public function updateAdmin(Request $request, User $user)
+    public function updateAdmin(UpdateAdminUserRequest $request, User $user)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'password' => 'nullable|string|min:8',
-            'role' => 'required|string|exists:roles,name',
-        ]);
+        $validated = $request->validated();
 
         if ($user->hasRole('Super Admin') && $validated['role'] !== 'Super Admin') {
             $superAdminCount = User::role('Super Admin')->count();
@@ -233,13 +230,9 @@ class MasterDataController extends Controller
     /**
      * Store a newly created customer.
      */
-    public function storeCustomer(Request $request)
+    public function storeCustomer(StoreCustomerUserRequest $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
-        ]);
+        $validated = $request->validated();
 
         $user = User::create([
             'name' => $validated['name'],
@@ -256,12 +249,9 @@ class MasterDataController extends Controller
     /**
      * Update the specified customer.
      */
-    public function updateCustomer(Request $request, User $user)
+    public function updateCustomer(UpdateCustomerUserRequest $request, User $user)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'password' => 'nullable|string|min:8',
-        ]);
+        $validated = $request->validated();
 
         $user->update([
             'name' => $validated['name'],
@@ -312,6 +302,19 @@ class MasterDataController extends Controller
             'roles' => $roles,
             'filters' => $request->only(['search']),
         ]);
+    }
+
+    /**
+     * Rename an existing role while retaining its assigned users and permissions.
+     */
+    public function updateRole(UpdateRoleRequest $request, Role $role, PermissionRegistrar $permissionRegistrar): RedirectResponse
+    {
+        $this->authorizeAdminOnly($request);
+
+        $role->update(['name' => $request->validated('name')]);
+        $permissionRegistrar->forgetCachedPermissions();
+
+        return back()->with('success', 'Nama role berhasil diperbarui.');
     }
 
     /**

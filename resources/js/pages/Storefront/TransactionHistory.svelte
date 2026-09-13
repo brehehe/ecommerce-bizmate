@@ -38,7 +38,7 @@
         if (!dateStr) return '-';
         return new Date(dateStr).toLocaleDateString('id-ID', {
             day: 'numeric',
-            month: 'long',
+            month: 'short',
             year: 'numeric',
         });
     }
@@ -95,8 +95,8 @@
     <title>Pesanan Saya | Riwayat Transaksi</title>
 </svelte:head>
 
-<AccountLayout activeMenu="transactions">
-    <div class="space-y-4">
+<AccountLayout activeMenu="transactions" hideSidebarOnMobile={true}>
+    <div class="space-y-3 px-3 py-3 sm:space-y-4 sm:px-0 sm:py-0">
         <!-- Main Card Header -->
         <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-4 sm:p-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
@@ -206,13 +206,16 @@
                         </div>
 
                         <!-- Products List -->
-                        <Link href="/transactions/{trx.id}" class="block p-4 space-y-3 hover:bg-slate-50/30 transition">
+                        <Link href="/transactions/{trx.id}" class="block p-4 space-y-3 transition hover:bg-slate-50/50 active:bg-slate-50">
                             {#each (trx.items || [trx]) as item}
                                 <div class="flex items-start gap-4">
                                     <img
                                         src={formatImagePath(item.product_image || item.image || item.product?.image)}
                                         alt={item.product_name || item.name || 'Produk'}
-                                        class="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0"
+                                        class="w-16 h-16 rounded-xl object-cover border border-slate-200 bg-slate-50 shrink-0"
+                                        onerror={(e: any) => {
+                                            e.currentTarget.src = '/noimage/image.png';
+                                        }}
                                     />
                                     <div class="flex-1 min-w-0">
                                         <h3 class="text-xs font-bold text-slate-800 line-clamp-2 leading-snug">
@@ -237,48 +240,58 @@
                         </Link>
 
                         <!-- Order Footer Info & Actions -->
-                        <div class="px-4 py-3 bg-slate-50/30 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div class="text-xs text-slate-400">
-                                <span class="font-medium">No. Transaksi: </span>
-                                <span class="font-bold text-slate-700">{trx.transaction_number}</span>
-                                <span class="mx-1">•</span>
-                                <span>{fmtDate(trx.created_at)}</span>
+                        <div class="px-4 py-4 bg-slate-50/30 border-t border-slate-100 space-y-3">
+                            <div class="flex items-start justify-between gap-3 text-xs">
+                                <div class="min-w-0">
+                                    <span class="block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                                        No. Transaksi
+                                    </span>
+                                    <span
+                                        class="mt-0.5 block break-all font-bold tracking-wide text-slate-700"
+                                        title={trx.transaction_number}
+                                    >
+                                        {trx.transaction_number}
+                                    </span>
+                                </div>
+                                <span class="shrink-0 pt-0.5 font-medium text-slate-400">
+                                    {fmtDate(trx.created_at)}
+                                </span>
                             </div>
 
-                            <div class="flex items-center gap-4 justify-between sm:justify-end">
-                                <div class="text-right">
-                                    <span class="text-[11px] text-slate-400 block">Total Pesanan:</span>
-                                    <span class="text-sm font-extrabold text-slate-900" style="color: {primary};">
+                            <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2.5">
+                                <div>
+                                    <span class="block text-[11px] font-medium text-slate-400">Total Pesanan</span>
+                                    <span class="mt-0.5 block text-base font-extrabold tabular-nums" style="color: {primary};">
                                         {fmt(trx.grand_total || trx.total_amount)}
                                     </span>
                                 </div>
+                            </div>
 
-                                <div class="flex items-center gap-2">
+                            <div class="grid gap-2 {trx.status === 'belum_bayar' || trx.status === 'menunggu' || trx.status === 'selesai' ? 'grid-cols-2' : 'grid-cols-1'}">
+                                <Link
+                                    href="/transactions/{trx.id}"
+                                    class="flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-center text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 active:bg-slate-100"
+                                >
+                                    Detail Transaksi
+                                </Link>
+
+                                {#if trx.status === 'belum_bayar' || trx.status === 'menunggu'}
                                     <Link
                                         href="/transactions/{trx.id}"
-                                        class="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 transition shadow-2xs"
+                                        class="flex min-h-11 items-center justify-center rounded-xl px-3 text-center text-xs font-bold text-white shadow-xs transition hover:opacity-90 active:opacity-80"
+                                        style="background-color: {primary};"
                                     >
-                                        Detail Transaksi
+                                        Bayar Sekarang
                                     </Link>
-
-                                    {#if trx.status === 'belum_bayar' || trx.status === 'menunggu'}
-                                        <Link
-                                            href="/transactions/{trx.id}"
-                                            class="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-xs transition hover:opacity-90"
-                                            style="background-color: {primary};"
-                                        >
-                                            Bayar Sekarang
-                                        </Link>
-                                    {:else if trx.status === 'selesai'}
-                                        <Link
-                                            href="/transactions/{trx.id}"
-                                            class="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-xs transition hover:opacity-90"
-                                            style="background-color: {primary};"
-                                        >
-                                            Beli Lagi
-                                        </Link>
-                                    {/if}
-                                </div>
+                                {:else if trx.status === 'selesai'}
+                                    <Link
+                                        href="/transactions/{trx.id}"
+                                        class="flex min-h-11 items-center justify-center rounded-xl px-3 text-center text-xs font-bold text-white shadow-xs transition hover:opacity-90 active:opacity-80"
+                                        style="background-color: {primary};"
+                                    >
+                                        Beli Lagi
+                                    </Link>
+                                {/if}
                             </div>
                         </div>
 

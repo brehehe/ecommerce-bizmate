@@ -351,6 +351,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::post('/master-data/social-media/reorder', [MasterDataController::class, 'reorderSocialMedia'])->name('master-data.social-media.reorder');
 
     Route::get('/master-data/roles', [MasterDataController::class, 'roles'])->name('master-data.roles');
+    Route::put('/master-data/roles/{role}', [MasterDataController::class, 'updateRole'])->name('master-data.roles.update');
 
     // Stickers (Chat)
     Route::get('/master-data/stickers', [MasterDataController::class, 'stickers'])->name('master-data.stickers');
@@ -398,6 +399,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::post('/transactions/{transaction}/tracking', [AdminTransactionController::class, 'updateTracking'])->name('transactions.update-tracking');
     Route::post('/transactions/{transaction}/items/{item}/note', [AdminTransactionController::class, 'updateItemNote'])->name('transactions.items.update-note');
     Route::post('/transactions/{transaction}/delivery-history', [AdminTransactionController::class, 'addDeliveryHistory'])->name('transactions.add-delivery-history');
+    Route::post('/transactions/{transaction}/delivery-photos', [AdminTransactionController::class, 'uploadDeliveryPhotos'])->name('transactions.upload-delivery-photos');
+    Route::delete('/transactions/{transaction}/delivery-photos/{index}', [AdminTransactionController::class, 'deleteDeliveryPhoto'])->name('transactions.delete-delivery-photo');
     Route::post('/transactions/{transaction}/komerce/store', [KomerceShipmentController::class, 'storeShipment'])->name('transactions.komerce.store');
     Route::post('/transactions/{transaction}/komerce/pickup', [KomerceShipmentController::class, 'requestPickup'])->name('transactions.komerce.pickup');
     Route::get('/transactions/{transaction}/komerce/print', [KomerceShipmentController::class, 'printLabel'])->name('transactions.komerce.print');

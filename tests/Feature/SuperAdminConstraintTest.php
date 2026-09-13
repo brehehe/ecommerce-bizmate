@@ -79,3 +79,17 @@ test('can change role of super admin if there is another super admin', function 
     $this->assertTrue($otherSuperAdmin->fresh()->hasRole('Admin'));
     $this->assertFalse($otherSuperAdmin->fresh()->hasRole('Super Admin'));
 });
+
+test('super admin can rename a role without removing its assigned users', function () {
+    $courierRole = Role::create(['name' => 'Kurir Toko']);
+    $courier = User::factory()->create();
+    $courier->assignRole($courierRole);
+
+    $this->actingAs($this->admin)
+        ->put(route('admin.master-data.roles.update', $courierRole), ['name' => 'Kurir'])
+        ->assertRedirect()
+        ->assertSessionHas('success', 'Nama role berhasil diperbarui.');
+
+    expect($courierRole->fresh()->name)->toBe('Kurir');
+    expect($courier->fresh()->hasRole('Kurir'))->toBeTrue();
+});

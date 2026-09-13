@@ -25,6 +25,7 @@ class Transaction extends Model
         'payment_method_id',
         'courier_id',
         'status',
+        'payment_status',
         'subtotal',
         'discount_amount',
         'shipping_fee',
@@ -235,11 +236,23 @@ class Transaction extends Model
                     $description = match ($transaction->status) {
                         'belum_bayar' => 'Menunggu pembayaran.',
                         'menunggu' => 'Pembayaran sedang dikonfirmasi / Menunggu konfirmasi.',
-                        'diproses' => 'Pesanan sedang diproses.',
+                        'diproses' => $transaction->shipping_courier === 'self_pickup'
+                            ? 'Pesanan sedang dipersiapkan di toko.'
+                            : 'Pesanan sedang diproses.',
                         'dikemas' => 'Pesanan sedang dikemas.',
-                        'out_for_pickup' => $transaction->shipping_courier === 'store_courier' ? 'Sudah dipick' : 'Kurir sedang dalam perjalanan untuk menjemput paket (Out for Pickup).',
-                        'dikirim' => $transaction->shipping_courier === 'store_courier' ? 'Dalam Pengantaran' : 'Pesanan telah dikirim.',
-                        'selesai' => 'Pesanan telah diterima. Transaksi selesai.',
+                        'out_for_pickup' => match ($transaction->shipping_courier) {
+                            'self_pickup' => 'Pesanan telah siap diambil di toko. Silakan datang ke toko untuk mengambil pesanan Anda.',
+                            'store_courier' => 'Sudah dipick',
+                            default => 'Kurir sedang dalam perjalanan untuk menjemput paket (Out for Pickup).',
+                        },
+                        'dikirim' => $transaction->shipping_courier === 'store_courier'
+                            ? 'Paket sedang dalam perjalanan ke alamat penerima oleh Kurir Toko.'
+                            : 'Pesanan telah dikirim.',
+                        'selesai' => match ($transaction->shipping_courier) {
+                            'self_pickup' => 'Pesanan telah berhasil diambil oleh pelanggan di toko.',
+                            'store_courier' => 'Paket telah berhasil diterima oleh penerima.',
+                            default => 'Pesanan telah diterima. Transaksi selesai.',
+                        },
                         'batal' => 'Pesanan dibatalkan.'.($transaction->cancel_reason ? ' Alasan: '.$transaction->cancel_reason : ''),
                         default => 'Status pesanan diperbarui menjadi: '.$transaction->status,
                     };
@@ -255,11 +268,19 @@ class Transaction extends Model
                         $notifMessage = 'Pesanan Anda #'.$transaction->transaction_number.' kini '.match ($transaction->status) {
                             'belum_bayar' => 'menunggu pembayaran.',
                             'menunggu' => 'menunggu konfirmasi pembayaran.',
-                            'diproses' => 'sedang diproses.',
+                            'diproses' => $transaction->shipping_courier === 'self_pickup' ? 'sedang dipersiapkan di toko.' : 'sedang diproses.',
                             'dikemas' => 'sedang dikemas.',
-                            'out_for_pickup' => 'sedang dalam proses penjemputan oleh kurir (Out for Pickup).',
-                            'dikirim' => 'telah dikirim.',
-                            'selesai' => 'selesai / telah diterima.',
+                            'out_for_pickup' => match ($transaction->shipping_courier) {
+                                'self_pickup' => 'telah siap diambil di toko.',
+                                'store_courier' => 'telah diambil oleh kurir toko dan siap diantar.',
+                                default => 'sedang dalam proses penjemputan oleh kurir (Out for Pickup).',
+                            },
+                            'dikirim' => $transaction->shipping_courier === 'store_courier' ? 'sedang dalam perjalanan oleh kurir toko.' : 'telah dikirim.',
+                            'selesai' => match ($transaction->shipping_courier) {
+                                'self_pickup' => 'telah selesai diambil oleh Anda di toko.',
+                                'store_courier' => 'telah berhasil diterima.',
+                                default => 'selesai / telah diterima.',
+                            },
                             'batal' => 'dibatalkan.',
                             default => 'diperbarui menjadi '.$transaction->status,
                         };

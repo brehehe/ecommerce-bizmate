@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
     <style>
         /* ===========================
@@ -283,15 +284,36 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            padding: 0.2em 0.4em;
+            text-align: center;
+            overflow: hidden;
+        }
+        .lbl-platform .plat-logo {
+            max-height: 2.2em;
+            max-width: 90%;
+            object-fit: contain;
+            display: block;
+            margin-bottom: 2px;
         }
         .lbl-platform .plat-name {
             font-weight: 800;
-            font-size: 1.4em;
-            letter-spacing: -0.5px;
+            font-size: 1.1em;
+            letter-spacing: -0.3px;
             color: #000;
+            text-transform: uppercase;
+            line-height: 1.1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
         }
-        .lbl-platform .plat-name span { color: #00bfa6; }
-        .lbl-platform .plat-url { font-size: 0.75em; color: #666; }
+        .lbl-platform .plat-url {
+            font-size: 0.75em;
+            color: #475569;
+            font-weight: 600;
+            margin-top: 1px;
+            text-decoration: none;
+        }
         .lbl-store {
             border-left: 1px solid #000;
             display: flex;
@@ -308,14 +330,18 @@
         /* -- Barcode -- */
         .lbl-barcode {
             border-bottom: var(--border);
-            padding: 0.4em 0 0.2em;
-            text-align: center;
+            padding: 0.35em 0.45em;
             display: flex;
-            flex-direction: column;
+            gap: 0.45em;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            height: 5.5em;
+            height: 12em;
+        }
+        .barcode-content {
+            min-width: 0;
+            flex: 1;
+            text-align: center;
         }
         #barcode {
             max-width: 90%;
@@ -327,6 +353,22 @@
             font-weight: 700;
             margin-top: 0.2em;
             letter-spacing: 1px;
+        }
+        .lbl-qr {
+            width: 100px;
+            min-width: 100px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-left: 1px dashed #999;
+            padding-left: 0.45em;
+        }
+        #qrcode,
+        #qrcode img,
+        #qrcode canvas {
+            width: 92px !important;
+            height: 92px !important;
         }
 
         /* -- COD (conditional) -- */
@@ -501,6 +543,22 @@
         $isCod = str_contains(strtolower($transaction->paymentMethod->name ?? ''), 'cod');
         $courierName = strtoupper($transaction->courier_name ?? $transaction->shipping_courier ?? 'KURIR');
         $serviceType = strtoupper(preg_replace('/\[.*?\]\s*/', '', $transaction->shipping_service ?? 'REG'));
+
+        $logoSrc = null;
+        $rawLogo = $storeLogo ?? \App\Models\Setting::where('key', 'store_logo')->value('value');
+        if (!empty($rawLogo)) {
+            if (str_starts_with($rawLogo, 'http://') || str_starts_with($rawLogo, 'https://')) {
+                $logoSrc = $rawLogo;
+            } elseif (file_exists(public_path($rawLogo))) {
+                $logoSrc = asset(ltrim($rawLogo, '/'));
+            } elseif (file_exists(public_path('storage/' . ltrim($rawLogo, '/')))) {
+                $logoSrc = asset('storage/' . ltrim($rawLogo, '/'));
+            } else {
+                $logoSrc = asset(ltrim($rawLogo, '/'));
+            }
+        }
+        $siteHost = parse_url(config('app.url'), PHP_URL_HOST);
+        $displayUrl = $storeUrl ?? (!empty($siteHost) && $siteHost !== 'localhost' ? $siteHost : request()->getHost());
     @endphp
 
     <!-- ========== CONTROL BAR ========== -->
@@ -599,16 +657,26 @@
                     <span class="courier-badge">{{ $courierName }}</span>
                 </div>
                 <div class="lbl-platform">
-                    <div class="plat-name">bite<span>ship</span></div>
-                    <div class="plat-url">www.biteship.com</div>
+                    @if(!empty($logoSrc))
+                        <img src="{{ $logoSrc }}" alt="{{ $storeName }}" class="plat-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <div class="plat-name" style="display: none;">{{ $storeName }}</div>
+                    @else
+                        <div class="plat-name">{{ $storeName }}</div>
+                    @endif
+                    <a href="{{ url('/') }}" target="_blank" class="plat-url">{{ $displayUrl }}</a>
                 </div>
                 <div class="lbl-store">{{ $storeName }}</div>
             </div>
 
             <!-- Barcode -->
             <div class="lbl-barcode">
-                <svg id="barcode"></svg>
-                <div class="lbl-awb">{{ $awbNumber }}</div>
+                <div class="barcode-content">
+                    <svg id="barcode"></svg>
+                    <div class="lbl-awb">{{ $awbNumber }}</div>
+                </div>
+                <div class="lbl-qr" aria-label="QR kode nomor transaksi">
+                    <div id="qrcode"></div>
+                </div>
             </div>
 
             <!-- COD -->
@@ -676,7 +744,11 @@
 
             <!-- Brand -->
             <div class="lbl-brand">
-                Pengiriman melalui platform Biteship · www.biteship.com
+                @if($transaction->shipping_courier === 'store_courier')
+                    Pengiriman Langsung oleh Kurir Toko {{ $storeName }} · {{ $displayUrl }}
+                @else
+                    Pengiriman Pesanan {{ $storeName }} · {{ $displayUrl }}
+                @endif
             </div>
 
         </div><!-- /.label -->
@@ -784,6 +856,19 @@
             } catch (e) {
                 console.warn("Barcode error:", e);
             }
+        }
+
+        function renderQrCode() {
+            if (typeof QRCode === 'undefined') return;
+
+            const qrElement = document.getElementById('qrcode');
+            qrElement.innerHTML = '';
+            new QRCode(qrElement, {
+                text: @json($transaction->transaction_number),
+                width: 92,
+                height: 92,
+                correctLevel: QRCode.CorrectLevel.M,
+            });
         }
 
         // ===========================
@@ -945,7 +1030,7 @@
                 tspl += `TEXT 20,${y},"2",0,1,1,"CATATAN: ${notes}"\r\n`; y += 30;
 
                 // Footer
-                tspl += `TEXT 20,${pxH - 40},"1",0,1,1,"Pengiriman melalui Biteship - www.biteship.com"\r\n`;
+                tspl += `TEXT 20,${pxH - 40},"1",0,1,1,"Pengiriman Pesanan {{ addslashes($storeName) }} - {{ addslashes($displayUrl) }}"\r\n`;
                 tspl += `PRINT 1,1\r\n`;
 
                 // Send in chunks
@@ -993,6 +1078,7 @@
         // INIT
         // ===========================
         window.addEventListener('DOMContentLoaded', function () {
+            renderQrCode();
             applyAll();
         });
 

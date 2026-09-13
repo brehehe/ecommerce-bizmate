@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Transaction\SyncShipmentTrackingStatusAction;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\Transaction;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\Log;
 
 class KomerceShipmentController extends Controller
 {
+    public function __construct(private readonly SyncShipmentTrackingStatusAction $syncShipmentTrackingStatus) {}
+
     /**
      * Store/book shipment.
      */
@@ -255,12 +258,43 @@ class KomerceShipmentController extends Controller
             }
         }
 
-        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
-        $storePhone = Setting::where('key', 'store_phone')->value('value') ?? '-';
-        $storeAddress = Setting::where('key', 'address')->value('value') ?? 'Gudang Utama BIZMATE';
-        $storeCity = Setting::where('key', 'regency_name')->value('value') ?? 'DKI Jakarta';
+        $settings = Setting::whereIn('key', ['store_name', 'store_logo', 'store_phone', 'store_email', 'store_website', 'store_url', 'address', 'regency_name'])
+            ->pluck('value', 'key');
 
-        return view('print.shipping-label', compact('transaction', 'storeName', 'storePhone', 'storeAddress', 'storeCity', 'routingCode'));
+        $storeName = $settings->get('store_name') ?? config('app.name');
+        $storeLogo = $settings->get('store_logo');
+        $storePhone = $settings->get('store_phone') ?? '-';
+        $storeAddress = $settings->get('address') ?? 'Gudang Utama BIZMATE';
+        $storeCity = $settings->get('regency_name') ?? 'DKI Jakarta';
+
+        $customUrl = $settings->get('store_website') ?? $settings->get('store_url');
+        if (! empty($customUrl)) {
+            $storeUrl = preg_replace('#^https?://#', '', rtrim($customUrl, '/'));
+        } else {
+            $host = parse_url(config('app.url'), PHP_URL_HOST);
+            if (! empty($host) && ! in_array($host, ['localhost', '127.0.0.1'])) {
+                $storeUrl = $host;
+            } else {
+                $email = $settings->get('store_email');
+                $emailDomain = $email ? substr(strrchr($email, '@'), 1) : null;
+                if ($emailDomain && ! in_array($emailDomain, ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com'])) {
+                    $storeUrl = 'www.'.$emailDomain;
+                } else {
+                    $storeUrl = request()->getHttpHost();
+                }
+            }
+        }
+
+        return view('print.shipping-label', compact(
+            'transaction',
+            'storeName',
+            'storeLogo',
+            'storePhone',
+            'storeAddress',
+            'storeCity',
+            'storeUrl',
+            'routingCode'
+        ));
     }
 
     /**
@@ -313,8 +347,32 @@ class KomerceShipmentController extends Controller
     /**
      * Get real-time tracking history status.
      */
-    public function trackShipment(Transaction $transaction)
+    public function trackShipment(Request $request, Transaction $transaction): JsonResponse
     {
+        if (! $request->is('admin/*') && $transaction->user_id !== $request->user()?->id) {
+            abort(403);
+        }
+
+        if (in_array($transaction->shipping_courier, ['store_courier', 'self_pickup', 'digital'])) {
+            $history = $transaction->statusHistories()
+                ->orderBy('created_at', 'asc')
+                ->get()
+                ->map(fn ($h) => [
+                    'desc' => $h->description,
+                    'date' => $h->created_at?->toIso8601String(),
+                    'status' => $h->status,
+                ])
+                ->values()
+                ->all();
+
+            return response()->json([
+                'success' => true,
+                'history' => $history,
+                'transaction_status' => $transaction->status,
+                'courier_type' => $transaction->shipping_courier,
+            ]);
+        }
+
         if (! config('app.pickup_enabled', true)) {
             return response()->json(['error' => 'Layanan pengiriman API sedang dinonaktifkan.'], 403);
         }
@@ -324,13 +382,22 @@ class KomerceShipmentController extends Controller
             return response()->json(['error' => 'Resi pengiriman belum tersedia.'], 400);
         }
 
-        if (BiteshipService::isEnabled()) {
+        $isBiteshipShipment = BiteshipService::isEnabled()
+            && filled($transaction->booking_code)
+            && ! str_starts_with(strtoupper($waybill), 'KOMERKOM');
+
+        if ($isBiteshipShipment) {
             $response = BiteshipService::getShipmentHistory($waybill, $transaction->shipping_courier);
 
             if (isset($response['success']) && $response['success']) {
+                if (! ($response['simulated'] ?? false)) {
+                    $this->syncShipmentTrackingStatus->execute($transaction, $response['history'] ?? []);
+                }
+
                 return response()->json([
                     'success' => true,
                     'history' => $response['history'] ?? [],
+                    'transaction_status' => $transaction->fresh()->status,
                 ]);
             }
 
@@ -340,9 +407,12 @@ class KomerceShipmentController extends Controller
         $response = KomerceService::getShipmentHistory($waybill, $transaction->shipping_courier);
 
         if (isset($response['success']) && $response['success']) {
+            $this->syncShipmentTrackingStatus->execute($transaction, $response['history'] ?? []);
+
             return response()->json([
                 'success' => true,
                 'history' => $response['history'] ?? [],
+                'transaction_status' => $transaction->fresh()->status,
             ]);
         }
 

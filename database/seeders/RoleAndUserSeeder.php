@@ -22,6 +22,7 @@ class RoleAndUserSeeder extends Seeder
         $superAdminRole = Role::firstOrCreate(['name' => 'Super Admin']);
         $adminPenjualanRole = Role::firstOrCreate(['name' => 'Admin Penjualan']);
         $adminTokoRole = Role::firstOrCreate(['name' => 'Admin Toko']);
+        $kurirRole = Role::firstOrCreate(['name' => 'Kurir']);
         $customerRole = Role::firstOrCreate(['name' => 'Customer']);
 
         // Create Admin User
@@ -56,6 +57,17 @@ class RoleAndUserSeeder extends Seeder
         );
         if (! $adminToko->hasRole('Admin Toko')) {
             $adminToko->assignRole($adminTokoRole);
+        }
+
+        $kurir = User::firstOrCreate(
+            ['email' => 'kurir@bizmate.com'],
+            [
+                'name' => 'Kurir',
+                'password' => Hash::make('password'),
+            ]
+        );
+        if (! $kurir->hasRole('Kurir')) {
+            $kurir->assignRole($kurirRole);
         }
 
         // Create Customer Users

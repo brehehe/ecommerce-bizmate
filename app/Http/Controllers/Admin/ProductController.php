@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Product\BulkDeleteProductsAction;
+use App\Actions\Product\CreateProductAction;
+use App\Actions\Product\DeleteProductAction;
 use App\Events\ListingPaymentConfirmed;
 use App\Helpers\ImageHelper;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Product\BulkDeleteProductRequest;
+use App\Http\Requests\Admin\Product\StoreProductRequest;
 use App\Jobs\ImportProductsJob;
 use App\Models\Brand;
 use App\Models\Category;
@@ -28,6 +33,12 @@ use Inertia\Inertia;
 
 class ProductController extends Controller
 {
+    public function __construct(
+        protected CreateProductAction $createProductAction,
+        protected DeleteProductAction $deleteProductAction,
+        protected BulkDeleteProductsAction $bulkDeleteProductsAction
+    ) {}
+
     public function index(Request $request)
     {
         $driver = DB::connection()->getDriverName();
@@ -257,6 +268,7 @@ class ProductController extends Controller
         $brands = Brand::where('is_active', true)->orderBy('name')->get();
 
         $isSellerMode = (bool) config('app.is_seller', false);
+        $enableProductVariants = (bool) config('app.enable_product_variants', true);
         $listingPricing = $this->getListingPricingConfig();
 
         $isAdmin = $request->user()?->hasAnyRole(['Super Admin', 'Admin']) || ! $request->user()?->is_seller;
@@ -274,6 +286,7 @@ class ProductController extends Controller
             'brands' => $brands,
             'ai_enabled' => (bool) config('services.openagentic.enabled', false),
             'isSellerMode' => $isSellerMode,
+            'enableProductVariants' => $enableProductVariants,
             'listingPricing' => $listingPricing,
             'suggestedSku' => $suggestedSku,
             'isAdmin' => $isAdmin,
@@ -281,339 +294,11 @@ class ProductController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreProductRequest $request)
     {
         Log::info('Product store request payload', $request->all());
 
-        if ($request->has('category_id') && ! $request->has('category_ids')) {
-            $request->merge(['category_ids' => [$request->input('category_id')]]);
-        }
-        if ($request->has('brand_id') && ! $request->has('brand_ids')) {
-            $request->merge(['brand_ids' => array_filter([$request->input('brand_id')])]);
-        }
-
-        if ($request->has('user_id') && (! $request->input('user_id') || ! Str::isUuid($request->input('user_id')))) {
-            $request->merge(['user_id' => null]);
-        }
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'sku' => 'nullable|string|max:100',
-            'category_ids' => 'nullable|array',
-            'category_ids.*' => 'exists:categories,id',
-            'brand_ids' => 'nullable|array',
-            'brand_ids.*' => 'exists:brands,id',
-            'brand' => 'nullable|string|max:255',
-            'price' => 'required|numeric|min:0',
-            'cost' => 'nullable|numeric|min:0',
-            'stock' => 'nullable|integer|min:0',
-            'min_stock' => 'nullable|integer|min:0',
-            'min_purchase' => 'nullable|integer|min:1',
-            'is_unlimited' => 'boolean',
-            'is_digital' => 'boolean',
-            'is_exclusive' => 'boolean',
-            'exclusive_min_level_order' => 'nullable|integer|min:0',
-            'is_early_access' => 'boolean',
-            'early_access_until' => 'nullable|date',
-            'early_access_min_level_order' => 'nullable|integer|min:0',
-            'stock_status' => 'nullable|string',
-            'condition' => 'nullable|string|in:new,used,second,rent',
-            'summary' => 'nullable|string|max:255',
-            'description' => 'required|string',
-            'specifications' => 'nullable|array',
-            'size_chart' => 'nullable|array',
-            'weight' => 'nullable|integer|min:0',
-            'length' => 'nullable|integer|min:0',
-            'width' => 'nullable|integer|min:0',
-            'height' => 'nullable|integer|min:0',
-            'tax_enabled' => 'boolean',
-            'tax_rate' => 'nullable|numeric|min:0',
-            'active' => 'boolean',
-            'photos' => 'nullable|array',
-            'variations' => 'nullable|array',
-            'variants' => 'nullable|array',
-            'tier_prices' => 'nullable|array',
-            'tier_prices.*.min_qty' => 'required|integer|min:2',
-            'tier_prices.*.price' => 'required|numeric|min:0',
-            'video_url' => 'nullable|string',
-            'video_file' => 'nullable|file|mimes:mp4,mov,webm,qt|max:10240',
-            'model_3d_url' => 'nullable|string',
-            'model_3d_file' => 'nullable|file|max:10240',
-            'model_3d_usdz_url' => 'nullable|string',
-            'model_3d_usdz_file' => 'nullable|file|max:10240',
-        ]);
-
-        $this->validateBase64Images($request);
-
-        $categoryIds = $validated['category_ids'] ?? [];
-        $brandIds = $validated['brand_ids'] ?? [];
-
-        $validated['category_id'] = head($categoryIds) ?: null;
-        $validated['brand_id'] = head($brandIds) ?: null;
-
-        if (! empty($validated['brand_id'])) {
-            $validated['brand'] = Brand::find($validated['brand_id'])?->name;
-        } else {
-            $validated['brand'] = null;
-        }
-
-        $validated['slug'] = Str::slug($validated['name']).'-'.Str::random(5);
-        $validated['tax_rate'] = $validated['tax_rate'] ?? 0;
-        $validated['stock'] = $validated['stock'] ?? 0;
-        $validated['weight'] = $validated['weight'] ?? 0;
-        $validated['length'] = $validated['length'] ?? 0;
-        $validated['width'] = $validated['width'] ?? 0;
-        $validated['height'] = $validated['height'] ?? 0;
-
-        // Process file uploads or manual URLs
-        $videoPath = $request->input('video_url');
-        if ($request->hasFile('video_file')) {
-            $path = $request->file('video_file')->store('products/videos', 'public');
-            $videoPath = 'storage/'.$path;
-        }
-        $validated['video_path'] = $videoPath;
-
-        $modelPath = $request->input('model_3d_url');
-        if ($request->hasFile('model_3d_file')) {
-            $filename = Str::random(40).'.glb';
-            $path = $request->file('model_3d_file')->storeAs('products/models', $filename, 'public');
-            $modelPath = 'storage/'.$path;
-        }
-        $validated['model_3d_path'] = $modelPath;
-
-        $usdzPath = $request->input('model_3d_usdz_url');
-        if ($request->hasFile('model_3d_usdz_file')) {
-            $filename = Str::random(40).'.usdz';
-            $path = $request->file('model_3d_usdz_file')->storeAs('products/models', $filename, 'public');
-            $usdzPath = 'storage/'.$path;
-        }
-        $validated['model_3d_usdz_path'] = $usdzPath;
-
-        // Remove price/stock/file fields from product creation array
-        $productData = Arr::except($validated, [
-            'price',
-            'cost',
-            'stock',
-            'min_stock',
-            'min_purchase',
-            'is_unlimited',
-            'photos',
-            'variations',
-            'variants',
-            'tier_prices',
-            'category_ids',
-            'brand_ids',
-            'video_url',
-            'video_file',
-            'model_3d_url',
-            'model_3d_file',
-            'model_3d_usdz_url',
-            'model_3d_usdz_file',
-            'new_seller',
-        ]);
-
-        $isAdmin = $request->user()?->hasAnyRole(['Super Admin', 'Admin']) || ! $request->user()?->is_seller;
-
-        if ($isAdmin && ! empty($request->input('new_seller.name'))) {
-            $newUser = $this->findOrCreateSeller($request->input('new_seller'));
-            $productData['user_id'] = $newUser->id;
-            if (empty($productData['contact_name'])) {
-                $productData['contact_name'] = $newUser->name;
-            }
-            if (empty($productData['contact_phone'])) {
-                $productData['contact_phone'] = $newUser->phone_number;
-            }
-        } elseif ($isAdmin && $request->filled('user_id')) {
-            $productData['user_id'] = $request->input('user_id');
-        } else {
-            $productData['user_id'] = $request->user()?->id;
-        }
-
-        $isSellerMode = (bool) config('app.is_seller', false);
-        if ($isSellerMode && $request->user()?->is_seller) {
-            $config = $this->getListingPricingConfig();
-            $calc = $this->calculateListingFeeAndDays($request, $config, $request->user());
-
-            $productData['listing_expires_at'] = now()->addDays($calc['days']);
-            $productData['listing_fee'] = $calc['fee'];
-            $productData['listing_days'] = $calc['days'];
-        } else {
-            $productData['listing_expires_at'] = null;
-            $productData['listing_fee'] = 0;
-            $productData['listing_days'] = 0;
-        }
-
-        $rawSku = trim($validated['sku'] ?? '');
-        if (empty($rawSku)) {
-            $rawSku = Str::upper(Str::slug($validated['name']));
-        }
-        $sku = $rawSku;
-        $count = 1;
-        while (Product::where('sku', $sku)->exists()) {
-            $sku = $rawSku.'-'.$count;
-            $count++;
-        }
-        $productData['sku'] = $sku;
-
-        $product = Product::create($productData);
-
-        // Sync many-to-many relationships
-        $product->categories()->sync($categoryIds);
-        $product->brands()->sync($brandIds);
-
-        // Create Master Price
-        $product->productPrice()->create([
-            'price' => $validated['price'],
-            'cost' => $validated['cost'] ?? null,
-        ]);
-
-        // Create Master Stock
-        $product->productStock()->create([
-            'stock' => $validated['stock'],
-            'min_stock' => $validated['min_stock'] ?? 0,
-            'min_purchase' => $validated['min_purchase'] ?? 1,
-            'is_unlimited' => $validated['is_unlimited'] ?? false,
-        ]);
-
-        // Create Tier Prices for Master Product
-        if (! empty($validated['tier_prices'])) {
-            foreach ($validated['tier_prices'] as $tp) {
-                $product->tierPrices()->create([
-                    'min_qty' => $tp['min_qty'],
-                    'price' => $tp['price'],
-                ]);
-            }
-        }
-        // Process photos
-        if (! empty($validated['photos'])) {
-            foreach ($validated['photos'] as $index => $photoBase64) {
-                if (preg_match('/^data:image\/(\w+);base64,/', $photoBase64, $type)) {
-                    $photoBase64 = substr($photoBase64, strpos($photoBase64, ',') + 1);
-                    $type = strtolower($type[1]);
-                    $photoBase64 = base64_decode(str_replace(' ', '+', $photoBase64));
-                    $photoBase64 = ImageHelper::compress($photoBase64, $type, 75);
-                    $filename = 'product_'.$product->id.'_'.time().'_'.$index.'.'.$type;
-                    Storage::disk('public')->put('products/'.$filename, $photoBase64);
-
-                    $product->images()->create([
-                        'path' => 'storage/products/'.$filename,
-                        'is_main' => $index === 0,
-                        'sort_order' => $index,
-                    ]);
-
-                    if ($index === 0) {
-                        $product->update(['image' => 'storage/products/'.$filename]);
-                    }
-                }
-            }
-        }
-
-        // Process variations
-        $variationsInput = $request->input('variations', []);
-        $variantsInput = $request->input('variants', []);
-
-        if (! empty($variationsInput)) {
-            $variationMap = [];
-            foreach ($variationsInput as $vIndex => $vData) {
-                $variation = $product->variations()->create([
-                    'name' => $vData['name'],
-                    'sort_order' => $vIndex,
-                ]);
-                foreach ($vData['options'] as $oIndex => $optData) {
-                    $imagePath = null;
-                    if (! empty($optData['image']) && preg_match('/^data:image\/(\w+);base64,/', $optData['image'], $type)) {
-                        $imgBase64 = substr($optData['image'], strpos($optData['image'], ',') + 1);
-                        $type = strtolower($type[1]);
-                        $imgBase64 = base64_decode(str_replace(' ', '+', $imgBase64));
-                        $imgBase64 = ImageHelper::compress($imgBase64, $type, 75);
-                        $filename = 'opt_'.$product->id.'_'.time().'_'.uniqid().'.'.$type;
-                        Storage::disk('public')->put('products/'.$filename, $imgBase64);
-                        $imagePath = 'storage/products/'.$filename;
-                    }
-
-                    $option = $variation->options()->create([
-                        'name' => $optData['name'],
-                        'description' => $optData['description'] ?? null,
-                        'image' => $imagePath,
-                        'sort_order' => $oIndex,
-                    ]);
-                    $variationMap[$optData['id']] = $option->id;
-                }
-            }
-            if (! empty($variantsInput)) {
-                foreach ($variantsInput as $vCombData) {
-                    $hasCustomWeight = ! empty($vCombData['is_custom']) && ! empty($vCombData['custom_weight']);
-                    $rawVariantSku = trim($vCombData['sku'] ?? '');
-                    if (empty($rawVariantSku)) {
-                        $rawVariantSku = $product->sku.'-VAR-'.Str::random(4);
-                    }
-                    $variantSku = $rawVariantSku;
-                    $vCount = 1;
-                    while (ProductVariant::where('sku', $variantSku)->exists()) {
-                        $variantSku = $rawVariantSku.'-'.$vCount;
-                        $vCount++;
-                    }
-
-                    $variant = $product->variants()->create([
-                        'sku' => $variantSku,
-                        'weight' => $hasCustomWeight ? ($vCombData['weight'] ?: null) : null,
-                        'length' => $hasCustomWeight ? ($vCombData['length'] ?: null) : null,
-                        'width' => $hasCustomWeight ? ($vCombData['width'] ?: null) : null,
-                        'height' => $hasCustomWeight ? ($vCombData['height'] ?: null) : null,
-                    ]);
-
-                    // Custom Variant Price
-                    if (! empty($vCombData['is_custom']) && ! empty($vCombData['custom_price'])) {
-                        $variant->productPrice()->create([
-                            'product_id' => $product->id,
-                            'price' => $vCombData['price'] ?: 0,
-                            'cost' => $vCombData['cost'] ?: null,
-                        ]);
-
-                        // Custom Variant Tier Prices
-                        if (! empty($vCombData['tier_prices'])) {
-                            foreach ($vCombData['tier_prices'] as $tp) {
-                                $variant->tierPrices()->create([
-                                    'product_id' => $product->id,
-                                    'min_qty' => $tp['min_qty'],
-                                    'price' => $tp['price'],
-                                ]);
-                            }
-                        }
-                    }
-
-                    // Custom Variant Stock
-                    if (! empty($vCombData['is_custom']) && ! empty($vCombData['custom_stock'])) {
-                        $variant->productStock()->create([
-                            'product_id' => $product->id,
-                            'stock' => $vCombData['stock'] ?: 0,
-                            'min_stock' => $vCombData['min_stock'] ?: 0,
-                            'min_purchase' => $vCombData['min_purchase'] ?: 1,
-                            'is_unlimited' => ! empty($vCombData['is_unlimited']),
-                        ]);
-                    }
-
-                    // Precise option matching
-                    $frontIds = explode('_', $vCombData['id']);
-                    $optionIdsToAttach = [];
-                    $variantImage = null;
-                    foreach ($variationMap as $frontId => $dbId) {
-                        if (in_array((string) $frontId, $frontIds, true)) {
-                            $optionIdsToAttach[] = $dbId;
-                            // Find the first option with a saved image to use as the variant image
-                            $dbOption = ProductVariationOption::find($dbId);
-                            if ($dbOption && $dbOption->image && ! $variantImage) {
-                                $variantImage = $dbOption->image;
-                            }
-                        }
-                    }
-                    $variant->options()->attach($optionIdsToAttach);
-                    if ($variantImage) {
-                        $variant->update(['image' => $variantImage]);
-                    }
-                }
-            }
-        }
+        $this->createProductAction->execute($request->validated(), $request->all(), $request->user());
 
         return redirect()->route('admin.products.index')->with('success', 'Produk berhasil ditambahkan.');
     }
@@ -650,6 +335,7 @@ class ProductController extends Controller
         ]);
 
         $isSellerMode = (bool) config('app.is_seller', false);
+        $enableProductVariants = (bool) config('app.enable_product_variants', true);
         $listingPricing = $this->getListingPricingConfig();
 
         return Inertia::render('Admin/Products/Edit', [
@@ -658,6 +344,7 @@ class ProductController extends Controller
             'brands' => $brands,
             'ai_enabled' => (bool) config('services.openagentic.enabled', false),
             'isSellerMode' => $isSellerMode,
+            'enableProductVariants' => $enableProductVariants,
             'listingPricing' => $listingPricing,
             'isAdmin' => $isAdmin,
             'sellers' => $sellers,
@@ -1224,32 +911,14 @@ class ProductController extends Controller
     {
         $this->authorizeSellerProduct($request, $product);
 
-        $product->delete();
+        $this->deleteProductAction->execute($product);
 
         return redirect()->back()->with('success', 'Produk berhasil dihapus.');
     }
 
-    public function bulkDelete(Request $request)
+    public function bulkDelete(BulkDeleteProductRequest $request)
     {
-        $request->validate([
-            'ids' => 'required|array|min:1',
-            'ids.*' => 'exists:products,id',
-        ]);
-
-        $ids = $request->input('ids');
-        $user = $request->user();
-        if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
-            $ids = Product::whereIn('id', $ids)->where('user_id', $user->id)->pluck('id')->all();
-        }
-
-        \DB::transaction(function () use ($ids) {
-            foreach ($ids as $id) {
-                $product = Product::find($id);
-                if ($product) {
-                    $product->delete();
-                }
-            }
-        });
+        $this->bulkDeleteProductsAction->execute($request->input('ids'), $request->user());
 
         return redirect()->back()->with('success', 'Produk terpilih berhasil dihapus.');
     }

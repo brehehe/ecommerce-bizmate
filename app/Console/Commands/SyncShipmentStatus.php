@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Actions\Transaction\SyncShipmentTrackingStatusAction;
 use App\Models\Transaction;
 use App\Services\BiteshipService;
 use App\Services\KomerceService;
@@ -14,10 +15,15 @@ use Illuminate\Support\Facades\Log;
 #[Description('Sync shipment status from Komerce and update transaction status accordingly')]
 class SyncShipmentStatus extends Command
 {
+    public function __construct(private readonly SyncShipmentTrackingStatusAction $syncShipmentTrackingStatus)
+    {
+        parent::__construct();
+    }
+
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->info('Starting shipment status sync...');
 
@@ -30,7 +36,7 @@ class SyncShipmentStatus extends Command
         if ($transactions->isEmpty()) {
             $this->info('No transactions found to sync.');
 
-            return;
+            return self::SUCCESS;
         }
 
         foreach ($transactions as $transaction) {
@@ -47,25 +53,19 @@ class SyncShipmentStatus extends Command
             }
 
             if (isset($response['success']) && $response['success'] && ! empty($response['history'])) {
-                $history = $response['history'];
-                $latestStatus = end($history);
-                $desc = strtolower($latestStatus['desc'] ?? '');
+                if ($isBiteship && ($response['simulated'] ?? false)) {
+                    $this->warn("Skipping simulated Biteship tracking for {$transaction->transaction_number}.");
 
-                $this->line("Latest status: {$latestStatus['desc']}");
+                    continue;
+                }
 
-                // Determine transaction status updates
-                if (str_contains($desc, 'diterima') || str_contains($desc, 'delivered') || str_contains($desc, 'sampai') || str_contains($desc, 'selesai')) {
-                    if ($transaction->status !== 'selesai') {
-                        $transaction->update(['status' => 'selesai']);
-                        $this->info("Transaction {$transaction->transaction_number} status updated to [selesai].");
-                        Log::info("Auto-sync: Transaction {$transaction->transaction_number} completed based on courier delivery.");
-                    }
-                } elseif (str_contains($desc, 'jalan') || str_contains($desc, 'transit') || str_contains($desc, 'kurir') || str_contains($desc, 'kirim') || str_contains($desc, 'pickup') || str_contains($desc, 'hub') || str_contains($desc, 'picked') || str_contains($desc, 'dropping') || str_contains($desc, 'intransit') || str_contains($desc, 'way') || str_contains($desc, 'delivering') || str_contains($desc, 'shipping')) {
-                    if (in_array($transaction->status, ['diproses', 'dikemas', 'out_for_pickup'])) {
-                        $transaction->update(['status' => 'dikirim']);
-                        $this->info("Transaction {$transaction->transaction_number} status updated to [dikirim].");
-                        Log::info("Auto-sync: Transaction {$transaction->transaction_number} shipped based on courier pickup.");
-                    }
+                $newStatus = $this->syncShipmentTrackingStatus->execute($transaction, $response['history']);
+
+                if ($newStatus) {
+                    $this->info("Transaction {$transaction->transaction_number} status updated to [{$newStatus}].");
+                    Log::info("Auto-sync: Transaction {$transaction->transaction_number} status updated from courier tracking.", [
+                        'status' => $newStatus,
+                    ]);
                 }
             } else {
                 $this->warn("Failed to get tracking history for {$transaction->transaction_number} or history is empty.");
@@ -73,5 +73,7 @@ class SyncShipmentStatus extends Command
         }
 
         $this->info('Shipment status sync completed.');
+
+        return self::SUCCESS;
     }
 }

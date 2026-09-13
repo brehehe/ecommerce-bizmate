@@ -9,6 +9,7 @@
         storeName = '',
         storeLogo = '',
         biteshipEnabled = false,
+        storeCouriers = [],
     } = $props();
 
     const primary = $derived(
@@ -396,6 +397,12 @@
         transaction.payments?.[transaction.payments.length - 1] ?? null,
     );
 
+    const isPaymentPaid = $derived(
+        transaction.payment_status === 'paid' ||
+            latestPayment?.status === 'confirmed' ||
+            !['belum_bayar', 'menunggu', 'batal'].includes(transaction.status),
+    );
+
     function updateStatus() {
         isUpdating = true;
         router.post(
@@ -446,6 +453,10 @@
         );
     }
 
+    function markReadyForPickup() {
+        updateTransactionStatus('out_for_pickup', 'Status berhasil diubah: Pesanan Siap Diambil di Toko!');
+    }
+
     function updateTransactionStatus(targetStatus: string, successMsg: string) {
         isUpdating = true;
         router.post(
@@ -470,14 +481,39 @@
     let storeBookingCode = $state('');
     let storeTrackingNumber = $state('');
     let customDeliveryLog = $state('');
-    let showStoreResiForm = $state(true);
+    let showStoreResiForm = $state(false);
     let storeActionLoading = $state(false);
+    let selectedCourierId = $state(transaction.courier_user_id ?? '');
+    let deliveryFileInput: HTMLInputElement | null = $state(null);
+    let isUploadingPhotos = $state(false);
 
     $effect(() => {
         storeBookingCode = transaction.booking_code ?? '';
         storeTrackingNumber = transaction.tracking_number ?? '';
         showStoreResiForm = !transaction.tracking_number;
+        selectedCourierId = transaction.courier_user_id ?? '';
     });
+
+    function assignCourier(courierId: string) {
+        storeActionLoading = true;
+        router.post(
+            `/admin/transactions/${transaction.id}/tracking`,
+            {
+                courier_user_id: courierId || null,
+            },
+            {
+                onSuccess: () => {
+                    showToast('Petugas kurir toko berhasil diperbarui!', 'success');
+                },
+                onError: () => {
+                    showToast('Gagal menugaskan kurir toko.', 'error');
+                },
+                onFinish: () => {
+                    storeActionLoading = false;
+                },
+            },
+        );
+    }
 
     function generateStoreBooking() {
         storeActionLoading = true;
@@ -573,6 +609,51 @@
                 },
                 onFinish: () => {
                     storeActionLoading = false;
+                },
+            },
+        );
+    }
+
+    function handleDeliveryPhotosUpload(e: Event) {
+        const input = e.target as HTMLInputElement;
+        if (!input.files || input.files.length === 0) return;
+
+        const formData = new FormData();
+        for (let i = 0; i < input.files.length; i++) {
+            formData.append('photos[]', input.files[i]);
+        }
+
+        isUploadingPhotos = true;
+        router.post(
+            `/admin/transactions/${transaction.id}/delivery-photos`,
+            formData,
+            {
+                forceFormData: true,
+                onSuccess: () => {
+                    showToast('Foto bukti pengiriman berhasil diunggah.', 'success');
+                    if (deliveryFileInput) deliveryFileInput.value = '';
+                },
+                onError: (err: any) => {
+                    const msg = Object.values(err)[0] as string;
+                    showToast(msg || 'Gagal mengunggah foto.', 'error');
+                },
+                onFinish: () => {
+                    isUploadingPhotos = false;
+                },
+            },
+        );
+    }
+
+    function deleteDeliveryPhoto(idx: number) {
+        if (!confirm('Hapus foto bukti pengiriman ini?')) return;
+        router.delete(
+            `/admin/transactions/${transaction.id}/delivery-photos/${idx}`,
+            {
+                onSuccess: () => {
+                    showToast('Foto bukti pengiriman berhasil dihapus.', 'success');
+                },
+                onError: () => {
+                    showToast('Gagal menghapus foto.', 'error');
                 },
             },
         );
@@ -728,8 +809,47 @@
         return desc;
     }
 
+    function getStatusLabel(status: string, courier?: string | null): string {
+        if (courier === 'self_pickup') {
+            if (status === 'diproses') return 'Dipersiapkan di Toko';
+            if (status === 'out_for_pickup') return 'Siap Diambil di Toko';
+            if (status === 'selesai') return 'Pesanan Telah Diambil';
+        } else if (courier === 'store_courier') {
+            if (status === 'out_for_pickup') return 'Paket Diambil Kurir';
+            if (status === 'dikirim') return 'Dalam Pengantaran';
+            if (status === 'selesai') return 'Pesanan Diterima';
+        }
+        return statusLabels[status] ?? status;
+    }
+
+    const availableStatusOptions = $derived.by(() => {
+        if (transaction.shipping_courier === 'self_pickup') {
+            return [
+                ['belum_bayar', 'Belum Bayar'],
+                ['menunggu', 'Menunggu Konfirmasi'],
+                ['diproses', 'Dipersiapkan di Toko'],
+                ['out_for_pickup', 'Siap Diambil di Toko'],
+                ['selesai', 'Pesanan Telah Diambil'],
+                ['batal', 'Batal'],
+            ];
+        }
+        if (transaction.shipping_courier === 'store_courier') {
+            return [
+                ['belum_bayar', 'Belum Bayar'],
+                ['menunggu', 'Menunggu Konfirmasi'],
+                ['diproses', 'Diproses'],
+                ['dikemas', 'Dikemas'],
+                ['out_for_pickup', 'Paket Diambil Kurir'],
+                ['dikirim', 'Dalam Pengantaran (Kurir Toko)'],
+                ['selesai', 'Pesanan Diterima'],
+                ['batal', 'Batal'],
+            ];
+        }
+        return Object.entries(statusLabels);
+    });
+
     async function loadAdminTracking() {
-        if (!transaction.tracking_number) return;
+        if (!transaction.tracking_number && transaction.shipping_courier !== 'store_courier' && transaction.shipping_courier !== 'self_pickup') return;
         trackingLoading = true;
         trackingErr = '';
         try {
@@ -738,10 +858,11 @@
             );
             const data = await resp.json();
             if (resp.ok && data.success) {
+                const isInternal = transaction.shipping_courier === 'store_courier' || transaction.shipping_courier === 'self_pickup';
                 trackingTimeline = (data.history || [])
-                    .map((step) => ({
+                    .map((step: any) => ({
                         ...step,
-                        desc: translateBiteshipDesc(step.desc),
+                        desc: isInternal ? step.desc : translateBiteshipDesc(step.desc),
                     }))
                     .reverse();
             } else {
@@ -755,7 +876,15 @@
     }
 
     $effect(() => {
-        if (transaction.tracking_number) {
+        if (transaction.status_histories && transaction.status_histories.length > 0 && (transaction.shipping_courier === 'store_courier' || transaction.shipping_courier === 'self_pickup')) {
+            trackingTimeline = [...transaction.status_histories]
+                .map((h: any) => ({
+                    desc: h.description,
+                    date: h.created_at,
+                    status: h.status,
+                }))
+                .reverse();
+        } else if (transaction.tracking_number) {
             loadAdminTracking();
         }
     });
@@ -903,7 +1032,7 @@
                             class="rounded-md px-2 py-0.5 text-[11px] font-semibold"
                             style="background-color: {(statusColors[transaction.status] ?? { bg: '#f1f5f9', text: '#475569' }).bg}; color: {(statusColors[transaction.status] ?? { bg: '#f1f5f9', text: '#475569' }).text};"
                         >
-                            {statusLabels[transaction.status] ?? transaction.status}
+                            {getStatusLabel(transaction.status, transaction.shipping_courier)}
                         </span>
                     </div>
                     <p class="mt-0.5 text-xs text-slate-400">{fmtDate(transaction.created_at)}</p>
@@ -934,39 +1063,54 @@
                     </a>
                 {/if}
 
-                <!-- Confirm pickup -->
-                {#if transaction.status !== 'selesai' && transaction.status !== 'batal' && transaction.shipping_courier === 'self_pickup'}
-                    <button
-                        onclick={confirmPickup}
-                        disabled={isUpdating}
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                    >
-                        <i class="ti ti-check text-sm"></i>
-                        Konfirmasi Pengambilan
-                    </button>
+                <!-- Self Pickup Actions -->
+                {#if transaction.shipping_courier === 'self_pickup' && transaction.status !== 'selesai' && transaction.status !== 'batal'}
+                    {#if ['diproses', 'dikemas', 'menunggu'].includes(transaction.status)}
+                        <button
+                            type="button"
+                            onclick={markReadyForPickup}
+                            disabled={isUpdating}
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 shadow-2xs cursor-pointer"
+                        >
+                            <i class="ti ti-package-export text-sm"></i>
+                            Siap Diambil di Toko
+                        </button>
+                    {/if}
+                    {#if transaction.status === 'out_for_pickup'}
+                        <button
+                            type="button"
+                            onclick={confirmPickup}
+                            disabled={isUpdating}
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 shadow-2xs cursor-pointer"
+                        >
+                            <i class="ti ti-circle-check text-sm"></i>
+                            Konfirmasi Pengambilan
+                        </button>
+                    {/if}
                 {/if}
 
-                <!-- Biteship / Komerce Booking Actions -->
+                <!-- Biteship booking actions -->
                 {#if transaction.status !== 'selesai' && transaction.status !== 'batal' && transaction.shipping_courier !== 'digital' && transaction.shipping_courier !== 'store_courier' && transaction.shipping_courier !== 'self_pickup'}
                     {#if !transaction.booking_code}
-                        <button
-                            onclick={storeKomerceShipment}
-                            disabled={bookingLoading}
-                            class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                        >
-                            <i class="ti ti-send text-sm"></i>
-                            {bookingLoading ? 'Booking...' : (biteshipEnabled ? 'Booking Biteship' : 'Booking Komerce')}
-                        </button>
-                    {:else}
+                        {#if biteshipEnabled}
+                            <button
+                                onclick={storeKomerceShipment}
+                                disabled={bookingLoading}
+                                class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                            >
+                                <i class="ti ti-send text-sm"></i>
+                                {bookingLoading ? 'Booking...' : 'Booking Biteship'}
+                            </button>
+                        {:else}
+                            <span class="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700">
+                                <i class="ti ti-alert-circle text-sm"></i>
+                                Biteship belum aktif
+                            </span>
+                        {/if}
+                    {:else if biteshipEnabled}
                         {#if ['diproses', 'dikemas'].includes(transaction.status)}
                             <button
-                                onclick={() => {
-                                    if (biteshipEnabled) {
-                                        requestPickupKomerce();
-                                    } else {
-                                        showPickupModal = true;
-                                    }
-                                }}
+                                onclick={requestPickupKomerce}
                                 disabled={bookingLoading}
                                 class="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                             >
@@ -986,7 +1130,7 @@
                 {/if}
 
                 <!-- Input resi -->
-                {#if transaction.status !== 'selesai' && transaction.status !== 'batal' && transaction.shipping_courier !== 'digital' && transaction.shipping_courier !== 'store_courier' && transaction.shipping_courier !== 'self_pickup'}
+                {#if biteshipEnabled && transaction.status !== 'selesai' && transaction.status !== 'batal' && transaction.shipping_courier !== 'digital' && transaction.shipping_courier !== 'store_courier' && transaction.shipping_courier !== 'self_pickup'}
                     <button
                         onclick={() => (showResiModal = true)}
                         class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
@@ -995,6 +1139,46 @@
                         <i class="ti ti-truck-delivery text-sm"></i>
                         {transaction.tracking_number ? 'Ubah Resi' : 'Input Resi'}
                     </button>
+                {/if}
+
+                <!-- Kurir Toko actions -->
+                {#if transaction.status !== 'selesai' && transaction.status !== 'batal' && transaction.shipping_courier === 'store_courier'}
+                    {#if !transaction.booking_code || !transaction.tracking_number}
+                        <button
+                            type="button"
+                            onclick={generateStoreBooking}
+                            disabled={storeActionLoading}
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 shadow-2xs cursor-pointer"
+                        >
+                            <i class="ti ti-truck-loading text-sm"></i>
+                            {storeActionLoading ? 'Memproses...' : 'Siapkan Pengiriman Kurir Toko'}
+                        </button>
+                    {:else}
+                        <a
+                            href="/kurir/transactions/{transaction.id}"
+                            target="_blank"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+                        >
+                            <i class="ti ti-external-link text-sm text-slate-400"></i>
+                            Portal Kurir
+                        </a>
+                        <a
+                            href="/admin/transactions/{transaction.id}/print-shipping-label"
+                            target="_blank"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+                        >
+                            <i class="ti ti-printer text-sm text-slate-400"></i>
+                            Cetak Label
+                        </a>
+                        <a
+                            href="/admin/transactions/{transaction.id}/print-surat-jalan"
+                            target="_blank"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+                        >
+                            <i class="ti ti-file-text text-sm text-slate-400"></i>
+                            Surat Jalan
+                        </a>
+                    {/if}
                 {/if}
 
                 <!-- Update status -->
@@ -1219,11 +1403,20 @@
                     </div>
                 {/if}
 
-                <!-- Shipping tracking -->
-                {#if transaction.tracking_number}
-                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <!-- Shipping / Pickup tracking -->
+                {#if transaction.tracking_number || transaction.shipping_courier === 'self_pickup' || transaction.shipping_courier === 'store_courier' || (trackingTimeline && trackingTimeline.length > 0)}
+                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
                         <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-                            <p class="text-sm font-semibold text-slate-800">Riwayat Pengiriman (Biteship/Komerce)</p>
+                            <div class="flex items-center gap-2">
+                                <i class="ti {transaction.shipping_courier === 'self_pickup' ? 'ti-building-store text-purple-600' : transaction.shipping_courier === 'store_courier' ? 'ti-moped text-emerald-600' : 'ti-truck-delivery text-blue-600'} text-base"></i>
+                                <p class="text-sm font-semibold text-slate-800">
+                                    {transaction.shipping_courier === 'store_courier'
+                                        ? 'Riwayat Pengiriman Kurir Toko'
+                                        : transaction.shipping_courier === 'self_pickup'
+                                          ? 'Riwayat Pengambilan di Toko'
+                                          : 'Riwayat Pengiriman (Biteship/Komerce)'}
+                                </p>
+                            </div>
                             {#if trackingLoading}
                                 <span class="text-xs text-slate-400 flex items-center gap-1">
                                     <i class="ti ti-loader animate-spin text-sm"></i> Loading...
@@ -1235,21 +1428,25 @@
                                 <div class="flex justify-center py-6">
                                     <i class="ti ti-loader animate-spin text-xl text-slate-400"></i>
                                 </div>
-                            {:else if trackingErr}
+                            {:else if trackingErr && trackingTimeline.length === 0}
                                 <div class="text-xs text-rose-500 py-2">
                                     <i class="ti ti-alert-circle"></i> {trackingErr}
                                 </div>
                             {:else if trackingTimeline.length > 0}
                                 <div class="relative space-y-4 pl-4 before:absolute before:left-1 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-                                    {#each trackingTimeline as track}
-                                        <div class="relative pl-4 before:absolute before:left-[-15px] before:top-1.5 before:h-2 before:w-2 before:rounded-full before:bg-slate-300 before:content-['']">
-                                            <p class="text-xs font-semibold text-slate-800">{track.desc || track.description}</p>
+                                    {#each trackingTimeline as track, idx}
+                                        <div class="relative pl-4 before:absolute before:left-[-15px] before:top-1.5 before:h-2 before:w-2 before:rounded-full {idx === 0 ? 'before:bg-emerald-500 before:ring-2 before:ring-emerald-200' : 'before:bg-slate-300'} before:content-['']">
+                                            <p class="text-xs font-semibold {idx === 0 ? 'text-slate-900 font-bold' : 'text-slate-700'}">{track.desc || track.description}</p>
                                             <p class="text-[10px] text-slate-400 font-medium">{fmtDate(track.date)}</p>
                                         </div>
                                     {/each}
                                 </div>
                             {:else}
-                                <p class="text-xs text-slate-400 text-center py-4">Tidak ada riwayat pengiriman terbaru.</p>
+                                <p class="text-xs text-slate-400 text-center py-4">
+                                    {transaction.shipping_courier === 'self_pickup'
+                                        ? 'Belum ada riwayat pengambilan di toko.'
+                                        : 'Tidak ada riwayat pengiriman terbaru.'}
+                                </p>
                             {/if}
                         </div>
                     </div>
@@ -1284,36 +1481,328 @@
                 </div>
 
                 <!-- Shipping address -->
-                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                    <div class="border-b border-slate-100 px-5 py-3.5">
-                        <p class="text-sm font-semibold text-slate-800">Pengiriman</p>
-                    </div>
-                    <div class="px-5 py-4 space-y-3">
-                        {#if transaction.shipping_courier}
-                            <div class="flex items-start gap-2">
-                                <i class="ti ti-truck text-sm text-slate-400 mt-0.5 shrink-0"></i>
-                                <div>
-                                    <p class="text-xs font-medium text-slate-600">{transaction.shipping_courier_label ?? transaction.shipping_courier}</p>
-                                    {#if transaction.shipping_service}
-                                        <p class="text-xs text-slate-400">{transaction.shipping_service}</p>
+                {#if transaction.shipping_courier === 'store_courier'}
+                    <!-- Kurir Toko Specialized Card -->
+                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
+                        <div class="border-b border-slate-100 px-5 py-3.5 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i class="ti ti-truck text-base text-emerald-600"></i>
+                                <p class="text-sm font-bold text-slate-800">Pengiriman Kurir Toko</p>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider {
+                                transaction.status === 'selesai' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                transaction.delivery_arrived_at ? 'bg-teal-50 text-teal-700 border border-teal-200' :
+                                transaction.status === 'dikirim' ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' :
+                                transaction.status === 'out_for_pickup' ? 'bg-orange-50 text-orange-700 border border-orange-200' :
+                                transaction.booking_code ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
+                                'bg-amber-50 text-amber-700 border border-amber-200'
+                            }">
+                                {transaction.status === 'selesai' ? 'Selesai' :
+                                 transaction.delivery_arrived_at ? 'Paket Tiba' :
+                                 transaction.status === 'dikirim' ? 'Dikirim' :
+                                 transaction.status === 'out_for_pickup' ? 'Out for Pickup' :
+                                 transaction.booking_code ? 'Menunggu Pickup' : 'Belum Disiapkan'}
+                            </span>
+                        </div>
+
+                        <div class="p-5 space-y-4">
+                            <!-- Alamat Tujuan -->
+                            {#if formattedAddress}
+                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+                                    <div class="flex items-start gap-2">
+                                        <i class="ti ti-map-pin text-sm text-slate-400 mt-0.5 shrink-0"></i>
+                                        <div>
+                                            <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Alamat Penerima</p>
+                                            <p class="text-xs leading-relaxed text-slate-700">{formattedAddress}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            {/if}
+
+                            <!-- Kode Booking & Nomor Resi -->
+                            <div class="space-y-2.5">
+                                {#if transaction.booking_code}
+                                    <div class="flex items-center justify-between p-2.5 bg-blue-50/60 rounded-xl border border-blue-100">
+                                        <div>
+                                            <p class="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Kode Booking</p>
+                                            <p class="font-mono text-xs font-black text-slate-800">{transaction.booking_code}</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onclick={() => {
+                                                navigator.clipboard.writeText(transaction.booking_code);
+                                                showToast('Kode booking disalin!', 'success');
+                                            }}
+                                            class="px-2 py-1 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                                        >
+                                            <i class="ti ti-copy text-xs"></i>
+                                            <span>Salin</span>
+                                        </button>
+                                    </div>
+                                {/if}
+
+                                {#if transaction.tracking_number}
+                                    <div class="flex items-center justify-between p-2.5 bg-emerald-50/60 rounded-xl border border-emerald-100">
+                                        <div>
+                                            <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Nomor Resi Kurir</p>
+                                            <p class="font-mono text-xs font-black text-slate-800">{transaction.tracking_number}</p>
+                                        </div>
+                                        <div class="flex items-center gap-1.5">
+                                            <button
+                                                type="button"
+                                                onclick={() => {
+                                                    navigator.clipboard.writeText(transaction.tracking_number);
+                                                    showToast('Nomor resi disalin!', 'success');
+                                                }}
+                                                class="px-2 py-1 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                                            >
+                                                <i class="ti ti-copy text-xs"></i>
+                                                <span>Salin</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onclick={() => { showStoreResiForm = !showStoreResiForm; }}
+                                                class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                                                title="Ubah Resi"
+                                            >
+                                                <i class="ti ti-edit text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                {/if}
+
+                                <!-- Form Edit/Generate Resi -->
+                                {#if showStoreResiForm}
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">Input / Ubah Resi Kurir Toko</label>
+                                        <div class="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                bind:value={storeTrackingNumber}
+                                                placeholder="Contoh: RSI-20260913-..."
+                                                class="flex-1 h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-800 focus:border-slate-400 focus:outline-none font-mono"
+                                            />
+                                            <button
+                                                type="button"
+                                                onclick={generateStoreResi}
+                                                class="px-2 h-8 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-[11px] font-bold transition cursor-pointer shrink-0"
+                                                title="Generate Resi Otomatis"
+                                            >
+                                                Auto
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onclick={saveStoreTracking}
+                                                disabled={storeActionLoading}
+                                                class="px-3 h-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition disabled:opacity-50 cursor-pointer shrink-0"
+                                            >
+                                                Simpan
+                                            </button>
+                                        </div>
+                                    </div>
+                                {/if}
+
+                                <!-- Tombol Buat Kode Booking Jika Belum Ada -->
+                                {#if !transaction.booking_code}
+                                    <button
+                                        type="button"
+                                        onclick={generateStoreBooking}
+                                        disabled={storeActionLoading}
+                                        class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-2xs cursor-pointer disabled:opacity-50"
+                                    >
+                                        <i class="ti ti-truck-loading text-base"></i>
+                                        <span>{storeActionLoading ? 'Menyiapkan...' : 'Siapkan Pengiriman (Buat Booking & Resi)'}</span>
+                                    </button>
+                                {/if}
+                            </div>
+
+                            <!-- Petugas Kurir Toko Assignment -->
+                            <div class="pt-3 border-t border-slate-100 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                        <i class="ti ti-user-check text-slate-400"></i>
+                                        Petugas Kurir Toko
+                                    </span>
+                                    {#if transaction.courier_user?.phone_number}
+                                        <a
+                                            href="https://wa.me/{transaction.courier_user.phone_number.replace(/\D/g, '')}"
+                                            target="_blank"
+                                            class="text-[11px] text-emerald-600 font-bold flex items-center gap-1 hover:underline"
+                                        >
+                                            <i class="ti ti-brand-whatsapp text-xs"></i>
+                                            WhatsApp
+                                        </a>
                                     {/if}
                                 </div>
+                                <select
+                                    bind:value={selectedCourierId}
+                                    onchange={() => assignCourier(selectedCourierId)}
+                                    disabled={storeActionLoading || transaction.status === 'selesai' || transaction.status === 'batal'}
+                                    class="w-full h-9 rounded-xl border border-slate-200 bg-white px-3 text-xs text-slate-700 focus:border-blue-500 focus:outline-none transition"
+                                >
+                                    <option value="">-- Belum Ditugaskan (Bebas Diambil Kurir) --</option>
+                                    {#each storeCouriers as courier}
+                                        <option value={courier.id}>
+                                            {courier.name} {courier.phone_number ? `(${courier.phone_number})` : ''}
+                                        </option>
+                                    {/each}
+                                </select>
+                                {#if transaction.courier_user}
+                                    <p class="text-[11px] text-slate-500">
+                                        Ditugaskan kepada: <strong class="text-slate-800">{transaction.courier_user.name}</strong>
+                                        {#if transaction.courier_user.phone_number}
+                                            — {transaction.courier_user.phone_number}
+                                        {/if}
+                                    </p>
+                                {/if}
                             </div>
-                        {/if}
-                        {#if transaction.tracking_number}
-                            <div class="flex items-start gap-2">
-                                <i class="ti ti-barcode text-sm text-slate-400 mt-0.5 shrink-0"></i>
-                                <p class="font-mono text-xs font-semibold text-slate-700">{transaction.tracking_number}</p>
+
+                            <!-- Bukti Foto Pengiriman Kurir -->
+                            <div class="pt-3 border-t border-slate-100 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                        <i class="ti ti-photo text-slate-400"></i>
+                                        Foto Bukti Penerimaan {transaction.delivery_photos && transaction.delivery_photos.length > 0 ? `(${transaction.delivery_photos.length})` : ''}
+                                    </span>
+                                    <label class="cursor-pointer inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-700 transition">
+                                        {#if isUploadingPhotos}
+                                            <i class="ti ti-loader animate-spin text-xs"></i>
+                                            <span>Mengunggah...</span>
+                                        {:else}
+                                            <i class="ti ti-plus text-xs"></i>
+                                            <span>{transaction.delivery_photos && transaction.delivery_photos.length > 0 ? 'Tambah Foto' : 'Unggah Foto'}</span>
+                                        {/if}
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            class="hidden"
+                                            bind:this={deliveryFileInput}
+                                            onchange={handleDeliveryPhotosUpload}
+                                            disabled={isUploadingPhotos}
+                                        />
+                                    </label>
+                                </div>
+
+                                {#if transaction.delivery_photos && transaction.delivery_photos.length > 0}
+                                    <div class="grid grid-cols-3 gap-2">
+                                        {#each transaction.delivery_photos as photo, idx}
+                                            <div class="relative group aspect-square rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
+                                                <button
+                                                    type="button"
+                                                    onclick={() => (previewImageUrl = formatImagePath(photo))}
+                                                    class="w-full h-full cursor-pointer"
+                                                >
+                                                    <img src={formatImagePath(photo)} alt="Bukti Pengiriman" class="w-full h-full object-cover group-hover:scale-105 transition" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onclick={() => deleteDeliveryPhoto(idx)}
+                                                    class="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition shadow cursor-pointer"
+                                                    title="Hapus foto"
+                                                >
+                                                    <i class="ti ti-trash"></i>
+                                                </button>
+                                            </div>
+                                        {/each}
+                                    </div>
+                                    {#if transaction.delivery_arrived_at}
+                                        <p class="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                                            <i class="ti ti-clock text-xs"></i>
+                                            Tiba pada: {new Date(transaction.delivery_arrived_at).toLocaleString('id-ID')}
+                                        </p>
+                                    {/if}
+                                {:else}
+                                    <div class="p-2.5 rounded-lg bg-slate-50 border border-dashed border-slate-200 text-center">
+                                        <p class="text-[11px] text-slate-400">Belum ada foto bukti penerimaan.</p>
+                                    </div>
+                                {/if}
                             </div>
-                        {/if}
-                        {#if formattedAddress}
-                            <div class="flex items-start gap-2">
-                                <i class="ti ti-map-pin text-sm text-slate-400 mt-0.5 shrink-0"></i>
-                                <p class="text-xs leading-relaxed text-slate-600">{formattedAddress}</p>
+
+                            <!-- Tambah Catatan Riwayat Pengiriman -->
+                            {#if transaction.status !== 'selesai' && transaction.status !== 'batal'}
+                                <div class="pt-3 border-t border-slate-100 space-y-2">
+                                    <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">Tambah Catatan Riwayat</label>
+                                    <div class="flex items-center gap-1.5">
+                                        <input
+                                            type="text"
+                                            bind:value={customDeliveryLog}
+                                            placeholder="Misal: Paket diserahkan ke satpam..."
+                                            class="flex-1 h-8 rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-800 placeholder-slate-400 focus:border-slate-400 focus:outline-none"
+                                        />
+                                        <button
+                                            type="button"
+                                            onclick={addCustomLog}
+                                            disabled={storeActionLoading}
+                                            class="px-2.5 h-8 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-[11px] font-bold transition disabled:opacity-50 cursor-pointer shrink-0"
+                                        >
+                                            Kirim
+                                        </button>
+                                    </div>
+                                </div>
+                            {/if}
+
+                            <!-- Aksi Cepat / Tautan -->
+                            <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs gap-2">
+                                <a
+                                    href="/kurir/transactions/{transaction.id}"
+                                    target="_blank"
+                                    class="text-blue-600 hover:underline font-bold flex items-center gap-1"
+                                >
+                                    <i class="ti ti-external-link"></i> Portal Kurir
+                                </a>
+                                <div class="flex items-center gap-2">
+                                    <a
+                                        href="/admin/transactions/{transaction.id}/print-shipping-label"
+                                        target="_blank"
+                                        class="text-slate-600 hover:text-slate-900 font-semibold flex items-center gap-1"
+                                    >
+                                        <i class="ti ti-printer"></i> Label
+                                    </a>
+                                    <a
+                                        href="/admin/transactions/{transaction.id}/print-surat-jalan"
+                                        target="_blank"
+                                        class="text-slate-600 hover:text-slate-900 font-semibold flex items-center gap-1"
+                                    >
+                                        <i class="ti ti-file-text"></i> Surat Jalan
+                                    </a>
+                                </div>
                             </div>
-                        {/if}
+                        </div>
                     </div>
-                </div>
+                {:else}
+                    <!-- Regular / Third-Party Shipping address -->
+                    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                        <div class="border-b border-slate-100 px-5 py-3.5">
+                            <p class="text-sm font-semibold text-slate-800">Pengiriman</p>
+                        </div>
+                        <div class="px-5 py-4 space-y-3">
+                            {#if transaction.shipping_courier}
+                                <div class="flex items-start gap-2">
+                                    <i class="ti ti-truck text-sm text-slate-400 mt-0.5 shrink-0"></i>
+                                    <div>
+                                        <p class="text-xs font-medium text-slate-600">{transaction.shipping_courier_label ?? transaction.shipping_courier}</p>
+                                        {#if transaction.shipping_service}
+                                            <p class="text-xs text-slate-400">{transaction.shipping_service}</p>
+                                        {/if}
+                                    </div>
+                                </div>
+                            {/if}
+                            {#if transaction.tracking_number}
+                                <div class="flex items-start gap-2">
+                                    <i class="ti ti-barcode text-sm text-slate-400 mt-0.5 shrink-0"></i>
+                                    <p class="font-mono text-xs font-semibold text-slate-700">{transaction.tracking_number}</p>
+                                </div>
+                            {/if}
+                            {#if formattedAddress}
+                                <div class="flex items-start gap-2">
+                                    <i class="ti ti-map-pin text-sm text-slate-400 mt-0.5 shrink-0"></i>
+                                    <p class="text-xs leading-relaxed text-slate-600">{formattedAddress}</p>
+                                </div>
+                            {/if}
+                        </div>
+                    </div>
+                {/if}
 
                 <!-- Detailed Payment Information Card (QRIS, VA, Bank Transfer, Gateway) -->
                 <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
@@ -1323,10 +1812,10 @@
                             <h3 class="text-sm font-extrabold text-slate-800">Detail Rincian Pembayaran</h3>
                         </div>
                         <span class="text-[10px] font-black px-2.5 py-0.5 rounded-full border
-                               {transaction.payment_status === 'paid'
+                               {isPaymentPaid
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : 'bg-amber-50 text-amber-700 border-amber-200'} uppercase tracking-wider">
-                            {transaction.payment_status === 'paid' ? 'LUNAS (PAID)' : 'BELUM BAYAR (UNPAID)'}
+                            {isPaymentPaid ? 'LUNAS (PAID)' : 'BELUM BAYAR (UNPAID)'}
                         </span>
                     </div>
 
@@ -1467,7 +1956,7 @@
                         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Status Baru</label>
                         <select bind:value={newStatus}
                             class="w-full h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-slate-400 focus:outline-none">
-                            {#each Object.entries(statusLabels) as [key, label]}
+                            {#each availableStatusOptions as [key, label]}
                                 <option value={key}>{label}</option>
                             {/each}
                         </select>

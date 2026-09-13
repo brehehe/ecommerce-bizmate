@@ -2,20 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Customer\StoreAddressRequest;
+use App\Http\Requests\Customer\UpdateAddressRequest;
 use App\Models\CustomerAddress;
 use App\Models\Setting;
 use App\Services\BiteshipService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class CustomerAddressController extends Controller
 {
     /**
      * Display a listing of the customer's addresses.
      */
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $addresses = CustomerAddress::where('user_id', $request->user()->id)
             ->orderBy('is_primary', 'desc')
@@ -35,7 +40,7 @@ class CustomerAddressController extends Controller
     /**
      * Display a listing of the seller's addresses in the admin panel.
      */
-    public function adminIndex(Request $request)
+    public function adminIndex(Request $request): Response
     {
         $user = $request->user();
 
@@ -61,30 +66,9 @@ class CustomerAddressController extends Controller
     /**
      * Store a newly created address in storage.
      */
-    public function store(Request $request)
+    public function store(StoreAddressRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'label' => 'required|string|max:30',
-            'receiver_name' => 'required|string|max:50',
-            'phone_number' => 'required|string|max:15',
-            'full_address' => 'required|string|max:200',
-            'province_id' => 'nullable|string',
-            'province_name' => 'nullable|string',
-            'regency_id' => 'nullable|string',
-            'regency_name' => 'nullable|string',
-            'district_id' => 'nullable|string',
-            'district_name' => 'nullable|string',
-            'village_id' => 'nullable|string',
-            'village_name' => 'nullable|string',
-            'postal_code' => 'nullable|string',
-            'biteship_area_id' => 'nullable|string|max:100',
-            'rajaongkir_destination_id' => 'nullable|string|max:20',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
-            'note' => 'nullable|string|max:45',
-            'is_primary' => 'boolean',
-        ]);
-
+        $validated = $request->validated();
         $user = $request->user();
         $userId = $user->id;
 
@@ -99,7 +83,6 @@ class CustomerAddressController extends Controller
             }
         }
 
-        // If is_primary is requested, or if this is the first address, make it primary
         $isFirst = CustomerAddress::where('user_id', $userId)->count() === 0;
         $isPrimary = $validated['is_primary'] ?? false;
 
@@ -118,42 +101,17 @@ class CustomerAddressController extends Controller
     /**
      * Update the specified address in storage.
      */
-    public function update(Request $request, CustomerAddress $address)
+    public function update(UpdateAddressRequest $request, CustomerAddress $address): RedirectResponse
     {
-        // Ensure user owns this address
-        if ($address->user_id !== $request->user()->id) {
-            abort(403);
-        }
+        $this->authorize('update', $address);
 
-        $validated = $request->validate([
-            'label' => 'required|string|max:30',
-            'receiver_name' => 'required|string|max:50',
-            'phone_number' => 'required|string|max:15',
-            'full_address' => 'required|string|max:200',
-            'province_id' => 'nullable|string',
-            'province_name' => 'nullable|string',
-            'regency_id' => 'nullable|string',
-            'regency_name' => 'nullable|string',
-            'district_id' => 'nullable|string',
-            'district_name' => 'nullable|string',
-            'village_id' => 'nullable|string',
-            'village_name' => 'nullable|string',
-            'postal_code' => 'nullable|string',
-            'biteship_area_id' => 'nullable|string|max:100',
-            'rajaongkir_destination_id' => 'nullable|string|max:20',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
-            'note' => 'nullable|string|max:45',
-            'is_primary' => 'boolean',
-        ]);
-
+        $validated = $request->validated();
         $userId = $request->user()->id;
         $isPrimary = $validated['is_primary'] ?? false;
 
         if ($isPrimary) {
             CustomerAddress::where('user_id', $userId)->update(['is_primary' => false]);
         } else {
-            // Keep as primary if it is the only address
             $isOnly = CustomerAddress::where('user_id', $userId)->count() === 1;
             if ($isOnly || $address->is_primary) {
                 $validated['is_primary'] = true;
@@ -168,14 +126,10 @@ class CustomerAddressController extends Controller
     /**
      * Remove the specified address from storage.
      */
-    public function destroy(Request $request, CustomerAddress $address)
+    public function destroy(Request $request, CustomerAddress $address): RedirectResponse
     {
-        // Ensure user owns this address
-        if ($address->user_id !== $request->user()->id) {
-            abort(403);
-        }
+        $this->authorize('delete', $address);
 
-        // Sellers are restricted to keeping their 1 store address
         if ($request->user()->is_seller) {
             $addressCount = CustomerAddress::where('user_id', $request->user()->id)->count();
             if ($addressCount <= 1) {
@@ -188,7 +142,6 @@ class CustomerAddressController extends Controller
 
         $address->delete();
 
-        // If the deleted address was primary, make the latest address primary
         if ($wasPrimary) {
             $latest = CustomerAddress::where('user_id', $userId)->latest()->first();
             if ($latest) {
@@ -202,12 +155,9 @@ class CustomerAddressController extends Controller
     /**
      * Set the specified address as the primary address.
      */
-    public function makePrimary(Request $request, CustomerAddress $address)
+    public function makePrimary(Request $request, CustomerAddress $address): RedirectResponse
     {
-        // Ensure user owns this address
-        if ($address->user_id !== $request->user()->id) {
-            abort(403);
-        }
+        $this->authorize('update', $address);
 
         $userId = $request->user()->id;
 
@@ -218,9 +168,43 @@ class CustomerAddressController extends Controller
     }
 
     /**
-     * Search areas using Biteship Maps API (proxy).
+     * Reverse geocode coordinates using OpenStreetMap Nominatim.
      */
-    public function searchBiteshipAreas(Request $request)
+    public function reverseGeocode(Request $request): JsonResponse
+    {
+        $lat = $request->input('lat');
+        $lng = $request->input('lng');
+
+        if (! $lat || ! $lng) {
+            return response()->json(['error' => 'Latitude and longitude are required.'], 400);
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'User-Agent' => 'BisnisMate-Ecommerce/1.0',
+            ])->get('https://nominatim.openstreetmap.org/reverse', [
+                'lat' => $lat,
+                'lon' => $lng,
+                'format' => 'json',
+                'addressdetails' => 1,
+            ]);
+
+            if ($response->successful()) {
+                return response()->json($response->json());
+            }
+
+            return response()->json(['error' => 'Failed to retrieve address details.'], 500);
+        } catch (\Exception $e) {
+            Log::error('Reverse geocode error: '.$e->getMessage());
+
+            return response()->json(['error' => 'Geocoding service unavailable.'], 500);
+        }
+    }
+
+    /**
+     * Proxy Biteship area search.
+     */
+    public function searchBiteshipAreas(Request $request): JsonResponse
     {
         $query = $request->query('q');
         if (empty($query) || strlen(trim($query)) < 3) {
@@ -253,159 +237,9 @@ class CustomerAddressController extends Controller
                 ]);
             }
 
-            Log::warning('Biteship Maps Areas proxy failed: '.$response->body());
-
-            return response()->json(['success' => false, 'areas' => []], 200);
-        } catch (\Exception $e) {
-            Log::error('Biteship Maps Areas proxy error: '.$e->getMessage());
-
-            return response()->json(['success' => false, 'areas' => []], 200);
+            return response()->json(['success' => false, 'areas' => []]);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'areas' => [], 'error' => $e->getMessage()], 500);
         }
-    }
-
-    /**
-     * Search destination areas using RajaOngkir / Komerce API (proxy).
-     */
-    public function searchRajaOngkirAreas(Request $request)
-    {
-        $query = $request->query('q');
-        if (empty($query) || strlen(trim($query)) < 3) {
-            return response()->json(['success' => false, 'data' => []]);
-        }
-
-        $baseUrl = Setting::where('key', 'komerce_delivery_url')->value('value')
-            ?? 'https://api.collaborator.komerce.id/api/v1/';
-        $apiKey = Setting::where('key', 'shipping_delivery_key')->value('value');
-
-        if (empty($apiKey)) {
-            return response()->json(['success' => false, 'data' => []]);
-        }
-
-        try {
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer '.$apiKey,
-                'Accept' => 'application/json',
-            ])
-                ->timeout(10)
-                ->get(rtrim($baseUrl, '/').'/destination/search', [
-                    'keyword' => $query,
-                    'limit' => 10,
-                ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-
-                return response()->json([
-                    'success' => true,
-                    'data' => $data['data'] ?? [],
-                ]);
-            }
-
-            return response()->json(['success' => false, 'data' => []]);
-        } catch (\Exception $e) {
-            Log::error('RajaOngkir search areas proxy error: '.$e->getMessage());
-
-            return response()->json(['success' => false, 'data' => []]);
-        }
-    }
-
-    /**
-     * Search address query against OpenStreetMap Nominatim API (proxy).
-     */
-    public function searchApi(Request $request)
-    {
-        $query = $request->query('q');
-        if (empty($query)) {
-            return response()->json([]);
-        }
-
-        $response = Http::withUserAgent('BurningRoomEcommerce/1.0')
-            ->get('https://nominatim.openstreetmap.org/search', [
-                'format' => 'json',
-                'q' => $query,
-                'countrycodes' => 'id', // Indonesia only
-                'addressdetails' => 1,
-                'limit' => 8,
-            ]);
-
-        if ($response->successful()) {
-            return response()->json($response->json());
-        }
-
-        return response()->json([], 500);
-    }
-
-    /**
-     * Reverse geocode coordinates against OpenStreetMap Nominatim API (proxy).
-     */
-    public function reverseApi(Request $request)
-    {
-        $lat = $request->query('lat');
-        $lon = $request->query('lon');
-
-        if (empty($lat) || empty($lon)) {
-            return response()->json(['error' => 'Coordinates missing'], 400);
-        }
-
-        $response = Http::withUserAgent('BurningRoomEcommerce/1.0')
-            ->get('https://nominatim.openstreetmap.org/reverse', [
-                'format' => 'json',
-                'lat' => $lat,
-                'lon' => $lon,
-                'addressdetails' => 1,
-            ]);
-
-        if ($response->successful()) {
-            return response()->json($response->json());
-        }
-
-        return response()->json(['error' => 'Geocoding failed'], 500);
-    }
-
-    /**
-     * Get approximate coordinates using the customer's IP address.
-     */
-    public function ipLocation(Request $request)
-    {
-        $ip = $request->ip();
-
-        // If local IP, use Surabaya as fallback dev coordinate
-        if ($ip === '127.0.0.1' || $ip === '::1' || str_starts_with($ip, '192.168.')) {
-            return response()->json([
-                'latitude' => -7.250445,
-                'longitude' => 112.768845,
-                'city' => 'Surabaya',
-                'region' => 'Jawa Timur',
-                'country' => 'Indonesia',
-            ]);
-        }
-
-        try {
-            $response = Http::withUserAgent('BurningRoomEcommerce/1.0')
-                ->get("https://ipapi.co/{$ip}/json/");
-
-            if ($response->successful()) {
-                $data = $response->json();
-
-                return response()->json([
-                    'latitude' => $data['latitude'] ?? -7.250445,
-                    'longitude' => $data['longitude'] ?? 112.768845,
-                    'city' => $data['city'] ?? 'Surabaya',
-                    'region' => $data['region'] ?? 'Jawa Timur',
-                    'country' => $data['country_name'] ?? 'Indonesia',
-                ]);
-            }
-        } catch (\Exception $e) {
-            // Silence and fallback
-        }
-
-        // Final fallback
-        return response()->json([
-            'latitude' => -7.250445,
-            'longitude' => 112.768845,
-            'city' => 'Surabaya',
-            'region' => 'Jawa Timur',
-            'country' => 'Indonesia',
-        ]);
     }
 }

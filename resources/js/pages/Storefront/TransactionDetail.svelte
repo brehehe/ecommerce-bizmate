@@ -1,6 +1,7 @@
 <script lang="ts">
     import AccountLayout from '@/components/layouts/AccountLayout.svelte';
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
+    import { track as trackShipment } from '@/routes/transactions/komerce';
     import { page, router, Link } from '@inertiajs/svelte';
     import { showToast } from '@/utils/toast';
 
@@ -14,6 +15,7 @@
         userBankAccounts = [] as any[],
         storeName = '',
         storeLogo = '',
+        biteshipEnabled = false,
     } = $props();
 
     const primary = $derived(
@@ -104,7 +106,10 @@
     );
     const canCancel = $derived(canCancelDirectly || canRequestCancel);
     const canChangePayment = $derived(transaction.status === 'belum_bayar');
-    const canCompleteOrder = $derived(transaction.status === 'dikirim');
+    const canCompleteOrder = $derived(
+        transaction.status === 'dikirim' ||
+        (transaction.shipping_courier === 'self_pickup' && transaction.status === 'out_for_pickup'),
+    );
     const isCompleted = $derived(transaction.status === 'selesai');
 
     // Change payment method modal
@@ -679,15 +684,50 @@
         return '/storage/' + path;
     }
 
-    const statusSteps = [
-        { key: 'belum_bayar', label: 'Belum Bayar', icon: 'ti-cash' },
-        { key: 'menunggu', label: 'Menunggu', icon: 'ti-clock' },
-        { key: 'diproses', label: 'Diproses', icon: 'ti-settings' },
-        { key: 'dikemas', label: 'Dikemas', icon: 'ti-package' },
-        { key: 'out_for_pickup', label: 'Pick Up', icon: 'ti-truck-delivery' },
-        { key: 'dikirim', label: 'Dikirim', icon: 'ti-truck' },
-        { key: 'selesai', label: 'Selesai', icon: 'ti-circle-check' },
-    ];
+    const statusSteps = $derived.by(() => {
+        if (transaction.shipping_courier === 'self_pickup') {
+            return [
+                { key: 'belum_bayar', label: 'Belum Bayar', icon: 'ti-cash' },
+                { key: 'menunggu', label: 'Menunggu', icon: 'ti-clock' },
+                { key: 'diproses', label: 'Dipersiapkan', icon: 'ti-building-store' },
+                { key: 'out_for_pickup', label: 'Siap Diambil', icon: 'ti-package' },
+                { key: 'selesai', label: 'Sudah Diambil', icon: 'ti-circle-check' },
+            ];
+        }
+        if (transaction.shipping_courier === 'store_courier') {
+            return [
+                { key: 'belum_bayar', label: 'Belum Bayar', icon: 'ti-cash' },
+                { key: 'menunggu', label: 'Menunggu', icon: 'ti-clock' },
+                { key: 'diproses', label: 'Diproses', icon: 'ti-settings' },
+                { key: 'dikemas', label: 'Dikemas', icon: 'ti-package' },
+                { key: 'out_for_pickup', label: 'Diambil Kurir', icon: 'ti-moped' },
+                { key: 'dikirim', label: 'Diantar', icon: 'ti-truck-delivery' },
+                { key: 'selesai', label: 'Diterima', icon: 'ti-circle-check' },
+            ];
+        }
+        return [
+            { key: 'belum_bayar', label: 'Belum Bayar', icon: 'ti-cash' },
+            { key: 'menunggu', label: 'Menunggu', icon: 'ti-clock' },
+            { key: 'diproses', label: 'Diproses', icon: 'ti-settings' },
+            { key: 'dikemas', label: 'Dikemas', icon: 'ti-package' },
+            { key: 'out_for_pickup', label: 'Pick Up', icon: 'ti-truck-delivery' },
+            { key: 'dikirim', label: 'Dikirim', icon: 'ti-truck' },
+            { key: 'selesai', label: 'Selesai', icon: 'ti-circle-check' },
+        ];
+    });
+
+    function getStatusLabel(status: string, courier?: string | null): string {
+        if (courier === 'self_pickup') {
+            if (status === 'diproses') return 'Dipersiapkan di Toko';
+            if (status === 'out_for_pickup') return 'Siap Diambil di Toko';
+            if (status === 'selesai') return 'Pesanan Telah Diambil';
+        } else if (courier === 'store_courier') {
+            if (status === 'out_for_pickup') return 'Paket Diambil Kurir';
+            if (status === 'dikirim') return 'Dalam Pengantaran';
+            if (status === 'selesai') return 'Pesanan Diterima';
+        }
+        return statusLabels[status] ?? status;
+    }
 
     const statusIndex = $derived(
         transaction.status === 'batal'
@@ -1211,6 +1251,15 @@
     let trackingHistory = $state<any[]>([]);
     let loadingTracking = $state(false);
     let trackingError = $state('');
+    let trackingRequestInFlight = false;
+
+    const hasBiteshipTracking = $derived(
+        biteshipEnabled &&
+            Boolean(transaction.booking_code) &&
+            Boolean(transaction.tracking_number) &&
+            !['store_courier', 'self_pickup'].includes(transaction.shipping_courier) &&
+            !String(transaction.tracking_number).toUpperCase().startsWith('KOMERKOM'),
+    );
 
     function translateBiteshipDesc(desc) {
         if (!desc) return '';
@@ -1287,12 +1336,16 @@
     }
 
     async function fetchTrackingHistory() {
-        if (!transaction.tracking_number) return;
+        if (!hasBiteshipTracking || trackingRequestInFlight) return;
+        trackingRequestInFlight = true;
         loadingTracking = true;
         trackingError = '';
         try {
             const resp = await fetch(
-                `/transactions/${transaction.id}/komerce/track`,
+                trackShipment.url({ transaction: transaction.id }),
+                {
+                    headers: { Accept: 'application/json' },
+                },
             );
             const data = await resp.json();
             if (resp.ok && data.success) {
@@ -1302,6 +1355,14 @@
                         desc: translateBiteshipDesc(step.desc),
                     }))
                     .reverse();
+
+                if (data.transaction_status && data.transaction_status !== transaction.status) {
+                    router.reload({
+                        only: ['transaction'],
+                        preserveScroll: true,
+                        preserveState: true,
+                    });
+                }
             } else {
                 trackingError = data.error ?? 'Gagal melacak pengiriman.';
             }
@@ -1309,13 +1370,17 @@
             trackingError = 'Gagal memuat status pelacakan.';
         } finally {
             loadingTracking = false;
+            trackingRequestInFlight = false;
         }
     }
 
     $effect(() => {
-        if (transaction.tracking_number) {
-            fetchTrackingHistory();
-        }
+        if (!hasBiteshipTracking || ['selesai', 'batal'].includes(transaction.status)) return;
+
+        void fetchTrackingHistory();
+        const interval = window.setInterval(fetchTrackingHistory, 30_000);
+
+        return () => window.clearInterval(interval);
     });
 
     function handleFileChange(e: Event) {
@@ -1472,88 +1537,90 @@
     }
 </script>
 
-<AccountLayout activeMenu="transactions">
-    <div class="min-h-dvh bg-slate-50">
+<AccountLayout activeMenu="transactions" hideSidebarOnMobile={true}>
+    <div class="min-h-dvh bg-slate-50/80">
         <!-- Header -->
-        <div class="bg-white border-b border-slate-200 sticky top-0 z-30">
-            <div class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
-                <Link
-                    href="/transactions"
-                    class="hidden md:flex p-2 hover:bg-slate-100 rounded-full transition items-center justify-center shrink-0"
-                >
-                    <i class="ti ti-arrow-left text-xl text-slate-700"></i>
-                </Link>
-                <div class="flex-1 min-w-0">
-                    <h1 class="text-sm font-bold text-slate-800 leading-tight">
-                        Detail Pesanan
-                    </h1>
-                    <p class="text-xs text-slate-500 leading-tight truncate">
-                        {transaction.transaction_number}
-                    </p>
+        <div class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+            <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <Link
+                        href="/transactions"
+                        class="hidden md:flex p-2 hover:bg-slate-100 rounded-full transition items-center justify-center shrink-0"
+                    >
+                        <i class="ti ti-arrow-left text-xl text-slate-700"></i>
+                    </Link>
+                    <div class="min-w-0">
+                        <h1 class="text-xs sm:text-sm font-bold text-slate-800 leading-tight truncate">
+                            Detail Pesanan
+                        </h1>
+                        <p class="text-[10px] sm:text-xs text-slate-500 leading-tight truncate font-mono">
+                            {transaction.transaction_number}
+                        </p>
+                    </div>
                 </div>
-                <!-- Cetak Invoice Button -->
-                <a
-                    href={`/transactions/${transaction.id}/print-invoice?download=1`}
-                    target="_blank"
-                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold transition active:scale-95 hover:bg-slate-50 shrink-0"
-                    title="Cetak Invoice"
-                >
-                    <i class="ti ti-printer text-base"></i>
-                    <span class="hidden sm:inline">Cetak Invoice</span>
-                </a>
-                <!-- Desktop action buttons (inside header, right side) -->
-                <div class="hidden md:flex items-center gap-2 shrink-0">
+
+                <!-- Right Side Actions (Action Buttons to the left of Cetak Invoice + Cetak Invoice) -->
+                <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
                     {#if canCompleteOrder}
                         <button
                             onclick={completeOrder}
                             disabled={completingOrder}
-                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white transition active:scale-95 hover:opacity-90 disabled:opacity-60"
+                            class="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-white transition active:scale-95 hover:opacity-90 disabled:opacity-60 cursor-pointer shadow-sm"
                             style="background:{primary}"
                         >
                             <i class="ti ti-circle-check text-sm"></i>
-                            {completingOrder
-                                ? 'Memproses...'
-                                : 'Pesanan Diterima'}
+                            <span class="hidden xs:inline">{completingOrder ? 'Memproses...' : 'Pesanan Diterima'}</span>
+                            <span class="xs:hidden">{completingOrder ? '...' : 'Diterima'}</span>
                         </button>
                     {/if}
                     {#if canChangePayment}
                         <button
                             onclick={openChangePaymentModal}
-                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition active:scale-95 hover:opacity-90"
+                            class="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition active:scale-95 hover:opacity-90 cursor-pointer bg-white"
                             style="border-color:{primary}; color:{primary};"
                         >
                             <i class="ti ti-credit-card text-sm"></i>
-                            Ubah Pembayaran
+                            <span class="hidden sm:inline">Ubah Pembayaran</span>
+                            <span class="sm:hidden">Ubah</span>
                         </button>
                     {/if}
                     {#if canCancel}
                         <button
                             onclick={openCancelModal}
-                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 border-red-400 text-red-500 text-xs font-bold transition active:scale-95 hover:bg-red-50"
+                            class="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border-2 border-red-500 text-red-500 text-xs font-bold transition active:scale-95 hover:bg-red-50 cursor-pointer bg-white"
                         >
                             <i class="ti ti-x text-sm"></i>
-                            Batalkan
+                            <span>Batalkan</span>
                         </button>
                     {/if}
                     {#if canRetur}
                         <button
                             onclick={openReturnModal}
-                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition active:scale-95 hover:bg-orange-50"
+                            class="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition active:scale-95 hover:bg-orange-50 shrink-0 cursor-pointer bg-white"
                             style="border-color:{secondary}; color:{secondary};"
+                            title="Ajukan Retur"
                         >
                             <i class="ti ti-arrow-back-up text-sm"></i>
-                            Ajukan Retur
+                            <span>Ajukan Retur</span>
                         </button>
                     {/if}
+
+                    <!-- Cetak Invoice Button -->
+                    <a
+                        href={`/transactions/${transaction.id}/print-invoice?download=1`}
+                        target="_blank"
+                        class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold transition active:scale-95 hover:bg-slate-50 shrink-0"
+                        title="Cetak Invoice"
+                    >
+                        <i class="ti ti-printer text-base"></i>
+                        <span class="hidden sm:inline">Cetak Invoice</span>
+                    </a>
                 </div>
             </div>
         </div>
 
-        <!-- Extra bottom padding on mobile to account for fixed action bar -->
         <div
-            class="max-w-6xl mx-auto px-4 py-4 {hasMobileAction
-                ? 'pb-28'
-                : 'pb-6'} md:py-6 md:pb-6"
+            class="max-w-6xl mx-auto px-3 py-3 sm:px-4 sm:py-4 pb-2 sm:pb-4 md:py-6 md:pb-6"
         >
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Left/Main Column -->
@@ -1774,9 +1841,24 @@
                         <div
                             class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
                         >
-                            <div class="flex items-center mb-4">
+                            <!-- Card Header: Title & Tanggal Pesanan -->
+                            <div class="flex items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-100">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <i class="ti ti-timeline text-slate-500 text-base"></i>
+                                    <span class="font-bold text-slate-800 text-sm">
+                                        Status Pesanan
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-xs text-slate-400 font-medium shrink-0">
+                                    <i class="ti ti-calendar-time text-slate-400 text-xs"></i>
+                                    <span class="whitespace-nowrap">{fmtDate(transaction.created_at)}</span>
+                                </div>
+                            </div>
+
+                            <!-- Current Status Badge -->
+                            <div class="mb-4">
                                 <div
-                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white text-xs font-bold font-outfit"
+                                    class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-white text-xs font-bold font-outfit shadow-sm"
                                     style="background-color:{currentStatusColor}"
                                 >
                                     <i
@@ -1802,13 +1884,8 @@
                                                         ? 'ti-circle-check'
                                                         : 'ti-alert-circle'} text-sm"
                                     ></i>
-                                    {statusLabels[transaction.status] ??
-                                        transaction.status}
+                                    <span>{getStatusLabel(transaction.status, transaction.shipping_courier)}</span>
                                 </div>
-                                <span
-                                    class="ml-auto text-xs text-slate-400 font-medium"
-                                    >{fmtDate(transaction.created_at)}</span
-                                >
                             </div>
 
                             <div
@@ -1964,31 +2041,46 @@
                                 </div>
                             {/if}
 
-                            <!-- Complete Order Banner (when status is dikirim) -->
+                            <!-- Complete Order Banner (when status is dikirim or self_pickup out_for_pickup) -->
                             {#if canCompleteOrder}
                                 <div
-                                    class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-xl flex items-center gap-3"
+                                    class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
                                 >
-                                    <div
-                                        class="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center shrink-0"
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center shrink-0"
+                                        >
+                                            <i
+                                                class="ti {transaction.shipping_courier === 'self_pickup' ? 'ti-building-store text-orange-600' : 'ti-truck-delivery text-orange-500'} text-base"
+                                            ></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p
+                                                class="text-xs font-bold text-slate-800 leading-tight"
+                                            >
+                                                {transaction.shipping_courier === 'self_pickup'
+                                                    ? 'Pesanan siap diambil di toko'
+                                                    : 'Pesanan sedang dalam pengiriman'}
+                                            </p>
+                                            <p
+                                                class="text-[10px] text-slate-500 leading-relaxed mt-0.5"
+                                            >
+                                                {transaction.shipping_courier === 'self_pickup'
+                                                    ? 'Silakan datang ke toko untuk mengambil pesanan Anda. Jika pesanan sudah diterima, klik "Pesanan Diterima".'
+                                                    : 'Jika pesanan sudah tiba, klik tombol "Pesanan Diterima".'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onclick={completeOrder}
+                                        disabled={completingOrder}
+                                        class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition active:scale-95 shadow-sm shrink-0 cursor-pointer disabled:opacity-60"
+                                        style="background:{primary}"
                                     >
-                                        <i
-                                            class="ti ti-truck-delivery text-orange-500 text-base"
-                                        ></i>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p
-                                            class="text-xs font-bold text-slate-800 leading-tight"
-                                        >
-                                            Pesanan sedang dalam pengiriman
-                                        </p>
-                                        <p
-                                            class="text-[10px] text-slate-500 leading-relaxed mt-0.5"
-                                        >
-                                            Jika pesanan sudah tiba, klik tombol
-                                            "Pesanan Diterima".
-                                        </p>
-                                    </div>
+                                        <i class="ti ti-circle-check text-sm"></i>
+                                        {completingOrder ? 'Memproses...' : 'Pesanan Diterima'}
+                                    </button>
                                 </div>
                             {/if}
 
@@ -2768,9 +2860,10 @@
                                                             class="text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider"
                                                             style="background:{histColor}18; color:{histColor};"
                                                         >
-                                                            {statusLabels[
-                                                                hist.status
-                                                            ] ?? hist.status}
+                                                            {getStatusLabel(
+                                                                hist.status,
+                                                                transaction.shipping_courier,
+                                                            )}
                                                         </span>
                                                         <span
                                                             class="text-[10px] text-slate-400"
@@ -3215,8 +3308,8 @@
                         </div>
                     </div>
 
-                    <!-- Komerce Shipment Tracking Timeline -->
-                    {#if transaction.tracking_number && transaction.shipping_courier !== 'store_courier'}
+                    <!-- Biteship Shipment Tracking Timeline -->
+                    {#if hasBiteshipTracking}
                         <div
                             class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4"
                         >
@@ -3427,7 +3520,7 @@
                                             </div>
                                         {:else}
                                             <img
-                                                src="/storage/{photo}"
+                                                src={formatImagePath(photo)}
                                                 alt="Bukti Pengiriman"
                                                 class="w-full h-full object-cover rounded-xl"
                                             />
@@ -3626,54 +3719,6 @@
         </div>
     </div>
 
-    <!-- ===== Mobile Fixed Bottom Action Bar ===== -->
-    {#if hasMobileAction}
-        <div
-            class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-4 py-3 flex gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
-        >
-            {#if canCompleteOrder}
-                <button
-                    onclick={completeOrder}
-                    disabled={completingOrder}
-                    class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition active:scale-95 disabled:opacity-60"
-                    style="background:{primary}"
-                >
-                    <i class="ti ti-circle-check text-base"></i>
-                    {completingOrder ? 'Memproses...' : 'Pesanan Diterima'}
-                </button>
-            {/if}
-            {#if canChangePayment}
-                <button
-                    onclick={openChangePaymentModal}
-                    class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-bold transition active:scale-95"
-                    style="border-color:{primary}; color:{primary};"
-                >
-                    <i class="ti ti-credit-card text-base"></i>
-                    Ubah Pembayaran
-                </button>
-            {/if}
-            {#if canCancel}
-                <button
-                    onclick={openCancelModal}
-                    class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-bold transition active:scale-95"
-                    style="border-color:red; color:red;"
-                >
-                    <i class="ti ti-x text-base"></i>
-                    Batalkan
-                </button>
-            {/if}
-            {#if canRetur}
-                <button
-                    onclick={openReturnModal}
-                    class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-bold transition active:scale-95"
-                    style="border-color:{secondary}; color:{secondary};"
-                >
-                    <i class="ti ti-arrow-back-up text-base"></i>
-                    Ajukan Retur
-                </button>
-            {/if}
-        </div>
-    {/if}
 
     <!-- Upload Proof Modal -->
     {#if showUploadModal}

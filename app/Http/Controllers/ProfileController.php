@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\ImageHelper;
+use App\Http\Requests\Customer\UpdatePasswordRequest;
+use App\Http\Requests\Customer\UpdateProfileRequest;
 use App\Models\CoinHistory;
 use App\Models\CustomerBankAccount;
 use App\Models\Setting;
@@ -134,28 +136,9 @@ class ProfileController extends Controller
     /**
      * Update the customer's profile.
      */
-    public function updateCustomerProfile(Request $request): RedirectResponse
+    public function updateCustomerProfile(UpdateProfileRequest $request): RedirectResponse
     {
         $user = $request->user();
-
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
-            'phone_number' => 'nullable|string|max:20',
-            'gender' => 'nullable|in:Laki-laki,Perempuan',
-            'birth_date' => 'nullable|date',
-            'avatar' => 'nullable|image|max:2048', // max 2MB
-            'current_password' => 'required|current_password',
-        ], [
-            'name.required' => 'Nama wajib diisi.',
-            'email.required' => 'Email wajib diisi.',
-            'email.email' => 'Format email tidak valid.',
-            'email.unique' => 'Email sudah digunakan oleh pengguna lain.',
-            'avatar.image' => 'File harus berupa gambar.',
-            'avatar.max' => 'Ukuran gambar maksimal 2MB.',
-            'current_password.required' => 'Kata sandi saat ini wajib diisi untuk menyimpan perubahan.',
-            'current_password.current_password' => 'Kata sandi saat ini tidak cocok.',
-        ]);
 
         if ($request->hasFile('avatar')) {
             if ($user->avatar) {
@@ -179,20 +162,9 @@ class ProfileController extends Controller
     /**
      * Update the customer's password.
      */
-    public function updateCustomerPassword(Request $request): RedirectResponse
+    public function updateCustomerPassword(UpdatePasswordRequest $request): RedirectResponse
     {
         $user = $request->user();
-
-        $request->validate([
-            'current_password' => 'required|current_password',
-            'password' => 'required|string|min:8|confirmed',
-        ], [
-            'current_password.required' => 'Kata sandi saat ini wajib diisi.',
-            'current_password.current_password' => 'Kata sandi saat ini tidak cocok.',
-            'password.required' => 'Kata sandi baru wajib diisi.',
-            'password.min' => 'Kata sandi minimal harus 8 karakter.',
-            'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
-        ]);
 
         $user->password = Hash::make($request->input('password'));
         $user->save();

@@ -2,13 +2,23 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\ReturnRequest\ApproveReturnAction;
+use App\Actions\ReturnRequest\ConfirmReceiptAction;
+use App\Actions\ReturnRequest\ProcessRefundAction;
+use App\Actions\ReturnRequest\ProcessReplacementAction;
+use App\Actions\ReturnRequest\RejectReturnAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ReturnRequest\ApproveReturnRequest;
+use App\Http\Requests\Admin\ReturnRequest\ConfirmReceiptRequest;
+use App\Http\Requests\Admin\ReturnRequest\ProcessRefundRequest;
+use App\Http\Requests\Admin\ReturnRequest\ProcessReplacementRequest;
+use App\Http\Requests\Admin\ReturnRequest\RejectReturnRequest;
 use App\Models\Notification;
 use App\Models\ProductStock;
 use App\Models\ReturnRequest;
 use App\Models\Setting;
 use App\Models\StockMovement;
-use App\Models\Transaction;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -20,16 +30,21 @@ use Inertia\Response;
 
 class ReturnController extends Controller
 {
+    public function __construct(
+        protected ApproveReturnAction $approveReturnAction,
+        protected RejectReturnAction $rejectReturnAction,
+        protected ConfirmReceiptAction $confirmReceiptAction,
+        protected ProcessRefundAction $processRefundAction,
+        protected ProcessReplacementAction $processReplacementAction
+    ) {}
+
     /**
-     * List all return requests.
+     * Display a listing of return requests.
      */
     public function index(Request $request): Response
     {
         $driver = DB::connection()->getDriverName();
         $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
-
-        $user = $request->user();
-        $isSeller = $user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
 
         $query = DB::table('returns')
             ->leftJoin('users', 'returns.user_id', '=', 'users.id')
@@ -40,21 +55,23 @@ class ReturnController extends Controller
                 'returns.user_id',
                 'returns.transaction_id',
                 'returns.type',
-                'returns.refund_amount',
-                'returns.status',
                 'returns.reason',
+                'returns.status',
+                'returns.refund_amount',
                 'returns.created_at',
                 'users.name as user_name',
                 'users.email as user_email',
-                'transactions.transaction_number',
+                'transactions.transaction_number as transaction_number',
                 'transactions.grand_total as transaction_grand_total',
             ])
             ->orderBy('returns.created_at', 'desc');
 
+        $user = $request->user();
+        $isSeller = $user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
         if ($isSeller) {
             $sellerProductIds = DB::table('products')->where('user_id', $user->id)->pluck('id');
-            $sellerTransactionIds = DB::table('transaction_items')->whereIn('product_id', $sellerProductIds)->pluck('transaction_id');
-            $query->whereIn('returns.transaction_id', $sellerTransactionIds);
+            $sellerTxIds = DB::table('transaction_items')->whereIn('product_id', $sellerProductIds)->pluck('transaction_id');
+            $query->whereIn('returns.transaction_id', $sellerTxIds);
         }
 
         if ($request->filled('status')) {
@@ -67,25 +84,21 @@ class ReturnController extends Controller
 
         if ($request->filled('search')) {
             $search = trim($request->search);
-            if (preg_match('/^(RET|TRX|BK|\d)/i', $search)) {
-                $query->where('returns.return_number', $likeOperator, "{$search}%")
-                    ->orWhere('transactions.transaction_number', $likeOperator, "{$search}%");
-            } else {
-                $query->where(function ($q) use ($search, $likeOperator) {
-                    $q->where('returns.return_number', $likeOperator, "{$search}%")
-                        ->orWhere('users.name', $likeOperator, "{$search}%")
-                        ->orWhere('transactions.transaction_number', $likeOperator, "{$search}%");
-                });
-            }
+            $query->where(function ($q) use ($search, $likeOperator) {
+                $q->where('returns.return_number', $likeOperator, "{$search}%")
+                    ->orWhere('transactions.transaction_number', $likeOperator, "{$search}%")
+                    ->orWhere('users.name', $likeOperator, "%{$search}%")
+                    ->orWhere('users.email', $likeOperator, "%{$search}%");
+            });
         }
 
         $rawPage = $request->input('page', 1);
         $cleanPage = (int) preg_replace('/\D/', '', (string) $rawPage) ?: 1;
         $page = max(1, $cleanPage);
-        $perPage = 20;
+        $perPage = 10;
 
         $getReturns = function () use ($request, $query, $page, $perPage, $isSeller) {
-            $isFiltered = $request->filled('status') || $request->filled('date_from') || $request->filled('date_to') || $request->filled('search');
+            $isFiltered = $request->filled('status') || $request->filled('type') || $request->filled('search');
 
             if (! $isFiltered && ! $isSeller && ! app()->runningUnitTests()) {
                 $total = Cache::remember('returns_total_count', 120, fn () => DB::table('returns')->count());
@@ -94,16 +107,6 @@ class ReturnController extends Controller
             }
 
             $rawReturns = $query->forPage($page, $perPage)->get();
-            $returnIds = $rawReturns->pluck('id')->all();
-
-            $itemsMap = [];
-            if (! empty($returnIds)) {
-                $itemsMap = DB::table('return_items')
-                    ->whereIn('return_id', $returnIds)
-                    ->get()
-                    ->groupBy('return_id')
-                    ->toArray();
-            }
 
             $formattedItems = $rawReturns->map(fn ($r) => [
                 'id' => $r->id,
@@ -111,11 +114,11 @@ class ReturnController extends Controller
                 'user_id' => $r->user_id,
                 'transaction_id' => $r->transaction_id,
                 'type' => $r->type,
-                'refund_amount' => (float) $r->refund_amount,
-                'status' => $r->status,
                 'reason' => $r->reason,
+                'status' => $r->status,
+                'refund_amount' => (float) $r->refund_amount,
                 'created_at' => $r->created_at,
-                'items' => $itemsMap[$r->id] ?? [],
+                'created_at_formatted' => $r->created_at ? Carbon::parse($r->created_at)->translatedFormat('d M Y H:i') : '—',
                 'user' => $r->user_id ? [
                     'id' => $r->user_id,
                     'name' => $r->user_name,
@@ -182,39 +185,14 @@ class ReturnController extends Controller
     /**
      * Approve a return request.
      */
-    public function approve(Request $request, ReturnRequest $return): RedirectResponse
+    public function approve(ApproveReturnRequest $request, ReturnRequest $return): RedirectResponse
     {
         $this->authorizeSellerReturn($request, $return);
-        if ($return->status !== 'menunggu_review') {
-            return back()->with('error', 'Retur tidak dapat disetujui pada status saat ini.');
-        }
 
-        $request->validate([
-            'notes_admin' => 'nullable|string|max:500',
-        ]);
+        $result = $this->approveReturnAction->execute($return, $request->input('notes_admin'), $request->user());
 
-        $return->update([
-            'status' => 'disetujui',
-            'approved_by' => $request->user()->id,
-            'approved_at' => now(),
-            'notes_admin' => $request->notes_admin,
-        ]);
-
-        $return->transaction->update(['return_status' => 'disetujui']);
-
-        // Notify customer
-        try {
-            $typeLabel = $return->type === 'refund' ? 'pengembalian dana' : 'penggantian barang';
-            Notification::create([
-                'user_id' => $return->user_id,
-                'title' => 'Pengajuan Retur Disetujui',
-                'message' => 'Pengajuan retur Anda (#'.$return->return_number.') untuk '.$typeLabel.' telah disetujui. Silakan kirim barang retur ke alamat toko dan masukkan nomor resi pengiriman.',
-                'type' => 'return_approved',
-                'url' => '/transactions/'.$return->transaction_id,
-                'is_read' => false,
-            ]);
-        } catch (\Throwable $e) {
-            // Fail silently
+        if (! $result['success']) {
+            return back()->with('error', $result['message']);
         }
 
         return back()->with('success', 'Pengajuan retur berhasil disetujui.');
@@ -223,43 +201,19 @@ class ReturnController extends Controller
     /**
      * Reject a return request.
      */
-    public function reject(Request $request, ReturnRequest $return): RedirectResponse
+    public function reject(RejectReturnRequest $request, ReturnRequest $return): RedirectResponse
     {
-        if ($return->status !== 'menunggu_review') {
-            return back()->with('error', 'Retur tidak dapat ditolak pada status saat ini.');
-        }
+        $result = $this->rejectReturnAction->execute($return, $request->input('notes_admin'));
 
-        $request->validate([
-            'notes_admin' => 'required|string|max:500',
-        ]);
-
-        $return->update([
-            'status' => 'ditolak',
-            'notes_admin' => $request->notes_admin,
-            'rejected_at' => now(),
-        ]);
-
-        $return->transaction->update(['return_status' => 'ditolak']);
-
-        // Notify customer
-        try {
-            Notification::create([
-                'user_id' => $return->user_id,
-                'title' => 'Pengajuan Retur Ditolak',
-                'message' => 'Pengajuan retur Anda (#'.$return->return_number.') ditolak. Alasan: '.$request->notes_admin,
-                'type' => 'return_rejected',
-                'url' => '/transactions/'.$return->transaction_id,
-                'is_read' => false,
-            ]);
-        } catch (\Throwable $e) {
-            // Fail silently
+        if (! $result['success']) {
+            return back()->with('error', $result['message']);
         }
 
         return back()->with('success', 'Pengajuan retur berhasil ditolak.');
     }
 
     /**
-     * Admin inputs the customer's return tracking number (if customer didn't).
+     * Admin inputs the customer's return tracking number.
      */
     public function updateCustomerTracking(Request $request, ReturnRequest $return): RedirectResponse
     {
@@ -286,67 +240,13 @@ class ReturnController extends Controller
     /**
      * Confirm receipt of returned goods by the store.
      */
-    public function confirmReceipt(Request $request, ReturnRequest $return): RedirectResponse
+    public function confirmReceipt(ConfirmReceiptRequest $request, ReturnRequest $return): RedirectResponse
     {
-        if ($return->status !== 'barang_dikirim_customer') {
-            return back()->with('error', 'Konfirmasi penerimaan hanya dapat dilakukan setelah barang dikirim customer.');
-        }
-
-        $return->update([
-            'status' => 'barang_diterima_toko',
-            'received_by' => $request->user()->id,
-            'received_at' => now(),
-        ]);
-
-        $return->transaction->update(['return_status' => 'barang_diterima_toko']);
-
         $stockAction = $request->input('stock_action', 'active');
+        $result = $this->confirmReceiptAction->execute($return, $stockAction, $request->user());
 
-        // Restore stock for returned items
-        $return->load('items');
-        foreach ($return->items as $item) {
-            $stockRecord = $item->product_variant_id
-                ? ProductStock::where('product_variant_id', $item->product_variant_id)->first()
-                : ProductStock::where('product_id', $item->product_id)->whereNull('product_variant_id')->first();
-
-            if ($stockRecord && ! $stockRecord->is_unlimited) {
-                $stockBefore = $stockRecord->stock;
-
-                if ($stockAction === 'active') {
-                    $stockAfter = $stockBefore + $item->quantity_returned;
-                    $stockRecord->update(['stock' => $stockAfter]);
-                    $notes = 'Retur barang (kembali ke stok aktif) - '.$return->return_number;
-                } else {
-                    $stockAfter = $stockBefore;
-                    $notes = 'Retur barang (rusak/tidak dikembalikan ke stok) - '.$return->return_number;
-                }
-
-                StockMovement::create([
-                    'product_id' => $item->product_id,
-                    'product_variant_id' => $item->product_variant_id,
-                    'transaction_id' => $return->transaction_id,
-                    'type' => 'retur',
-                    'quantity' => $stockAction === 'active' ? $item->quantity_returned : 0,
-                    'stock_before' => $stockBefore,
-                    'stock_after' => $stockAfter,
-                    'notes' => $notes,
-                    'created_by' => $request->user()->id,
-                ]);
-            }
-        }
-
-        // Notify customer
-        try {
-            Notification::create([
-                'user_id' => $return->user_id,
-                'title' => 'Barang Retur Diterima',
-                'message' => 'Barang retur Anda (#'.$return->return_number.') telah diterima oleh toko. Admin sedang memproses '.($return->type === 'refund' ? 'pengembalian dana' : 'pengiriman barang pengganti').'.',
-                'type' => 'return_received',
-                'url' => '/transactions/'.$return->transaction_id,
-                'is_read' => false,
-            ]);
-        } catch (\Throwable $e) {
-            // Fail silently
+        if (! $result['success']) {
+            return back()->with('error', $result['message']);
         }
 
         return back()->with('success', 'Penerimaan barang retur berhasil dikonfirmasi. Stok produk telah dikembalikan.');
@@ -355,286 +255,33 @@ class ReturnController extends Controller
     /**
      * Process refund (for type = refund).
      */
-    public function processRefund(Request $request, ReturnRequest $return): RedirectResponse
+    public function processRefund(ProcessRefundRequest $request, ReturnRequest $return): RedirectResponse
     {
-        if ($return->status !== 'barang_diterima_toko') {
-            return back()->with('error', 'Refund hanya dapat diproses setelah barang diterima.');
+        $result = $this->processRefundAction->execute($return, $request->input('notes_admin'));
+
+        if (! $result['success']) {
+            return back()->with('error', $result['message']);
         }
 
-        if ($return->type !== 'refund') {
-            return back()->with('error', 'Aksi ini hanya untuk retur jenis pengembalian dana.');
-        }
-
-        $request->validate([
-            'notes_admin' => 'nullable|string|max:500',
-        ]);
-
-        $return->update([
-            'status' => 'refund_diproses',
-            'refunded_at' => now(),
-            'notes_admin' => $request->notes_admin ?? $return->notes_admin,
-        ]);
-
-        $return->transaction->update(['return_status' => 'refund_diproses']);
-
-        // Get customer bank account info for notification
-        $return->load('user.customerBankAccounts');
-        $bankAccount = $return->user->customerBankAccounts->where('is_primary', true)->first()
-            ?? $return->user->customerBankAccounts->first();
-
-        $bankInfo = $bankAccount
-            ? "Dana akan ditransfer ke {$bankAccount->bank_name} - {$bankAccount->account_number} a.n. {$bankAccount->account_name}."
-            : 'Mohon hubungi admin untuk informasi rekening tujuan refund.';
-
-        // Notify customer
-        try {
-            $amount = 'Rp '.number_format($return->refund_amount, 0, ',', '.');
-            Notification::create([
-                'user_id' => $return->user_id,
-                'title' => 'Refund Sedang Diproses',
-                'message' => "Refund sebesar {$amount} untuk retur #{$return->return_number} sedang diproses. {$bankInfo}",
-                'type' => 'refund_processed',
-                'url' => '/transactions/'.$return->transaction_id,
-                'is_read' => false,
-            ]);
-        } catch (\Throwable $e) {
-            // Fail silently
-        }
-
-        return back()->with('success', 'Refund berhasil diproses. Customer telah dinotifikasi.');
+        return back()->with('success', 'Pengembalian dana berhasil diproses.');
     }
 
     /**
-     * Create a replacement transaction and mark return as selesai (for type = penggantian_barang).
+     * Process replacement goods delivery (for type = tukar_barang).
      */
-    public function processReplacement(Request $request, ReturnRequest $return): RedirectResponse
+    public function processReplacement(ProcessReplacementRequest $request, ReturnRequest $return): RedirectResponse
     {
-        if ($return->status !== 'barang_diterima_toko') {
-            return back()->with('error', 'Penggantian barang hanya dapat diproses setelah barang diterima.');
+        $result = $this->processReplacementAction->execute($return, $request->validated(), $request->user());
+
+        if (! $result['success']) {
+            return back()->with('error', $result['message']);
         }
 
-        if ($return->type !== 'penggantian_barang') {
-            return back()->with('error', 'Aksi ini hanya untuk retur jenis penggantian barang.');
-        }
-
-        $return->load(['transaction.items', 'items']);
-
-        DB::transaction(function () use ($return) {
-            $originalTx = $return->transaction;
-
-            // Build items for replacement transaction (only returned items with their qty)
-            $returnedItemIds = $return->items->pluck('transaction_item_id')->toArray();
-            $returnedQtyMap = $return->items->keyBy('transaction_item_id');
-
-            // Calculate new subtotal based on returned items
-            $newSubtotal = 0;
-            $itemsForNew = [];
-
-            foreach ($originalTx->items as $item) {
-                if (! in_array($item->id, $returnedItemIds)) {
-                    continue;
-                }
-
-                $returnItem = $returnedQtyMap[$item->id];
-                $qty = $returnItem->quantity_returned;
-                $lineTotal = $returnItem->unit_price * $qty;
-                $newSubtotal += $lineTotal;
-
-                $itemsForNew[] = [
-                    'product_id' => $item->product_id,
-                    'product_variant_id' => $item->product_variant_id,
-                    'product_name' => $item->product_name,
-                    'variant_name' => $item->variant_name,
-                    'product_sku' => $item->product_sku,
-                    'product_image' => $item->product_image,
-                    'quantity' => $qty,
-                    'hpp' => $item->hpp,
-                    'harga_jual' => $returnItem->unit_price,
-                    'diskon_item' => 0,
-                    'harga_akhir' => $returnItem->unit_price,
-                    'subtotal' => $lineTotal,
-                    'is_gift_item' => false,
-                ];
-            }
-
-            // Create the replacement transaction
-            $replacementTx = Transaction::create([
-                'transaction_number' => Transaction::generateNumber(),
-                'user_id' => $originalTx->user_id,
-                'customer_address_id' => $originalTx->customer_address_id,
-                'payment_method_id' => $originalTx->payment_method_id,
-                'courier_id' => $originalTx->courier_id,
-                'status' => 'diproses',
-                'subtotal' => $newSubtotal,
-                'discount_amount' => 0,
-                'shipping_fee' => 0,
-                'shipping_discount' => 0,
-                'admin_fee' => 0,
-                'application_fee' => 0,
-                'grand_total' => $newSubtotal,
-                'shipping_courier' => $originalTx->shipping_courier,
-                'shipping_service' => $originalTx->shipping_service,
-                'notes' => 'Transaksi penggantian barang retur dari '.$originalTx->transaction_number,
-                'return_status' => null,
-                'is_replacement_transaction' => true,
-                'original_transaction_id' => $originalTx->id,
-            ]);
-
-            // Create items for replacement transaction
-            foreach ($itemsForNew as $itemData) {
-                $replacementTx->items()->create($itemData);
-            }
-
-            // Update the return record
-            $return->update([
-                'status' => 'selesai',
-                'replacement_transaction_id' => $replacementTx->id,
-            ]);
-
-            $return->transaction->update(['return_status' => 'selesai']);
-
-            // Notify customer
-            try {
-                Notification::create([
-                    'user_id' => $return->user_id,
-                    'title' => 'Barang Pengganti Sedang Diproses',
-                    'message' => 'Barang pengganti untuk retur #'.$return->return_number.' sedang diproses. Transaksi baru dibuat: #'.$replacementTx->transaction_number.'.',
-                    'type' => 'replacement_created',
-                    'url' => '/transactions/'.$replacementTx->id,
-                    'is_read' => false,
-                ]);
-            } catch (\Throwable $e) {
-                // Fail silently
-            }
-        });
-
-        return back()->with('success', 'Transaksi penggantian barang berhasil dibuat dan customer telah dinotifikasi.');
+        return back()->with('success', 'Barang pengganti berhasil dibuat dan dikirim.');
     }
 
     /**
-     * Admin inputs the replacement (barang pengganti) tracking number.
-     */
-    public function updateReplacementTracking(Request $request, ReturnRequest $return): RedirectResponse
-    {
-        $request->validate([
-            'replacement_tracking_number' => 'required|string|max:100',
-            'replacement_courier_name' => 'nullable|string|max:100',
-        ]);
-
-        $return->update([
-            'replacement_tracking_number' => $request->replacement_tracking_number,
-            'replacement_courier_name' => $request->replacement_courier_name,
-        ]);
-
-        // If there's a replacement transaction, also update its tracking
-        if ($return->replacement_transaction_id) {
-            $return->replacementTransaction->update([
-                'tracking_number' => $request->replacement_tracking_number,
-                'courier_name' => $request->replacement_courier_name,
-                'status' => 'dikirim',
-            ]);
-        }
-
-        // Notify customer
-        try {
-            Notification::create([
-                'user_id' => $return->user_id,
-                'title' => 'Barang Pengganti Dikirim',
-                'message' => 'Barang pengganti untuk retur #'.$return->return_number.' telah dikirim. Resi: '.$request->replacement_tracking_number,
-                'type' => 'replacement_shipped',
-                'url' => '/transactions/'.($return->replacement_transaction_id ?? $return->transaction_id),
-                'is_read' => false,
-            ]);
-        } catch (\Throwable $e) {
-            // Fail silently
-        }
-
-        return back()->with('success', 'Nomor resi barang pengganti berhasil disimpan.');
-    }
-
-    /**
-     * Mark refund as fully completed (selesai) after refund_diproses.
-     */
-    public function completeRefund(Request $request, ReturnRequest $return): RedirectResponse
-    {
-        if ($return->status !== 'refund_diproses') {
-            return back()->with('error', 'Status tidak valid untuk menyelesaikan refund.');
-        }
-
-        $return->update(['status' => 'selesai']);
-        $return->transaction->update(['return_status' => 'selesai']);
-
-        // Notify customer
-        try {
-            $amount = 'Rp '.number_format($return->refund_amount, 0, ',', '.');
-            Notification::create([
-                'user_id' => $return->user_id,
-                'title' => 'Refund Selesai',
-                'message' => "Refund sebesar {$amount} untuk retur #{$return->return_number} telah selesai diproses.",
-                'type' => 'refund_completed',
-                'url' => '/transactions/'.$return->transaction_id,
-                'is_read' => false,
-            ]);
-        } catch (\Throwable $e) {
-            // Fail silently
-        }
-
-        return back()->with('success', 'Retur berhasil diselesaikan.');
-    }
-
-    /**
-     * Approve multiple return requests.
-     */
-    public function bulkApprove(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'ids' => 'required|array',
-            'ids.*' => 'exists:returns,id',
-            'notes_admin' => 'nullable|string|max:500',
-        ]);
-
-        $returns = ReturnRequest::with('transaction')
-            ->whereIn('id', $request->ids)
-            ->where('status', 'menunggu_review')
-            ->get();
-
-        if ($returns->isEmpty()) {
-            return back()->with('error', 'Tidak ada pengajuan retur layak disetujui yang dipilih.');
-        }
-
-        $count = 0;
-        foreach ($returns as $return) {
-            $return->update([
-                'status' => 'disetujui',
-                'approved_by' => $request->user()->id,
-                'approved_at' => now(),
-                'notes_admin' => $request->notes_admin,
-            ]);
-
-            $return->transaction->update(['return_status' => 'disetujui']);
-
-            // Notify customer
-            try {
-                $typeLabel = $return->type === 'refund' ? 'pengembalian dana' : 'penggantian barang';
-                Notification::create([
-                    'user_id' => $return->user_id,
-                    'title' => 'Pengajuan Retur Disetujui',
-                    'message' => 'Pengajuan retur Anda (#'.$return->return_number.') untuk '.$typeLabel.' telah disetujui. Silakan kirim barang retur ke alamat toko dan masukkan nomor resi pengiriman.',
-                    'type' => 'return_approved',
-                    'url' => '/transactions/'.$return->transaction_id,
-                    'is_read' => false,
-                ]);
-            } catch (\Throwable $e) {
-                // Fail silently
-            }
-            $count++;
-        }
-
-        return back()->with('success', "Berhasil menyetujui {$count} pengajuan retur.");
-    }
-
-    /**
-     * Confirm receipt of multiple returned items.
+     * Bulk confirm receipt of returned items.
      */
     public function bulkConfirmReceipt(Request $request): RedirectResponse
     {
@@ -719,6 +366,124 @@ class ReturnController extends Controller
     }
 
     /**
+     * Bulk approve multiple return requests.
+     */
+    public function bulkApprove(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:returns,id',
+            'notes_admin' => 'nullable|string|max:500',
+        ]);
+
+        $returns = ReturnRequest::with('transaction')
+            ->whereIn('id', $request->ids)
+            ->where('status', 'menunggu_review')
+            ->get();
+
+        if ($returns->isEmpty()) {
+            return back()->with('error', 'Tidak ada pengajuan retur layak disetujui yang dipilih.');
+        }
+
+        $count = 0;
+        foreach ($returns as $return) {
+            $return->update([
+                'status' => 'disetujui',
+                'approved_by' => $request->user()->id,
+                'approved_at' => now(),
+                'notes_admin' => $request->notes_admin,
+            ]);
+
+            $return->transaction->update(['return_status' => 'disetujui']);
+
+            try {
+                $typeLabel = $return->type === 'refund' ? 'pengembalian dana' : 'penggantian barang';
+                Notification::create([
+                    'user_id' => $return->user_id,
+                    'title' => 'Pengajuan Retur Disetujui',
+                    'message' => 'Pengajuan retur Anda (#'.$return->return_number.') untuk '.$typeLabel.' telah disetujui. Silakan kirim barang retur ke alamat toko dan masukkan nomor resi pengiriman.',
+                    'type' => 'return_approved',
+                    'url' => '/transactions/'.$return->transaction_id,
+                    'is_read' => false,
+                ]);
+            } catch (\Throwable $e) {
+                // Fail silently
+            }
+            $count++;
+        }
+
+        return back()->with('success', "Berhasil menyetujui {$count} pengajuan retur.");
+    }
+
+    /**
+     * Update replacement shipment tracking info.
+     */
+    public function updateReplacementTracking(Request $request, ReturnRequest $return): RedirectResponse
+    {
+        $request->validate([
+            'replacement_tracking_number' => 'required|string|max:100',
+            'replacement_courier_name' => 'nullable|string|max:100',
+        ]);
+
+        $return->update([
+            'replacement_tracking_number' => $request->replacement_tracking_number,
+            'replacement_courier_name' => $request->replacement_courier_name,
+        ]);
+
+        if ($return->replacement_transaction_id) {
+            $return->replacementTransaction->update([
+                'tracking_number' => $request->replacement_tracking_number,
+                'courier_name' => $request->replacement_courier_name,
+                'status' => 'dikirim',
+            ]);
+        }
+
+        try {
+            Notification::create([
+                'user_id' => $return->user_id,
+                'title' => 'Barang Pengganti Dikirim',
+                'message' => 'Barang pengganti untuk retur #'.$return->return_number.' telah dikirim. Resi: '.$request->replacement_tracking_number,
+                'type' => 'replacement_shipped',
+                'url' => '/transactions/'.($return->replacement_transaction_id ?? $return->transaction_id),
+                'is_read' => false,
+            ]);
+        } catch (\Throwable $e) {
+            // Fail silently
+        }
+
+        return back()->with('success', 'Nomor resi barang pengganti berhasil disimpan.');
+    }
+
+    /**
+     * Mark refund as fully completed.
+     */
+    public function completeRefund(Request $request, ReturnRequest $return): RedirectResponse
+    {
+        if ($return->status !== 'refund_diproses') {
+            return back()->with('error', 'Status tidak valid untuk menyelesaikan refund.');
+        }
+
+        $return->update(['status' => 'selesai']);
+        $return->transaction->update(['return_status' => 'selesai']);
+
+        try {
+            $amount = 'Rp '.number_format($return->refund_amount, 0, ',', '.');
+            Notification::create([
+                'user_id' => $return->user_id,
+                'title' => 'Refund Selesai',
+                'message' => "Refund sebesar {$amount} untuk retur #{$return->return_number} telah selesai diproses.",
+                'type' => 'refund_completed',
+                'url' => '/transactions/'.$return->transaction_id,
+                'is_read' => false,
+            ]);
+        } catch (\Throwable $e) {
+            // Fail silently
+        }
+
+        return back()->with('success', 'Retur berhasil diselesaikan.');
+    }
+
+    /**
      * Authorize seller access to return request.
      */
     private function authorizeSellerReturn(Request $request, ReturnRequest $return): void
@@ -726,11 +491,7 @@ class ReturnController extends Controller
         $user = $request->user();
         if ($user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin'])) {
             $sellerProductIds = DB::table('products')->where('user_id', $user->id)->pluck('id');
-            $hasProduct = DB::table('transaction_items')
-                ->where('transaction_id', $return->transaction_id)
-                ->whereIn('product_id', $sellerProductIds)
-                ->exists();
-
+            $hasProduct = $return->transaction->items()->whereIn('product_id', $sellerProductIds)->exists();
             if (! $hasProduct) {
                 abort(403, 'Anda tidak memiliki akses ke pengajuan retur ini.');
             }

@@ -7,6 +7,7 @@ use App\Models\PaymentMethod;
 use App\Models\ProductReview;
 use App\Models\Setting;
 use App\Models\Transaction;
+use App\Services\BiteshipService;
 use App\Services\KomerceService;
 use App\Services\MidtransService as MidtransServiceAlias;
 use Illuminate\Http\RedirectResponse;
@@ -360,6 +361,7 @@ class TransactionController extends Controller
             'userBankAccounts' => $request->user()->customerBankAccounts()->orderByDesc('is_primary')->get(),
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
+            'biteshipEnabled' => BiteshipService::isEnabled(),
         ]);
     }
 
@@ -489,8 +491,11 @@ class TransactionController extends Controller
             abort(403);
         }
 
-        if ($transaction->status !== 'dikirim') {
-            return redirect()->back()->with('error', 'Status pesanan harus dikirim terlebih dahulu.');
+        $canComplete = $transaction->status === 'dikirim'
+            || ($transaction->shipping_courier === 'self_pickup' && $transaction->status === 'out_for_pickup');
+
+        if (! $canComplete) {
+            return redirect()->back()->with('error', 'Status pesanan belum dapat diselesaikan.');
         }
 
         $transaction->update([

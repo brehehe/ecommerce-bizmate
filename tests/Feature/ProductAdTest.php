@@ -23,7 +23,7 @@ test('super admin and admin can view ad index page with wallet and kpis', functi
     ]);
 
     ProductAd::create([
-        'user_id' => $seller->id,
+        'user_id' => $admin->id,
         'product_id' => $product->id,
         'ad_type' => 'cpc',
         'bid_per_click' => 500,
@@ -31,7 +31,7 @@ test('super admin and admin can view ad index page with wallet and kpis', functi
         'status' => 'active',
     ]);
 
-    $response = $this->actingAs($seller)->get(route('admin.ads.index'));
+    $response = $this->actingAs($admin)->get(route('admin.ads.index'));
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
@@ -123,13 +123,13 @@ test('admin can request top up and confirm top up status', function () {
     $orderId = $response->json('order_id');
     $this->assertDatabaseHas('seller_ad_transactions', [
         'order_id' => $orderId,
-        'user_id' => $seller->id,
+        'user_id' => $admin->id,
         'amount' => 50000,
         'status' => 'pending',
     ]);
 
     // Check & auto confirm in simulation mode
-    $checkResponse = $this->actingAs($seller)->postJson(route('admin.ads.topup.check-status'), [
+    $checkResponse = $this->actingAs($admin)->postJson(route('admin.ads.topup.check-status'), [
         'order_id' => $orderId,
         'auto_confirm' => true,
     ]);
@@ -141,7 +141,7 @@ test('admin can request top up and confirm top up status', function () {
     ]);
 
     $this->assertDatabaseHas('seller_ad_wallets', [
-        'user_id' => $seller->id,
+        'user_id' => $admin->id,
         'balance' => 50000,
     ]);
 });

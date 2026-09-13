@@ -248,3 +248,52 @@ test('scanning an out_for_pickup order automatically transitions it to dikirim a
     expect($fresh->courier_user_id)->toBe($kurir->id);
     expect($fresh->tracking_number)->not->toBeNull()->toStartWith('RSI-');
 });
+
+test('admin can assign a store courier to a transaction via tracking update', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('Super Admin');
+
+    $kurir = makeKurir();
+    $trx = makeStoreCourierTransaction('dikemas');
+
+    $this->actingAs($admin)
+        ->post("/admin/transactions/{$trx->id}/tracking", [
+            'courier_user_id' => $kurir->id,
+        ])
+        ->assertRedirect();
+
+    $fresh = $trx->fresh();
+    expect($fresh->courier_user_id)->toBe($kurir->id);
+
+    $history = $fresh->statusHistories()->where('description', 'like', "%{$kurir->name}%")->first();
+    expect($history)->not->toBeNull();
+});
+
+test('admin can generate store booking and tracking number', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole('Super Admin');
+
+    $customer = User::factory()->create();
+    $customer->assignRole('Customer');
+
+    $trx = Transaction::factory()->create([
+        'shipping_courier' => 'store_courier',
+        'status' => 'diproses',
+        'booking_code' => null,
+        'tracking_number' => null,
+        'user_id' => $customer->id,
+    ]);
+
+    $this->actingAs($admin)
+        ->post("/admin/transactions/{$trx->id}/tracking", [
+            'booking_code' => 'ST-'.$trx->transaction_number,
+            'tracking_number' => 'RSI-'.$trx->transaction_number,
+            'status' => 'dikemas',
+        ])
+        ->assertRedirect();
+
+    $fresh = $trx->fresh();
+    expect($fresh->status)->toBe('dikemas');
+    expect($fresh->booking_code)->toBe('ST-'.$trx->transaction_number);
+    expect($fresh->tracking_number)->toBe('RSI-'.$trx->transaction_number);
+});

@@ -5,6 +5,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function () {
+    app()->setLocale('id');
+});
+
 test('invalid email on registration shows a translated message, not the raw key', function () {
     $response = $this->post('/register', [
         'name' => 'Test User',

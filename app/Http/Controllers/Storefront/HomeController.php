@@ -130,6 +130,7 @@ class HomeController extends Controller
                     ->withCount('reviews as review_count')
                     ->activeAndNotExpired()
                     ->orderedLatest()
+                    ->take(24)
                     ->get();
 
                 // If any promoted product is missing from active list, fetch and prepend it

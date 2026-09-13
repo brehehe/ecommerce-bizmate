@@ -16,7 +16,7 @@ use App\Models\Transaction;
 use App\Services\KomerceService;
 use App\Services\MembershipService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Middleware;
 
@@ -134,108 +134,110 @@ class HandleInertiaRequests extends Middleware
         $chatStickers = [];
 
         try {
-            if (Schema::hasTable('settings')) {
-                $settings = Setting::pluck('value', 'key')->all();
+            $settings = app()->environment('testing')
+                ? Setting::pluck('value', 'key')->all()
+                : Cache::remember('global_settings_map', 60, function () {
+                    return Setting::pluck('value', 'key')->all();
+                });
 
-                $primaryColor = $settings['primary_color'] ?? $primaryColor;
-                $secondaryColor = $settings['secondary_color'] ?? $secondaryColor;
-                $taxEnabled = ($settings['tax_enabled'] ?? null) === '1';
-                $taxPercentage = $settings['tax_percentage'] ?? 0;
-                $storeName = $settings['store_name'] ?? $storeName;
-                $storeAppName = $settings['store_app_name'] ?? $storeName;
-                $storeLogo = $settings['store_logo'] ?? null;
-                $storeIcon = $settings['store_icon'] ?? null;
-                $setupTourCompleted = ($settings['setup_tour_completed'] ?? null) === '1';
-                $cartButtonStyle = $settings['storefront_cart_button_style'] ?? 'button';
-                $showIntroAnimation = ($settings['show_intro_animation'] ?? '1') !== '0';
-                $storefrontDefaultTheme = $settings['storefront_default_theme'] ?? 'light';
-                $showBrands = ($settings['show_brands'] ?? '1') !== '0';
+            $primaryColor = $settings['primary_color'] ?? $primaryColor;
+            $secondaryColor = $settings['secondary_color'] ?? $secondaryColor;
+            $taxEnabled = ($settings['tax_enabled'] ?? null) === '1';
+            $taxPercentage = $settings['tax_percentage'] ?? 0;
+            $storeName = $settings['store_name'] ?? $storeName;
+            $storeAppName = $settings['store_app_name'] ?? $storeName;
+            $storeLogo = $settings['store_logo'] ?? null;
+            $storeIcon = $settings['store_icon'] ?? null;
+            $setupTourCompleted = ($settings['setup_tour_completed'] ?? null) === '1';
+            $cartButtonStyle = $settings['storefront_cart_button_style'] ?? 'button';
+            $showIntroAnimation = ($settings['show_intro_animation'] ?? '1') !== '0';
+            $storefrontDefaultTheme = $settings['storefront_default_theme'] ?? 'light';
+            $showBrands = ($settings['show_brands'] ?? '1') !== '0';
 
-                $coinsEnabled = ($settings['coins_enabled'] ?? null) === '1';
-                $coinConversionRate = (float) ($settings['coin_conversion_rate'] ?? 1);
-                $coinEarningMethod = $settings['coin_earning_method'] ?? 'proportional';
-                $coinEarningRateRupiah = (float) ($settings['coin_earning_rate_rupiah'] ?? 1000);
-                $coinEarningRateCoins = (float) ($settings['coin_earning_rate_coins'] ?? 1);
+            $coinsEnabled = ($settings['coins_enabled'] ?? null) === '1';
+            $coinConversionRate = (float) ($settings['coin_conversion_rate'] ?? 1);
+            $coinEarningMethod = $settings['coin_earning_method'] ?? 'proportional';
+            $coinEarningRateRupiah = (float) ($settings['coin_earning_rate_rupiah'] ?? 1000);
+            $coinEarningRateCoins = (float) ($settings['coin_earning_rate_coins'] ?? 1);
 
-                $tiersVal = $settings['coin_earning_tiers'] ?? null;
-                $coinEarningTiers = $tiersVal ? json_decode($tiersVal, true) : [];
-                if (! is_array($coinEarningTiers)) {
-                    $coinEarningTiers = [];
-                }
-
-                $coinMinPurchaseRedeem = (float) ($settings['coin_min_purchase_redeem'] ?? 0);
-                $coinMaxRedeemPerTxn = (float) ($settings['coin_max_redeem_per_txn'] ?? 50000);
-                $coinMaxRedeemPercentage = (float) ($settings['coin_max_redeem_percentage'] ?? 100);
-                $coinTermsConditions = $settings['coin_terms_conditions'] ?? '';
-
-                $holidayMode = ($settings['holiday_mode'] ?? null) === '1';
-                $alwaysOpen = ($settings['always_open'] ?? null) !== '0'; // default true if not set
-                $opsHoursVal = $settings['operational_hours'] ?? null;
-
-                $refundPointsEnabled = ($settings['refund_points_enabled'] ?? null) === '1';
-                $refundTransferDays = $settings['refund_transfer_days'] ?? '3-5';
-                $refundMinAmountTransfer = (float) ($settings['refund_min_amount_transfer'] ?? 0);
-                $refundMinAmountPoints = (float) ($settings['refund_min_amount_points'] ?? 0);
-                $refundTermsTransfer = $settings['refund_terms_transfer'] ?? '';
-                $refundTermsPoints = $settings['refund_terms_points'] ?? '';
-
-                $shippingDeliveryEnabled = config('app.logistic_enabled', true) && ($settings['shipping_delivery_enabled'] ?? null) === '1';
-                $paymentApiEnabled = ($settings['payment_api_enabled'] ?? null) === '1';
-                $paymentApiAdminFee = (float) ($settings['payment_api_admin_fee'] ?? 0);
-                $qrislyApiEnabled = ($settings['qrisly_api_enabled'] ?? null) === '1';
-                $qrislyApiAdminFee = (float) ($settings['qrisly_api_admin_fee'] ?? 0);
-                $komerceDeliveryUrl = KomerceService::getSetting('komerce_delivery_url', 'app.rajaongkir.delivery_url');
-                $midtransApiEnabled = config('app.midtrans_enabled', true) && ($settings['midtrans_api_enabled'] ?? null) === '1';
-                $midtransClientKey = $settings['midtrans_client_key'] ?? '';
-                $midtransSnapUrl = $settings['midtrans_snap_url'] ?? 'https://app.sandbox.midtrans.com';
-
-                $selfPickupEnabled = ($settings['self_pickup_enabled'] ?? null) === '1';
-                $selfPickupFee = (float) ($settings['self_pickup_fee'] ?? 0);
-                $storeCourierEnabled = ($settings['store_courier_enabled'] ?? null) === '1';
-                $storeCourierType = $settings['store_courier_type'] ?? 'flat';
-                $storeCourierFlatFee = (float) ($settings['store_courier_flat_fee'] ?? 0);
-                $storeCourierPerKmFee = (float) ($settings['store_courier_per_km_fee'] ?? 0);
-                $storeCourierMaxRadius = (float) ($settings['store_courier_max_radius'] ?? 50);
-                $storeCourierRoundUp = ($settings['store_courier_round_up'] ?? null) === '1';
-
-                $tieredRatesVal = $settings['store_courier_tiered_rates'] ?? null;
-                $storeCourierTieredRates = $tieredRatesVal ? json_decode($tieredRatesVal, true) : [];
-                if (! is_array($storeCourierTieredRates)) {
-                    $storeCourierTieredRates = [];
-                }
-
-                $storeAddress = $settings['address'] ?? '';
-                $storeProvince = $settings['province_name'] ?? '';
-                $storeRegency = $settings['regency_name'] ?? '';
-                $storeDistrict = $settings['district_name'] ?? '';
-                $storeVillage = $settings['village_name'] ?? '';
-                $storePostalCode = $settings['postal_code'] ?? '';
-                $storeLatitude = $settings['latitude'] ?? '';
-                $storeLongitude = $settings['longitude'] ?? '';
-
-                $storeEmail = $settings['store_email'] ?? '';
-                $storePhone = $settings['store_phone'] ?? '';
-                $storeWhatsapp = $settings['store_whatsapp'] ?? '';
-                $storeInstagram = $settings['store_instagram'] ?? '';
-                $storeTiktok = $settings['store_tiktok'] ?? '';
-                $storeDescription = $settings['store_description'] ?? '';
-
-                $operationalHours = $opsHoursVal ? json_decode($opsHoursVal, true) : [
-                    'monday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
-                    'tuesday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
-                    'wednesday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
-                    'thursday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
-                    'friday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
-                    'saturday' => ['active' => true, 'open' => '09:00', 'close' => '15:00'],
-                    'sunday' => ['active' => false, 'open' => '09:00', 'close' => '12:00'],
-                ];
-                if (! is_array($operationalHours)) {
-                    $operationalHours = [];
-                }
+            $tiersVal = $settings['coin_earning_tiers'] ?? null;
+            $coinEarningTiers = $tiersVal ? json_decode($tiersVal, true) : [];
+            if (! is_array($coinEarningTiers)) {
+                $coinEarningTiers = [];
             }
 
-            if (Schema::hasTable('social_media')) {
-                $socialMediaLinks = SocialMedia::where('is_active', true)
+            $coinMinPurchaseRedeem = (float) ($settings['coin_min_purchase_redeem'] ?? 0);
+            $coinMaxRedeemPerTxn = (float) ($settings['coin_max_redeem_per_txn'] ?? 50000);
+            $coinMaxRedeemPercentage = (float) ($settings['coin_max_redeem_percentage'] ?? 100);
+            $coinTermsConditions = $settings['coin_terms_conditions'] ?? '';
+
+            $holidayMode = ($settings['holiday_mode'] ?? null) === '1';
+            $alwaysOpen = ($settings['always_open'] ?? null) !== '0'; // default true if not set
+            $opsHoursVal = $settings['operational_hours'] ?? null;
+
+            $refundPointsEnabled = ($settings['refund_points_enabled'] ?? null) === '1';
+            $refundTransferDays = $settings['refund_transfer_days'] ?? '3-5';
+            $refundMinAmountTransfer = (float) ($settings['refund_min_amount_transfer'] ?? 0);
+            $refundMinAmountPoints = (float) ($settings['refund_min_amount_points'] ?? 0);
+            $refundTermsTransfer = $settings['refund_terms_transfer'] ?? '';
+            $refundTermsPoints = $settings['refund_terms_points'] ?? '';
+
+            $shippingDeliveryEnabled = config('app.logistic_enabled', true) && ($settings['shipping_delivery_enabled'] ?? null) === '1';
+            $paymentApiEnabled = ($settings['payment_api_enabled'] ?? null) === '1';
+            $paymentApiAdminFee = (float) ($settings['payment_api_admin_fee'] ?? 0);
+            $qrislyApiEnabled = ($settings['qrisly_api_enabled'] ?? null) === '1';
+            $qrislyApiAdminFee = (float) ($settings['qrisly_api_admin_fee'] ?? 0);
+            $komerceDeliveryUrl = KomerceService::getSetting('komerce_delivery_url', 'app.rajaongkir.delivery_url');
+            $midtransApiEnabled = config('app.midtrans_enabled', true) && ($settings['midtrans_api_enabled'] ?? null) === '1';
+            $midtransClientKey = $settings['midtrans_client_key'] ?? '';
+            $midtransSnapUrl = $settings['midtrans_snap_url'] ?? 'https://app.sandbox.midtrans.com';
+
+            $selfPickupEnabled = ($settings['self_pickup_enabled'] ?? null) === '1';
+            $selfPickupFee = (float) ($settings['self_pickup_fee'] ?? 0);
+            $storeCourierEnabled = ($settings['store_courier_enabled'] ?? null) === '1';
+            $storeCourierType = $settings['store_courier_type'] ?? 'flat';
+            $storeCourierFlatFee = (float) ($settings['store_courier_flat_fee'] ?? 0);
+            $storeCourierPerKmFee = (float) ($settings['store_courier_per_km_fee'] ?? 0);
+            $storeCourierMaxRadius = (float) ($settings['store_courier_max_radius'] ?? 50);
+            $storeCourierRoundUp = ($settings['store_courier_round_up'] ?? null) === '1';
+
+            $tieredRatesVal = $settings['store_courier_tiered_rates'] ?? null;
+            $storeCourierTieredRates = $tieredRatesVal ? json_decode($tieredRatesVal, true) : [];
+            if (! is_array($storeCourierTieredRates)) {
+                $storeCourierTieredRates = [];
+            }
+
+            $storeAddress = $settings['address'] ?? '';
+            $storeProvince = $settings['province_name'] ?? '';
+            $storeRegency = $settings['regency_name'] ?? '';
+            $storeDistrict = $settings['district_name'] ?? '';
+            $storeVillage = $settings['village_name'] ?? '';
+            $storePostalCode = $settings['postal_code'] ?? '';
+            $storeLatitude = $settings['latitude'] ?? '';
+            $storeLongitude = $settings['longitude'] ?? '';
+
+            $storeEmail = $settings['store_email'] ?? '';
+            $storePhone = $settings['store_phone'] ?? '';
+            $storeWhatsapp = $settings['store_whatsapp'] ?? '';
+            $storeInstagram = $settings['store_instagram'] ?? '';
+            $storeTiktok = $settings['store_tiktok'] ?? '';
+            $storeDescription = $settings['store_description'] ?? '';
+
+            $operationalHours = $opsHoursVal ? json_decode($opsHoursVal, true) : [
+                'monday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
+                'tuesday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
+                'wednesday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
+                'thursday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
+                'friday' => ['active' => true, 'open' => '09:00', 'close' => '17:00'],
+                'saturday' => ['active' => true, 'open' => '09:00', 'close' => '15:00'],
+                'sunday' => ['active' => false, 'open' => '09:00', 'close' => '12:00'],
+            ];
+            if (! is_array($operationalHours)) {
+                $operationalHours = [];
+            }
+
+            $socialMediaLinks = app()->environment('testing')
+                ? SocialMedia::where('is_active', true)
                     ->orderBy('order')
                     ->orderBy('id')
                     ->get()
@@ -246,11 +248,24 @@ class HandleInertiaRequests extends Middleware
                         'url' => $s->url,
                         'icon' => $s->icon,
                     ])
-                    ->toArray();
-            }
+                    ->toArray()
+                : Cache::remember('global_social_media_links', 60, function () {
+                    return SocialMedia::where('is_active', true)
+                        ->orderBy('order')
+                        ->orderBy('id')
+                        ->get()
+                        ->map(fn ($s) => [
+                            'id' => $s->id,
+                            'platform' => $s->platform,
+                            'label' => $s->label,
+                            'url' => $s->url,
+                            'icon' => $s->icon,
+                        ])
+                        ->toArray();
+                });
 
-            if (Schema::hasTable('chat_stickers')) {
-                $chatStickers = ChatSticker::where('is_active', true)
+            $chatStickers = app()->environment('testing')
+                ? ChatSticker::where('is_active', true)
                     ->orderBy('order')
                     ->orderBy('name')
                     ->get()
@@ -260,8 +275,20 @@ class HandleInertiaRequests extends Middleware
                         'category' => $s->category,
                         'url' => $s->image_url,
                     ])
-                    ->toArray();
-            }
+                    ->toArray()
+                : Cache::remember('global_chat_stickers', 60, function () {
+                    return ChatSticker::where('is_active', true)
+                        ->orderBy('order')
+                        ->orderBy('name')
+                        ->get()
+                        ->map(fn ($s) => [
+                            'id' => $s->id,
+                            'name' => $s->name,
+                            'category' => $s->category,
+                            'url' => $s->image_url,
+                        ])
+                        ->toArray();
+                });
         } catch (\Throwable $e) {
             // Fallback when database is not ready
         }

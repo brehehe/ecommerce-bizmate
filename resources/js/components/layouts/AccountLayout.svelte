@@ -2,7 +2,13 @@
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { page, Link } from '@inertiajs/svelte';
 
-    let { activeMenu = 'profile', children } = $props();
+    let {
+        activeMenu = 'profile',
+        hideMobileHeader = false,
+        hideMobileBottomNav = false,
+        hideSidebarOnMobile = false,
+        children,
+    } = $props();
 
     const primary = $derived(page.props.theme?.primary_color || '#fa7315');
     const secondary = $derived(page.props.theme?.secondary_color || '#0c4cb4');
@@ -24,14 +30,14 @@
     );
 </script>
 
-<StorefrontLayout hideMobileFooter={true}>
-    <div class="min-h-dvh bg-slate-50/60 pb-16 font-sans">
+<StorefrontLayout hideMobileFooter={true} {hideMobileHeader} {hideMobileBottomNav}>
+    <div class="min-h-dvh bg-slate-50/60 pb-3 sm:pb-6 font-sans">
         <div class="max-w-6xl mx-auto px-0 sm:px-4 py-0 sm:py-6 md:py-8">
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-2.5 sm:gap-6 items-start">
                 <!-- ═══════════════════════════════════════════════════
                  LEFT SIDEBAR (Shopee / Tokopedia Style Unified Menu)
                 ═══════════════════════════════════════════════════ -->
-                <div class="col-span-1 space-y-4">
+                <div class="col-span-1 space-y-4 {hideSidebarOnMobile ? 'hidden lg:block' : ''}">
                     <div
                         class="bg-white rounded-none sm:rounded-2xl border-y sm:border border-slate-200/80 shadow-2xs overflow-hidden p-3.5 sm:p-4 space-y-4"
                     >

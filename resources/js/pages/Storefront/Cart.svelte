@@ -223,7 +223,18 @@
 
     const selectedCartSubtotal = $derived(
         selectedItems.reduce(
-            (acc: number, item: any) => acc + (item.subtotal ?? 0),
+            (acc: number, item: any) =>
+                acc +
+                Number(
+                    item.subtotal ??
+                        (item.unit_price ??
+                            item.computed_price ??
+                            item.price ??
+                            item.product?.product_price?.price ??
+                            item.product?.productPrice?.price ??
+                            0) *
+                            item.quantity,
+                ),
             0,
         ),
     );
@@ -688,7 +699,19 @@
                     const isOnPromo = variant
                         ? (variant.is_promo ?? false)
                         : (product?.is_promo ?? false);
-                    return isOnPromo ? acc : acc + (item.subtotal ?? 0);
+                    return isOnPromo
+                        ? acc
+                        : acc +
+                              Number(
+                                  item.subtotal ??
+                                      (item.unit_price ??
+                                          item.computed_price ??
+                                          item.price ??
+                                          item.product?.product_price?.price ??
+                                          item.product?.productPrice?.price ??
+                                          0) *
+                                          item.quantity,
+                              );
                 },
                 0,
             );
@@ -1185,7 +1208,18 @@
                                                         class="text-xs font-black leading-tight"
                                                         style="color: {primary};"
                                                     >
-                                                        {fmt(item.unit_price)}
+                                                        {fmt(
+                                                            item.unit_price ??
+                                                                item.computed_price ??
+                                                                item.price ??
+                                                                item.product
+                                                                    ?.product_price
+                                                                    ?.price ??
+                                                                item.product
+                                                                    ?.productPrice
+                                                                    ?.price ??
+                                                                0,
+                                                        )}
                                                     </span>
                                                 </div>
 
