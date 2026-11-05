@@ -42,6 +42,7 @@ use App\Http\Controllers\Storefront\CategoryController as StorefrontCategoryCont
 use App\Http\Controllers\Storefront\FlashSaleController as StorefrontFlashSaleController;
 use App\Http\Controllers\Storefront\HomeController as StorefrontHomeController;
 use App\Http\Controllers\Storefront\NotificationController as StorefrontNotificationController;
+use App\Http\Controllers\Storefront\OrderTrackingController;
 use App\Http\Controllers\Storefront\ProductController as StorefrontProductController;
 use App\Http\Controllers\Storefront\ProdukTerlarisController as StorefrontProdukTerlarisController;
 use App\Http\Controllers\Storefront\ReviewController as StorefrontReviewController;
@@ -64,6 +65,34 @@ Route::get('/about', [StorefrontController::class, 'about'])->name('about');
 // Ads Public Tracking APIs
 Route::post('/api/ads/track-click', [ProductAdTrackingController::class, 'recordClick'])->name('api.ads.track-click');
 Route::post('/api/ads/track-impressions', [ProductAdTrackingController::class, 'recordImpressions'])->name('api.ads.track-impressions');
+
+// Order Tracking (Cek Pesanan)
+Route::get('/cek-pesanan', [OrderTrackingController::class, 'index'])->name('order.track');
+Route::post('/cek-pesanan/{transaction}/upload-proof', [OrderTrackingController::class, 'uploadProof'])->name('order.track.upload-proof');
+
+// Cart (Accessible to both guests & authenticated users)
+Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
+Route::patch('/cart/bulk-update', [CartController::class, 'bulkUpdate'])->name('cart.bulk-update');
+Route::patch('/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
+Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
+Route::post('/cart/select-vouchers', [CartController::class, 'selectVouchers'])->name('cart.select-vouchers');
+
+// Address Search & Reverse Geocode Proxy APIs (Public for area lookup)
+Route::get('/api/addresses/search', [CustomerAddressController::class, 'searchApi'])->name('api.addresses.search');
+Route::get('/api/addresses/reverse', [CustomerAddressController::class, 'reverseApi'])->name('api.addresses.reverse');
+Route::get('/api/addresses/ip-location', [CustomerAddressController::class, 'ipLocation'])->name('api.addresses.ip-location');
+Route::get('/api/addresses/biteship-areas', [CustomerAddressController::class, 'searchBiteshipAreas'])->name('api.addresses.biteship-areas');
+Route::get('/api/addresses/rajaongkir-areas', [CustomerAddressController::class, 'searchRajaOngkirAreas'])->name('api.addresses.rajaongkir-areas');
+
+// Checkout
+Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
+Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+Route::post('/checkout/apply-voucher', [CheckoutController::class, 'applyVoucher'])->name('checkout.apply-voucher');
+Route::post('/checkout/shipping-cost', [CheckoutController::class, 'shippingCost'])->name('checkout.shipping-cost');
+Route::get('/checkout/cities', [CheckoutController::class, 'cities'])->name('checkout.cities');
+Route::get('/checkout/international-destinations', [CheckoutController::class, 'internationalDestinations'])->name('checkout.international-destinations');
+Route::get('/checkout/komerce/search-destination', [CheckoutController::class, 'searchKomerceDestination'])->name('checkout.komerce.search-destination');
 
 Route::get('/zozzuehmqewbobfo', [AppConfigController::class, 'show'])->name('app-config.show');
 Route::post('/zozzuehmqewbobfo', [AppConfigController::class, 'update'])->name('app-config.update');
@@ -111,12 +140,6 @@ Route::middleware('auth')->group(function () {
         ->name('membership.index');
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
-    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-    Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
-    Route::patch('/cart/bulk-update', [CartController::class, 'bulkUpdate'])->name('cart.bulk-update');
-    Route::patch('/cart/{cartItem}', [CartController::class, 'update'])->name('cart.update');
-    Route::delete('/cart/{cartItem}', [CartController::class, 'destroy'])->name('cart.destroy');
-    Route::post('/cart/select-vouchers', [CartController::class, 'selectVouchers'])->name('cart.select-vouchers');
 
     // Customer Profile Edit (Keep open for email updates)
     Route::get('/profile', [ProfileController::class, 'showCustomerProfile'])->name('profile.edit');
@@ -141,13 +164,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile/addresses/{address}', [CustomerAddressController::class, 'destroy'])->name('profile.addresses.destroy');
     Route::post('/profile/addresses/{address}/make-primary', [CustomerAddressController::class, 'makePrimary'])->name('profile.addresses.make-primary');
 
-    // Address Search & Reverse Geocode Proxy APIs
-    Route::get('/api/addresses/search', [CustomerAddressController::class, 'searchApi'])->name('api.addresses.search');
-    Route::get('/api/addresses/reverse', [CustomerAddressController::class, 'reverseApi'])->name('api.addresses.reverse');
-    Route::get('/api/addresses/ip-location', [CustomerAddressController::class, 'ipLocation'])->name('api.addresses.ip-location');
-    Route::get('/api/addresses/biteship-areas', [CustomerAddressController::class, 'searchBiteshipAreas'])->name('api.addresses.biteship-areas');
-    Route::get('/api/addresses/rajaongkir-areas', [CustomerAddressController::class, 'searchRajaOngkirAreas'])->name('api.addresses.rajaongkir-areas');
-
     // Verified Customer Actions
     Route::middleware('verified')->group(function () {
         // Chat
@@ -160,15 +176,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/chats/{chat}/messages', [ChatController::class, 'store'])->name('chats.store');
         Route::delete('/chats/{chat}', [ChatController::class, 'destroy'])->name('chats.destroy');
         Route::delete('/chats/{chat}/messages/{message}', [ChatController::class, 'destroyMessage'])->name('chats.messages.destroy');
-
-        // Checkout
-        Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
-        Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
-        Route::post('/checkout/apply-voucher', [CheckoutController::class, 'applyVoucher'])->name('checkout.apply-voucher');
-        Route::post('/checkout/shipping-cost', [CheckoutController::class, 'shippingCost'])->name('checkout.shipping-cost');
-        Route::get('/checkout/cities', [CheckoutController::class, 'cities'])->name('checkout.cities');
-        Route::get('/checkout/international-destinations', [CheckoutController::class, 'internationalDestinations'])->name('checkout.international-destinations');
-        Route::get('/checkout/komerce/search-destination', [CheckoutController::class, 'searchKomerceDestination'])->name('checkout.komerce.search-destination');
 
         // Transaction (Customer)
         Route::get('/transactions', [StorefrontTransactionController::class, 'index'])->name('transactions.index');
@@ -401,6 +408,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::post('/transactions/{transaction}/delivery-history', [AdminTransactionController::class, 'addDeliveryHistory'])->name('transactions.add-delivery-history');
     Route::post('/transactions/{transaction}/delivery-photos', [AdminTransactionController::class, 'uploadDeliveryPhotos'])->name('transactions.upload-delivery-photos');
     Route::delete('/transactions/{transaction}/delivery-photos/{index}', [AdminTransactionController::class, 'deleteDeliveryPhoto'])->name('transactions.delete-delivery-photo');
+    Route::post('/transactions/{transaction}/pickup-time', [AdminTransactionController::class, 'updatePickupTime'])->name('transactions.update-pickup-time');
     Route::post('/transactions/{transaction}/komerce/store', [KomerceShipmentController::class, 'storeShipment'])->name('transactions.komerce.store');
     Route::post('/transactions/{transaction}/komerce/pickup', [KomerceShipmentController::class, 'requestPickup'])->name('transactions.komerce.pickup');
     Route::get('/transactions/{transaction}/komerce/print', [KomerceShipmentController::class, 'printLabel'])->name('transactions.komerce.print');

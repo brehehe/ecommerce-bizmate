@@ -735,6 +735,59 @@
     let trackingLoading = $state(false);
     let trackingErr = $state('');
 
+    let showEditPickupModal = $state(false);
+    let adminPickupDateTime = $state('');
+    let updatingPickupTime = $state(false);
+
+    function openEditPickupModal() {
+        if (transaction.pickup_at) {
+            const d = new Date(transaction.pickup_at);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const date = String(d.getDate()).padStart(2, '0');
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            adminPickupDateTime = `${year}-${month}-${date}T${hours}:${minutes}`;
+        } else {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + 60);
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const date = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            adminPickupDateTime = `${year}-${month}-${date}T${hours}:${minutes}`;
+        }
+        showEditPickupModal = true;
+    }
+
+    function submitUpdatePickupTime() {
+        if (!adminPickupDateTime) {
+            showToast('Pilih tanggal dan jam pickup.', 'error');
+            return;
+        }
+        updatingPickupTime = true;
+        router.post(
+            `/admin/transactions/${transaction.id}/pickup-time`,
+            {
+                pickup_at: adminPickupDateTime.replace('T', ' ') + ':00',
+            },
+            {
+                onSuccess: () => {
+                    showEditPickupModal = false;
+                    showToast('Jadwal pengambilan berhasil diperbarui.', 'success');
+                },
+                onError: (err: any) => {
+                    const first = Object.values(err)[0] as string;
+                    showToast(first ?? 'Gagal memperbarui jadwal pengambilan.', 'error');
+                },
+                onFinish: () => {
+                    updatingPickupTime = false;
+                },
+            }
+        );
+    }
+
     function translateBiteshipDesc(desc) {
         if (!desc) return '';
         const descLower = desc.toLowerCase();
@@ -1024,7 +1077,7 @@
                     <i class="ti ti-arrow-left text-sm"></i>
                 </a>
                 <div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
                         <h1 class="font-mono text-lg font-bold tracking-tight text-slate-900">
                             {transaction.transaction_number}
                         </h1>
@@ -1034,8 +1087,20 @@
                         >
                             {getStatusLabel(transaction.status, transaction.shipping_courier)}
                         </span>
+                        {#if transaction.shipping_courier === 'self_pickup'}
+                            <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                <i class="ti ti-building-store text-xs"></i> Self Pickup
+                            </span>
+                        {/if}
                     </div>
-                    <p class="mt-0.5 text-xs text-slate-400">{fmtDate(transaction.created_at)}</p>
+                    <div class="mt-0.5 flex items-center gap-3 text-xs text-slate-400 flex-wrap">
+                        <span>Dibuat: {fmtDate(transaction.created_at)}</span>
+                        {#if transaction.shipping_courier === 'self_pickup' && transaction.pickup_at_formatted}
+                            <span class="font-semibold text-purple-700 flex items-center gap-1">
+                                <i class="ti ti-clock text-xs"></i> Jadwal Pickup: {transaction.pickup_at_formatted}
+                            </span>
+                        {/if}
+                    </div>
                 </div>
             </div>
 
@@ -1770,6 +1835,54 @@
                             </div>
                         </div>
                     </div>
+                {:else if transaction.shipping_courier === 'self_pickup'}
+                    <!-- Specialized Self Pickup Card -->
+                    <div class="overflow-hidden rounded-xl border border-purple-200 bg-white shadow-2xs">
+                        <div class="border-b border-purple-100 bg-purple-50/60 px-5 py-3.5 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i class="ti ti-building-store text-base text-purple-600"></i>
+                                <p class="text-sm font-bold text-slate-800">Ambil di Toko (Self Pickup)</p>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200">
+                                {getStatusLabel(transaction.status, 'self_pickup')}
+                            </span>
+                        </div>
+                        <div class="p-5 space-y-4">
+                            <!-- Prominent Pickup Time Schedule Box -->
+                            <div class="p-4 bg-gradient-to-br from-purple-50 to-indigo-50/40 rounded-xl border border-purple-200/80 flex items-start justify-between gap-3">
+                                <div class="space-y-1 min-w-0">
+                                    <p class="text-[10.5px] font-black uppercase tracking-wider text-purple-700 flex items-center gap-1.5">
+                                        <i class="ti ti-calendar-time text-sm"></i> Jadwal Waktu Pengambilan
+                                    </p>
+                                    <p class="text-base font-extrabold text-slate-900">
+                                        {transaction.pickup_at_formatted || 'Waktu belum ditentukan'}
+                                    </p>
+                                    <p class="text-[11px] text-slate-500 font-medium">
+                                        Pelanggan dijadwalkan mengambil pesanan di toko pada waktu di atas.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onclick={openEditPickupModal}
+                                    class="px-2.5 py-1.5 bg-white hover:bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-2xs shrink-0"
+                                    title="Ubah Jadwal Pengambilan"
+                                >
+                                    <i class="ti ti-edit text-xs"></i>
+                                    <span>Ubah</span>
+                                </button>
+                            </div>
+
+                            <!-- Store Address -->
+                            <div class="flex items-start gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                                <i class="ti ti-map-pin text-sm text-purple-600 mt-0.5 shrink-0"></i>
+                                <div>
+                                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Lokasi Toko Pengambilan</p>
+                                    <p class="text-xs font-semibold text-slate-800">{storeName || 'Toko Utama'}</p>
+                                    <p class="text-[11px] text-slate-500 mt-0.5">Pesanan diserahkan langsung kepada pelanggan di outlet toko.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 {:else}
                     <!-- Regular / Third-Party Shipping address -->
                     <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -2124,6 +2237,44 @@
                             <i class="ti ti-check text-sm"></i>
                             <span>Simpan Perubahan</span>
                         {/if}
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
+
+    <!-- Edit Self Pickup Schedule Modal -->
+    {#if showEditPickupModal}
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            onclick={(e) => { if (e.target === e.currentTarget) showEditPickupModal = false; }}>
+            <div class="w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                    <div class="flex items-center gap-2">
+                        <i class="ti ti-calendar-time text-base text-purple-600"></i>
+                        <h3 class="text-sm font-bold text-slate-800">Ubah Jadwal Pengambilan</h3>
+                    </div>
+                    <button type="button" onclick={() => showEditPickupModal = false}
+                        class="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer" aria-label="Tutup">
+                        <i class="ti ti-x text-sm"></i>
+                    </button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">Tanggal & Jam Pengambilan (Pickup)</label>
+                        <input
+                            type="datetime-local"
+                            bind:value={adminPickupDateTime}
+                            class="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-purple-500 focus:outline-none"
+                        />
+                        <p class="text-[11px] text-slate-400 mt-1">Sesuaikan jadwal estimasi pengambilan pelanggan di toko.</p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-3 bg-slate-50">
+                    <button type="button" onclick={() => showEditPickupModal = false}
+                        class="rounded-lg border border-slate-200 px-4 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-white cursor-pointer">Batal</button>
+                    <button type="button" onclick={submitUpdatePickupTime} disabled={updatingPickupTime}
+                        class="rounded-lg px-4 py-1.5 text-xs font-bold text-white transition-opacity bg-purple-600 hover:bg-purple-700 disabled:opacity-50 cursor-pointer shadow-xs">
+                        {updatingPickupTime ? 'Menyimpan...' : 'Simpan Perubahan'}
                     </button>
                 </div>
             </div>

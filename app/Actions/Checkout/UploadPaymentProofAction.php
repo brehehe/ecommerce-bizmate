@@ -14,7 +14,7 @@ class UploadPaymentProofAction
     /**
      * Execute payment proof upload.
      */
-    public function execute(Transaction $transaction, UploadedFile $file, User $user): Transaction
+    public function execute(Transaction $transaction, UploadedFile $file, ?User $user = null): Transaction
     {
         return DB::transaction(function () use ($transaction, $file, $user) {
             // Delete old proof if exists
@@ -47,7 +47,7 @@ class UploadPaymentProofAction
             $transaction->statusHistories()->create([
                 'status' => 'menunggu',
                 'description' => 'Bukti pembayaran berhasil diunggah. Menunggu konfirmasi admin.',
-                'created_by' => $user->id,
+                'created_by' => $user?->id ?? $transaction->user_id,
             ]);
 
             return $transaction;

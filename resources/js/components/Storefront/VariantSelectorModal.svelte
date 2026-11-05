@@ -270,8 +270,17 @@
         }
     }
 
+    const isCheckoutWithoutLogin = $derived(
+        Boolean(
+            (page.props as any).app_config?.is_checkout_without_login ??
+            (page.props as any).settings?.is_checkout_without_login ??
+            (page.props as any).isCheckoutWithoutLogin ??
+            false,
+        ),
+    );
+
     function submitAddToCart() {
-        if (!user) {
+        if (!user && !isCheckoutWithoutLogin) {
             onClose();
             window.dispatchEvent(new CustomEvent('open-login-modal'));
             return;

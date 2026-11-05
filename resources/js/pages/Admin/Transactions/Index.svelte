@@ -808,6 +808,13 @@
                                                         {typeof trx.payment_method === 'object' ? trx.payment_method.name : trx.payment_method}
                                                     </p>
                                                 {/if}
+                                                {#if trx.shipping_courier === 'self_pickup'}
+                                                    <div class="mt-1 flex items-center gap-1">
+                                                        <span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                                            <i class="ti ti-building-store text-xs"></i> Self Pickup
+                                                        </span>
+                                                    </div>
+                                                {/if}
                                             </div>
                                         </td>
 
@@ -851,6 +858,12 @@
                                         <!-- Tanggal -->
                                         <td class="px-4 py-3" data-label="Tanggal">
                                             <p class="whitespace-nowrap text-xs text-slate-500">{trx.created_at_formatted ?? '—'}</p>
+                                            {#if trx.shipping_courier === 'self_pickup' && trx.pickup_at_formatted}
+                                                <div class="mt-1 flex items-center gap-1 whitespace-nowrap text-[10.5px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100" title="Waktu Pengambilan di Toko">
+                                                    <i class="ti ti-clock text-xs shrink-0"></i>
+                                                    <span>{trx.pickup_at_formatted}</span>
+                                                </div>
+                                            {/if}
                                         </td>
 
                                         <!-- Aksi -->

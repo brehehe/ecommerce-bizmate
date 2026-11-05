@@ -145,7 +145,122 @@
         couriers = [],
         isNewUser = false,
         biteshipEnabled = false,
+        isGuestCheckout = false,
     } = $props();
+
+    const isGuest = $derived(isGuestCheckout || !(page.props as any).auth?.user);
+
+    // Guest Customer Information States
+    let guestName = $state('');
+    let guestEmail = $state('');
+    let guestPhone = $state('');
+
+    // Guest Address States
+    let guestReceiverName = $state('');
+    let guestReceiverPhone = $state('');
+    let guestSameAsCustomer = $state(true);
+    let guestFullAddress = $state('');
+    let guestProvinceId = $state('');
+    let guestProvinceName = $state('');
+    let guestRegencyId = $state('');
+    let guestRegencyName = $state('');
+    let guestDistrictId = $state('');
+    let guestDistrictName = $state('');
+    let guestPostalCode = $state('');
+    let guestVillageId = $state('');
+    let guestVillageName = $state('');
+    let guestBiteshipAreaId = $state('');
+    let guestRajaongkirDestId = $state('');
+    let guestLat = $state<number | null>(null);
+    let guestLng = $state<number | null>(null);
+
+    // Guest destination search states
+    let destinationQuery = $state('');
+    let destinationResults = $state<any[]>([]);
+    let isSearchingDestination = $state(false);
+    let showDestinationDropdown = $state(false);
+    let showManualRegionalFields = $state(false);
+    let destinationSearchTimeout: any = null;
+
+    function handleDestinationSearch(val: string) {
+        destinationQuery = val;
+        clearTimeout(destinationSearchTimeout);
+        if (!val || val.trim().length < 3) {
+            destinationResults = [];
+            showDestinationDropdown = false;
+            return;
+        }
+        destinationSearchTimeout = setTimeout(async () => {
+            isSearchingDestination = true;
+            try {
+                const resp = await fetch(
+                    `/checkout/komerce/search-destination?keyword=${encodeURIComponent(val.trim())}`,
+                );
+                if (resp.ok) {
+                    const json = await resp.json();
+                    destinationResults = json.data ?? [];
+                    showDestinationDropdown = destinationResults.length > 0;
+                } else {
+                    const bResp = await fetch(
+                        `/api/addresses/biteship-areas?q=${encodeURIComponent(val.trim())}`,
+                    );
+                    if (bResp.ok) {
+                        const bJson = await bResp.json();
+                        destinationResults = (bJson.areas ?? []).map((a: any) => ({
+                            id: a.id,
+                            label: a.name,
+                            city_name: a.administrative_division_level_2_name,
+                            district_name: a.administrative_division_level_3_name,
+                            postal_code: a.postal_code,
+                        }));
+                        showDestinationDropdown = destinationResults.length > 0;
+                    }
+                }
+            } catch (err) {
+                console.error('Error searching destination:', err);
+            } finally {
+                isSearchingDestination = false;
+            }
+        }, 350);
+    }
+
+    function selectDestination(item: any) {
+        destinationQuery =
+            item.label ||
+            `${item.district_name || ''}, ${item.city_name || ''} ${item.postal_code || item.zip_code || ''}`;
+        guestRegencyName = item.city_name || '';
+        guestDistrictName = item.district_name || '';
+        guestPostalCode = String(item.postal_code || item.zip_code || '');
+        guestBiteshipAreaId = item.id || '';
+        guestRajaongkirDestId = item.id || '';
+        showDestinationDropdown = false;
+    }
+
+    function clearDestination() {
+        destinationQuery = '';
+        guestRegencyName = '';
+        guestDistrictName = '';
+        guestPostalCode = '';
+        guestBiteshipAreaId = '';
+        guestRajaongkirDestId = '';
+        destinationResults = [];
+        showDestinationDropdown = false;
+    }
+
+    const isGuestCustomerValid = $derived(
+        !isGuest ||
+            (guestName.trim().length > 0 &&
+                guestPhone.trim().length >= 8 &&
+                guestEmail.trim().includes('@')),
+    );
+
+    const isGuestAddressFilled = $derived(
+        !isGuest ||
+            (guestFullAddress.trim().length > 0 &&
+                (guestRegencyName.trim().length > 0 ||
+                    guestBiteshipAreaId.trim().length > 0) &&
+                guestPostalCode.trim().length > 0),
+    );
 
     const primary = $derived(
         (page.props as any).theme?.primary_color ?? '#ee4d2d',
@@ -264,6 +379,43 @@
     });
     let showAddressModal = $state(false);
 
+    const guestAddressObject = $derived.by(() => {
+        if (!isGuest) return null;
+        const finalReceiver = guestSameAsCustomer
+            ? guestName
+            : guestReceiverName || guestName;
+        const finalPhone = guestSameAsCustomer
+            ? guestPhone
+            : guestReceiverPhone || guestPhone;
+        return {
+            id: 'guest-address',
+            receiver_name: finalReceiver || 'Pelanggan',
+            phone_number: finalPhone || '',
+            full_address: guestFullAddress,
+            province_id: guestProvinceId,
+            province_name: guestProvinceName,
+            regency_id: guestRegencyId || guestBiteshipAreaId,
+            city_id: guestRegencyId || guestBiteshipAreaId,
+            regency_name: guestRegencyName,
+            district_id: guestDistrictId,
+            district_name: guestDistrictName,
+            postal_code: guestPostalCode,
+            biteship_area_id: guestBiteshipAreaId,
+            rajaongkir_destination_id: guestRajaongkirDestId,
+            latitude: guestLat,
+            longitude: guestLng,
+            is_primary: true,
+        };
+    });
+
+    const selectedAddress = $derived(
+        isGuest
+            ? isGuestAddressFilled
+                ? guestAddressObject
+                : null
+            : addresses.find((a: any) => a.id === selectedAddressId),
+    );
+
     // Payment
     // svelte-ignore state_referenced_locally
     let selectedPaymentMethodId = $state(paymentMethods[0]?.id ?? null);
@@ -351,6 +503,199 @@
     const selectedCourierId = $derived(
         couriers.find((c: any) => c.code === selectedCourier)?.id ?? null,
     );
+
+    // Self Pickup Scheduling State & Slot Calculations
+    let pickupDate = $state('');
+    let pickupTime = $state('');
+
+    const dayNamesId = [
+        'Minggu',
+        'Senin',
+        'Selasa',
+        'Rabu',
+        'Kamis',
+        'Jumat',
+        'Sabtu',
+    ];
+    const monthNamesId = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'Mei',
+        'Jun',
+        'Jul',
+        'Agt',
+        'Sep',
+        'Okt',
+        'Nov',
+        'Des',
+    ];
+    const daysKeys = [
+        'sunday',
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+    ];
+
+    function getStoreHoursForDate(d: Date) {
+        if (storeSettings.holiday_mode) return null;
+        if (storeSettings.always_open) {
+            return { active: true, open: '08:00', close: '21:30' };
+        }
+        if (!storeSettings.operational_hours) {
+            return { active: true, open: '08:00', close: '21:00' };
+        }
+        const dayKey = daysKeys[d.getDay()];
+        const dayConfig = storeSettings.operational_hours[dayKey];
+        if (!dayConfig || !dayConfig.active) return null;
+        return {
+            active: true,
+            open: dayConfig.open || '08:00',
+            close: dayConfig.close || '21:00',
+        };
+    }
+
+    function calculateTimeSlots(dateStr: string, isToday: boolean, hours: { open: string; close: string }) {
+        const [openH, openM] = (hours.open || '08:00').split(':').map(Number);
+        const [closeH, closeM] = (hours.close || '21:00').split(':').map(Number);
+        const openTotalM = openH * 60 + openM;
+        const closeTotalM = closeH * 60 + closeM;
+
+        let startM = openTotalM;
+
+        if (isToday) {
+            const now = new Date();
+            // Buffer: ~60 minutes rounded up to next 30-min boundary (:00 or :30)
+            // e.g. 14:17 -> +60m = 15:17 -> rounds up to 15:30
+            const nowBuffer = new Date(now.getTime() + 60 * 60 * 1000);
+            let bH = nowBuffer.getHours();
+            let bM = nowBuffer.getMinutes();
+            let slotM = 0;
+            if (bM === 0) {
+                slotM = 0;
+            } else if (bM <= 30) {
+                slotM = 30;
+            } else {
+                bH += 1;
+                slotM = 0;
+            }
+            const bufferTotalM = bH * 60 + slotM;
+            startM = Math.max(openTotalM, bufferTotalM);
+        }
+
+        const slots: string[] = [];
+        for (let m = startM; m <= closeTotalM; m += 30) {
+            const h = Math.floor(m / 60);
+            const min = m % 60;
+            const hStr = String(h).padStart(2, '0');
+            const minStr = String(min).padStart(2, '0');
+            slots.push(`${hStr}:${minStr}`);
+        }
+
+        return slots;
+    }
+
+    const availablePickupDates = $derived.by(() => {
+        const list: Array<{
+            dateStr: string;
+            label: string;
+            dayName: string;
+            dateFormatted: string;
+            isToday: boolean;
+        }> = [];
+
+        const now = new Date();
+
+        for (let i = 0; i < 7; i++) {
+            const d = new Date();
+            d.setDate(now.getDate() + i);
+            const hours = getStoreHoursForDate(d);
+            if (!hours) continue;
+
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const dateNum = String(d.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${dateNum}`;
+
+            const isToday = i === 0;
+            const isTomorrow = i === 1;
+
+            if (isToday) {
+                const slots = calculateTimeSlots(dateStr, true, hours);
+                if (slots.length === 0) continue;
+            }
+
+            const dayName = dayNamesId[d.getDay()];
+            const monthName = monthNamesId[d.getMonth()];
+            const dateFormatted = `${d.getDate()} ${monthName}`;
+
+            let label = `${dayName}, ${dateFormatted}`;
+            if (isToday) label = `Hari Ini (${dateFormatted})`;
+            else if (isTomorrow) label = `Besok (${dateFormatted})`;
+
+            list.push({
+                dateStr,
+                label,
+                dayName,
+                dateFormatted,
+                isToday,
+            });
+        }
+
+        return list;
+    });
+
+    const availablePickupSlots = $derived.by(() => {
+        if (!pickupDate) return [];
+        const [year, month, day] = pickupDate.split('-').map(Number);
+        const selectedD = new Date(year, month - 1, day);
+        const now = new Date();
+        const isToday =
+            selectedD.getFullYear() === now.getFullYear() &&
+            selectedD.getMonth() === now.getMonth() &&
+            selectedD.getDate() === now.getDate();
+
+        const hours = getStoreHoursForDate(selectedD);
+        if (!hours) return [];
+
+        return calculateTimeSlots(pickupDate, isToday, hours);
+    });
+
+    $effect(() => {
+        if (selectedCourier === 'self_pickup') {
+            if (availablePickupDates.length > 0) {
+                const found = availablePickupDates.find((d) => d.dateStr === pickupDate);
+                if (!found) {
+                    pickupDate = availablePickupDates[0].dateStr;
+                }
+            }
+        }
+    });
+
+    $effect(() => {
+        if (selectedCourier === 'self_pickup' && pickupDate) {
+            if (availablePickupSlots.length > 0) {
+                if (!pickupTime || !availablePickupSlots.includes(pickupTime)) {
+                    pickupTime = availablePickupSlots[0];
+                }
+            } else {
+                pickupTime = '';
+            }
+        }
+    });
+
+    const selectedPickupSummary = $derived.by(() => {
+        if (!pickupDate || !pickupTime) return '';
+        const found = availablePickupDates.find((d) => d.dateStr === pickupDate);
+        if (found) {
+            return `${found.dayName}, ${found.dateFormatted} pukul ${pickupTime} WIB`;
+        }
+        return `${pickupDate} pukul ${pickupTime} WIB`;
+    });
     let isInternational = $state(false);
     let internationalCountries = $state([]);
     let selectedCountryId = $state('');
@@ -400,7 +745,7 @@
 
     async function autoSelectShipping(courierIndex = 0) {
         if (isDigitalOnly) return;
-        if (!selectedAddressId) return;
+        if (!selectedAddress) return;
         if (courierIndex >= availableCouriers.length) {
             selectedCourier = '';
             shippingOptions = [];
@@ -419,18 +764,24 @@
     }
 
     let lastAddressId = $state(untrack(() => selectedAddressId));
+    let lastGuestDest = $state('');
     let initialAutoSelectDone = $state(false);
 
     $effect(() => {
         if (isDigitalOnly) return;
         if (
+            !isGuest &&
             selectedAddressId &&
             !initialAutoSelectDone &&
             availableCouriers.length > 0
         ) {
             initialAutoSelectDone = true;
             autoSelectShipping(0);
-        } else if (selectedAddressId && selectedAddressId !== lastAddressId) {
+        } else if (
+            !isGuest &&
+            selectedAddressId &&
+            selectedAddressId !== lastAddressId
+        ) {
             lastAddressId = selectedAddressId;
             // Reset unavailable couriers — may differ per address
             unavailableCouriers = new Set();
@@ -442,6 +793,21 @@
                 });
             } else {
                 autoSelectShipping(0);
+            }
+        } else if (isGuest && isGuestAddressFilled) {
+            const currentDest = `${guestRegencyName}_${guestBiteshipAreaId}_${guestPostalCode}`;
+            if (currentDest !== lastGuestDest) {
+                lastGuestDest = currentDest;
+                unavailableCouriers = new Set();
+                if (selectedCourier) {
+                    fetchShipping().then(() => {
+                        if (!shippingOptions || shippingOptions.length === 0) {
+                            autoSelectShipping(0);
+                        }
+                    });
+                } else {
+                    autoSelectShipping(0);
+                }
             }
         }
     });
@@ -649,10 +1015,6 @@
         (activePromotions as any[]).filter(
             (p) => p.type === 'bundling_gift' && checkPromoEligibility(p),
         ),
-    );
-
-    const selectedAddress = $derived(
-        addresses.find((a: any) => a.id === selectedAddressId),
     );
 
     // Calculate totals
@@ -901,17 +1263,23 @@
                             ? 'self_pickup'
                             : isInternational
                               ? selectedCountryId
-                              : (selectedAddress?.city_id ??
-                                selectedAddress?.regency_id ??
+                              : (selectedAddress?.biteship_area_id ||
+                                selectedAddress?.city_id ||
+                                selectedAddress?.regency_id ||
+                                selectedAddress?.postal_code ||
                                 ''),
                     weight:
                         Math.max(1, Math.ceil(totalWeightGrams / 1000)) * 1000,
                     courier: selectedCourier,
                     is_international: isInternational,
                     address_id:
-                        selectedCourier === 'self_pickup'
+                        selectedCourier === 'self_pickup' || isGuest
                             ? null
                             : (selectedAddress?.id ?? null),
+                    latitude: selectedAddress?.latitude ?? undefined,
+                    longitude: selectedAddress?.longitude ?? undefined,
+                    dest_area_id: selectedAddress?.biteship_area_id ?? undefined,
+                    biteship_area_id: selectedAddress?.biteship_area_id ?? undefined,
                 }),
             });
 
@@ -1082,10 +1450,53 @@
             );
             return;
         }
-        if (!isDigitalOnly) {
-            if (selectedCourier !== 'self_pickup' && !selectedAddressId) {
-                showToast('Pilih alamat pengiriman terlebih dahulu.', 'error');
+        if (isGuest) {
+            if (!guestName.trim()) {
+                showToast('Nama pemesan wajib diisi.', 'error');
                 return;
+            }
+            if (!guestPhone.trim() || guestPhone.trim().length < 8) {
+                showToast(
+                    'Nomor WhatsApp / HP pemesan wajib diisi minimal 8 digit.',
+                    'error',
+                );
+                return;
+            }
+            if (
+                !guestEmail.trim() ||
+                !guestEmail.includes('@') ||
+                !guestEmail.includes('.')
+            ) {
+                showToast(
+                    'Alamat email pemesan wajib diisi dengan format valid.',
+                    'error',
+                );
+                return;
+            }
+        }
+        if (!isDigitalOnly) {
+            if (selectedCourier !== 'self_pickup') {
+                if (!isGuest && !selectedAddressId) {
+                    showToast('Pilih alamat pengiriman terlebih dahulu.', 'error');
+                    return;
+                }
+                if (isGuest) {
+                    if (!guestFullAddress.trim()) {
+                        showToast('Alamat lengkap pengiriman wajib diisi.', 'error');
+                        return;
+                    }
+                    if (!guestRegencyName.trim() && !guestBiteshipAreaId.trim()) {
+                        showToast(
+                            'Kota/Kabupaten atau lokasi tujuan pengiriman wajib dipilih/diisi.',
+                            'error',
+                        );
+                        return;
+                    }
+                    if (!guestPostalCode.trim()) {
+                        showToast('Kode pos tujuan pengiriman wajib diisi.', 'error');
+                        return;
+                    }
+                }
             }
             if (!selectedCourier) {
                 showToast('Pilih kurir pengiriman terlebih dahulu.', 'error');
@@ -1093,6 +1504,10 @@
             }
             if (!selectedShipping) {
                 showToast('Pilih layanan pengiriman terlebih dahulu.', 'error');
+                return;
+            }
+            if (selectedCourier === 'self_pickup' && (!pickupDate || !pickupTime)) {
+                showToast('Pilih tanggal dan jam pengambilan barang terlebih dahulu.', 'error');
                 return;
             }
         }
@@ -1111,39 +1526,81 @@
 
         isSubmitting = true;
 
+        const payload: any = {
+            customer_address_id: isDigitalOnly
+                ? null
+                : selectedCourier === 'self_pickup' || isGuest
+                  ? null
+                  : selectedAddressId,
+            payment_method_id: selectedPaymentMethodId,
+            midtrans_payment_type_key: selectedMidtransMethodKey ?? undefined,
+            courier_id: isDigitalOnly ? null : selectedCourierId,
+            shipping_courier: isDigitalOnly ? 'digital' : selectedCourier,
+            shipping_service: isDigitalOnly
+                ? 'email'
+                : (selectedShipping?.service ?? ''),
+            shipping_etd: isDigitalOnly
+                ? '0'
+                : getCleanEtd(
+                      selectedShipping?.cost?.[0]?.etd,
+                      selectedShipping?.service ||
+                          selectedShipping?.description,
+                  ),
+            shipping_fee: isDigitalOnly ? 0 : shippingFee,
+            pickup_date: selectedCourier === 'self_pickup' ? pickupDate : null,
+            pickup_time: selectedCourier === 'self_pickup' ? pickupTime : null,
+            pickup_at:
+                selectedCourier === 'self_pickup' && pickupDate && pickupTime
+                    ? `${pickupDate} ${pickupTime}:00`
+                    : null,
+            voucher_code: voucherInputCode ?? '',
+            notes: orderNotes,
+            use_coins: isGuest ? false : useCoins,
+            item_notes: itemNotes,
+        };
+
+        if (isGuest) {
+            payload.customer_name = guestName.trim();
+            payload.customer_email = guestEmail.trim().toLowerCase();
+            payload.customer_phone = guestPhone.trim();
+
+            if (!isDigitalOnly && selectedCourier !== 'self_pickup') {
+                payload.full_address = guestFullAddress.trim();
+                payload.province_name = guestProvinceName || 'Indonesia';
+                payload.regency_name = guestRegencyName || '-';
+                payload.district_name = guestDistrictName || '-';
+                payload.postal_code = guestPostalCode || '00000';
+                payload.province_id = guestProvinceId || null;
+                payload.regency_id = guestRegencyId || null;
+                payload.district_id = guestDistrictId || null;
+                payload.village_id = guestVillageId || null;
+                payload.village_name = guestVillageName || null;
+                payload.biteship_area_id = guestBiteshipAreaId || null;
+                payload.rajaongkir_destination_id = guestRajaongkirDestId || null;
+                payload.latitude = guestLat || null;
+                payload.longitude = guestLng || null;
+                payload.receiver_name = (
+                    guestSameAsCustomer
+                        ? guestName
+                        : guestReceiverName || guestName
+                ).trim();
+                payload.phone_number = (
+                    guestSameAsCustomer
+                        ? guestPhone
+                        : guestReceiverPhone || guestPhone
+                ).trim();
+            }
+        }
+
         router.post(
             '/checkout',
+            payload,
             {
-                customer_address_id: isDigitalOnly
-                    ? null
-                    : selectedCourier === 'self_pickup'
-                      ? null
-                      : selectedAddressId,
-                payment_method_id: selectedPaymentMethodId,
-                midtrans_payment_type_key: selectedMidtransMethodKey ?? undefined,
-                courier_id: isDigitalOnly ? null : selectedCourierId,
-                shipping_courier: isDigitalOnly ? 'digital' : selectedCourier,
-                shipping_service: isDigitalOnly
-                    ? 'email'
-                    : (selectedShipping?.service ?? ''),
-                shipping_etd: isDigitalOnly
-                    ? '0'
-                    : getCleanEtd(
-                          selectedShipping?.cost?.[0]?.etd,
-                          selectedShipping?.service ||
-                              selectedShipping?.description,
-                      ),
-                shipping_fee: isDigitalOnly ? 0 : shippingFee,
-                voucher_code: voucherInputCode ?? '',
-                notes: orderNotes,
-                use_coins: useCoins,
-                item_notes: itemNotes,
-            },
-            {
-                onError: () => {
+                onError: (errors) => {
                     isSubmitting = false;
+                    const errorMsg = (Object.values(errors)[0] as string) || '';
                     showToast(
-                        'Terjadi kesalahan. Periksa data dan coba lagi.',
+                        errorMsg || 'Terjadi kesalahan. Periksa data dan coba lagi.',
                         'error',
                     );
                 },
@@ -1355,6 +1812,135 @@
                         </div>
                     {/if}
 
+                    {#if isGuest}
+                        <!-- Guest Customer Information Card -->
+                        <div
+                            class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+                        >
+                            <div
+                                class="py-2.5 px-4 flex items-center justify-between border-b border-slate-100 bg-slate-50/70"
+                            >
+                                <div class="flex items-center gap-2">
+                                    <i
+                                        class="ti ti-user-check text-lg"
+                                        style="color:{primary}"
+                                    ></i>
+                                    <span
+                                        class="font-bold text-slate-800 text-sm"
+                                        >Data Pemesan (Guest Checkout)</span
+                                    >
+                                </div>
+                                <span
+                                    class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200"
+                                >
+                                    Tanpa Login
+                                </span>
+                            </div>
+                            <div class="p-4 space-y-3.5">
+                                <div
+                                    class="p-3 bg-blue-50/60 rounded-xl border border-blue-100 text-xs text-blue-800 flex items-start gap-2"
+                                >
+                                    <i
+                                        class="ti ti-info-circle text-base text-blue-600 shrink-0 mt-0.5"
+                                    ></i>
+                                    <div class="min-w-0">
+                                        <p class="font-bold">
+                                            Checkout Cepat Tanpa Perlu Daftar
+                                            Akun
+                                        </p>
+                                        <p
+                                            class="text-[11px] text-blue-700 mt-0.5 leading-relaxed"
+                                        >
+                                            Kode pesanan dan link pelacakan
+                                            status pesanan akan dikirimkan
+                                            otomatis ke alamat email Anda
+                                            melalui antrean sistem (queue).
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="grid grid-cols-1 md:grid-cols-2 gap-3.5"
+                                >
+                                    <div>
+                                        <label
+                                            class="block text-xs font-bold text-slate-700 mb-1"
+                                        >
+                                            Nama Lengkap <span
+                                                class="text-rose-500">*</span
+                                            >
+                                        </label>
+                                        <div class="relative">
+                                            <i
+                                                class="ti ti-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"
+                                            ></i>
+                                            <input
+                                                type="text"
+                                                bind:value={guestName}
+                                                placeholder="Contoh: Budi Santoso"
+                                                class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-300"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label
+                                            class="block text-xs font-bold text-slate-700 mb-1"
+                                        >
+                                            Nomor WhatsApp / HP <span
+                                                class="text-rose-500">*</span
+                                            >
+                                        </label>
+                                        <div class="relative">
+                                            <i
+                                                class="ti ti-phone absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"
+                                            ></i>
+                                            <input
+                                                type="tel"
+                                                bind:value={guestPhone}
+                                                placeholder="Contoh: 081234567890"
+                                                class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-300"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div class="md:col-span-2">
+                                        <label
+                                            class="block text-xs font-bold text-slate-700 mb-1"
+                                        >
+                                            Alamat Email <span
+                                                class="text-rose-500">*</span
+                                            >
+                                        </label>
+                                        <div class="relative">
+                                            <i
+                                                class="ti ti-mail absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"
+                                            ></i>
+                                            <input
+                                                type="email"
+                                                bind:value={guestEmail}
+                                                placeholder="Contoh: budi@gmail.com (Untuk pengiriman kode pesanan)"
+                                                class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-300"
+                                                required
+                                            />
+                                        </div>
+                                        <p
+                                            class="text-[10.5px] text-slate-500 mt-1 flex items-center gap-1"
+                                        >
+                                            <i
+                                                class="ti ti-shield-check text-emerald-600"
+                                            ></i>
+                                            Kode pesanan dan faktur akan dikirim
+                                            ke email ini via antrean sistem.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {/if}
+
                     {#if !isDigitalOnly}
                         <!-- Address Section -->
                         <div
@@ -1370,37 +1956,128 @@
                                         ></i>
                                         <span
                                             class="font-bold text-slate-800 text-sm"
-                                            >Lokasi Pengambilan (Ambil di Toko)</span
+                                            >Lokasi & Waktu Pengambilan (Ambil di Toko)</span
                                         >
                                     </div>
+                                    <span
+                                        class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                    >
+                                        Self Pickup
+                                    </span>
                                 </div>
-                                <div class="py-3 px-4">
-                                    <p
-                                        class="text-xs font-bold text-slate-800 mb-1"
-                                    >
-                                        {storeSettings.store_name || storeName}
-                                    </p>
-                                    <p
-                                        class="text-xs text-slate-600 leading-relaxed font-medium"
-                                    >
-                                        {storeSettings.store_address}
-                                        {#if storeSettings.store_village}, {storeSettings.store_village}{/if}
-                                        {#if storeSettings.store_district}, {storeSettings.store_district}{/if}
-                                        {#if storeSettings.store_regency}, {storeSettings.store_regency}{/if}
-                                        {#if storeSettings.store_province}, {storeSettings.store_province}{/if}
-                                        {#if storeSettings.store_postal_code}
-                                            {storeSettings.store_postal_code}{/if}
-                                    </p>
+                                <div class="py-3.5 px-4 space-y-3.5">
+                                    <!-- Store Address Box -->
+                                    <div class="p-3 bg-slate-50/80 rounded-xl border border-slate-200/80 flex items-start gap-2.5">
+                                        <i class="ti ti-map-pin text-emerald-600 text-base mt-0.5 shrink-0"></i>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-xs font-bold text-slate-800 mb-0.5">
+                                                {storeSettings.store_name || storeName}
+                                            </p>
+                                            <p class="text-[11px] text-slate-600 leading-relaxed font-medium">
+                                                {storeSettings.store_address}
+                                                {#if storeSettings.store_village}, {storeSettings.store_village}{/if}
+                                                {#if storeSettings.store_district}, {storeSettings.store_district}{/if}
+                                                {#if storeSettings.store_regency}, {storeSettings.store_regency}{/if}
+                                                {#if storeSettings.store_province}, {storeSettings.store_province}{/if}
+                                                {#if storeSettings.store_postal_code}
+                                                    {storeSettings.store_postal_code}{/if}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Pickup Schedule Picker -->
+                                    <div class="p-3.5 bg-gradient-to-br from-emerald-50/60 to-teal-50/30 rounded-2xl border border-emerald-200/80 space-y-3">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center gap-1.5">
+                                                <i class="ti ti-calendar-time text-emerald-600 text-base"></i>
+                                                <span class="text-xs font-bold text-slate-800">Pilih Waktu Pengambilan</span>
+                                            </div>
+                                            <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200">
+                                                Slot / 30 Menit
+                                            </span>
+                                        </div>
+
+                                        <!-- Date Selector -->
+                                        <div>
+                                            <label class="block text-[11px] font-bold text-slate-600 mb-1.5">
+                                                Tanggal Pengambilan:
+                                            </label>
+                                            {#if availablePickupDates.length > 0}
+                                                <div class="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin">
+                                                    {#each availablePickupDates as d}
+                                                        <button
+                                                            type="button"
+                                                            onclick={() => (pickupDate = d.dateStr)}
+                                                            class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border cursor-pointer {pickupDate === d.dateStr
+                                                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                                                : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/40'}"
+                                                        >
+                                                            {d.label}
+                                                        </button>
+                                                    {/each}
+                                                </div>
+                                            {:else}
+                                                <p class="text-xs text-rose-500 font-medium p-2 bg-rose-50 rounded-xl border border-rose-100">
+                                                    Toko tidak membuka jadwal pengambilan dalam waktu dekat.
+                                                </p>
+                                            {/if}
+                                        </div>
+
+                                        <!-- Time Slot Selector -->
+                                        <div>
+                                            <div class="flex items-center justify-between mb-1.5">
+                                                <label class="block text-[11px] font-bold text-slate-600">
+                                                    Jam Pengambilan:
+                                                </label>
+                                                {#if availablePickupSlots.length > 0}
+                                                    <span class="text-[10.5px] font-medium text-emerald-700">
+                                                        Paling cepat: <strong>{availablePickupSlots[0]}</strong>
+                                                    </span>
+                                                {/if}
+                                            </div>
+
+                                            {#if availablePickupSlots.length > 0}
+                                                <div class="grid grid-cols-4 sm:grid-cols-6 gap-1.5 max-h-48 overflow-y-auto p-1.5 bg-white/80 rounded-xl border border-emerald-100">
+                                                    {#each availablePickupSlots as slot}
+                                                        <button
+                                                            type="button"
+                                                            onclick={() => (pickupTime = slot)}
+                                                            class="py-2 px-1 rounded-lg text-xs font-mono font-bold text-center transition border cursor-pointer {pickupTime === slot
+                                                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs ring-2 ring-emerald-200'
+                                                                : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50'}"
+                                                        >
+                                                            {slot}
+                                                        </button>
+                                                    {/each}
+                                                </div>
+                                            {:else}
+                                                <div class="p-3 bg-rose-50 rounded-xl border border-rose-100 text-xs text-rose-600 flex items-center gap-1.5">
+                                                    <i class="ti ti-alert-circle text-sm shrink-0"></i>
+                                                    <span>Tidak ada jam tersisa untuk hari ini (melewati jam operasional toko). Silakan pilih tanggal berikutnya.</span>
+                                                </div>
+                                            {/if}
+                                        </div>
+
+                                        <!-- Selected Schedule Banner -->
+                                        {#if selectedPickupSummary}
+                                            <div class="p-2.5 bg-white rounded-xl border border-emerald-200 flex items-center gap-2 text-xs text-slate-800">
+                                                <i class="ti ti-clock text-emerald-600 text-base shrink-0"></i>
+                                                <div class="min-w-0">
+                                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">Jadwal Pengambilan Dipilih</p>
+                                                    <p class="text-xs font-extrabold text-emerald-800 truncate">{selectedPickupSummary}</p>
+                                                </div>
+                                            </div>
+                                        {/if}
+                                    </div>
+
                                     <div
-                                        class="mt-2.5 p-2.5 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-2 text-[11px] font-bold text-emerald-700"
+                                        class="p-2.5 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-2 text-[11px] font-bold text-emerald-700"
                                     >
                                         <i
                                             class="ti ti-info-circle text-sm shrink-0"
                                         ></i>
                                         <span
-                                            >Pesanan Anda akan disiapkan di
-                                            toko. Anda dapat mengambilnya
-                                            setelah status pembayaran selesai.</span
+                                            >Pesanan Anda akan disiapkan di toko. Anda dapat mengambilnya sesuai jadwal di atas setelah status pembayaran selesai.</span
                                         >
                                     </div>
                                 </div>
@@ -1418,70 +2095,376 @@
                                             >Alamat Pengiriman</span
                                         >
                                     </div>
-                                    <button
-                                        onclick={() =>
-                                            (showAddressModal = true)}
-                                        class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition"
-                                        style="color:{primary}"
-                                    >
-                                        Ganti Alamat
-                                    </button>
+                                    {#if !isGuest}
+                                        <button
+                                            onclick={() =>
+                                                (showAddressModal = true)}
+                                            class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition"
+                                            style="color:{primary}"
+                                        >
+                                            Ganti Alamat
+                                        </button>
+                                    {/if}
                                 </div>
 
-                                {#if selectedAddress}
-                                    <div class="py-3 px-4">
-                                        <div class="flex items-start gap-2">
-                                            <div class="flex-1 min-w-0">
-                                                <div
-                                                    class="flex items-center gap-2 flex-wrap mb-1"
-                                                >
-                                                    <span
-                                                        class="font-bold text-slate-800 text-sm"
-                                                        >{selectedAddress.receiver_name}</span
+                                {#if !isGuest}
+                                    {#if selectedAddress}
+                                        <div class="py-3 px-4">
+                                            <div class="flex items-start gap-2">
+                                                <div class="flex-1 min-w-0">
+                                                    <div
+                                                        class="flex items-center gap-2 flex-wrap mb-1"
                                                     >
-                                                    <span
-                                                        class="text-xs text-slate-500 font-medium"
-                                                        >{selectedAddress.phone_number}</span
-                                                    >
-                                                    {#if selectedAddress.is_primary}
                                                         <span
-                                                            class="text-[10px] font-black px-2 py-0.5 rounded-full text-white uppercase tracking-wider"
-                                                            style="background:{primary}"
-                                                            >Utama</span
+                                                            class="font-bold text-slate-800 text-sm"
+                                                            >{selectedAddress.receiver_name}</span
                                                         >
-                                                    {/if}
+                                                        <span
+                                                            class="text-xs text-slate-500 font-medium"
+                                                            >{selectedAddress.phone_number}</span
+                                                        >
+                                                        {#if selectedAddress.is_primary}
+                                                            <span
+                                                                class="text-[10px] font-black px-2 py-0.5 rounded-full text-white uppercase tracking-wider"
+                                                                style="background:{primary}"
+                                                                >Utama</span
+                                                            >
+                                                        {/if}
+                                                    </div>
+                                                    <p
+                                                        class="text-xs text-slate-600 leading-relaxed font-medium"
+                                                    >
+                                                        {selectedAddress.full_address}
+                                                        {#if selectedAddress.village_name},
+                                                            {selectedAddress.village_name}{/if}
+                                                        {#if selectedAddress.district_name},
+                                                            {selectedAddress.district_name}{/if}
+                                                        {#if selectedAddress.regency_name},
+                                                            {selectedAddress.regency_name}{/if}
+                                                        {#if selectedAddress.province_name},
+                                                            {selectedAddress.province_name}{/if}
+                                                        {#if selectedAddress.postal_code}
+                                                            {selectedAddress.postal_code}{/if}
+                                                    </p>
                                                 </div>
-                                                <p
-                                                    class="text-xs text-slate-600 leading-relaxed font-medium"
-                                                >
-                                                    {selectedAddress.full_address}
-                                                    {#if selectedAddress.village_name},
-                                                        {selectedAddress.village_name}{/if}
-                                                    {#if selectedAddress.district_name},
-                                                        {selectedAddress.district_name}{/if}
-                                                    {#if selectedAddress.regency_name},
-                                                        {selectedAddress.regency_name}{/if}
-                                                    {#if selectedAddress.province_name},
-                                                        {selectedAddress.province_name}{/if}
-                                                    {#if selectedAddress.postal_code}
-                                                        {selectedAddress.postal_code}{/if}
-                                                </p>
                                             </div>
                                         </div>
-                                    </div>
-                                {:else}
-                                    <div class="py-3 px-4">
-                                        <div
-                                            class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-700 text-sm font-medium"
-                                        >
-                                            <i class="ti ti-alert-triangle mr-1"
-                                            ></i>
-                                            Belum ada alamat.
-                                            <Link
-                                                href="/profile/addresses?from=checkout"
-                                                class="font-black underline"
-                                                >Tambah Alamat</Link
+                                    {:else}
+                                        <div class="py-3 px-4">
+                                            <div
+                                                class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-700 text-sm font-medium"
                                             >
+                                                <i
+                                                    class="ti ti-alert-triangle mr-1"
+                                                ></i>
+                                                Belum ada alamat.
+                                                <Link
+                                                    href="/profile/addresses?from=checkout"
+                                                    class="font-black underline"
+                                                    >Tambah Alamat</Link
+                                                >
+                                            </div>
+                                        </div>
+                                    {/if}
+                                {:else}
+                                    <!-- Guest Shipping Address Form -->
+                                    <div class="p-4 space-y-4">
+                                        <!-- Same as Customer toggle -->
+                                        <label
+                                            class="flex items-center gap-2.5 cursor-pointer select-none"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                bind:checked={guestSameAsCustomer}
+                                                class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                                            />
+                                            <span
+                                                class="text-xs font-semibold text-slate-700"
+                                            >
+                                                Nama dan No. HP penerima sama
+                                                dengan data pemesan {guestName
+                                                    ? `(${guestName})`
+                                                    : ''}
+                                            </span>
+                                        </label>
+
+                                        {#if !guestSameAsCustomer}
+                                            <div
+                                                class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50/70 rounded-xl border border-slate-100"
+                                            >
+                                                <div>
+                                                    <label
+                                                        class="block text-[11px] font-bold text-slate-700 mb-1"
+                                                    >
+                                                        Nama Penerima <span
+                                                            class="text-rose-500"
+                                                            >*</span
+                                                        >
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        bind:value={guestReceiverName}
+                                                        placeholder="Nama penerima paket"
+                                                        class="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-300"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label
+                                                        class="block text-[11px] font-bold text-slate-700 mb-1"
+                                                    >
+                                                        No. HP Penerima <span
+                                                            class="text-rose-500"
+                                                            >*</span
+                                                        >
+                                                    </label>
+                                                    <input
+                                                        type="tel"
+                                                        bind:value={guestReceiverPhone}
+                                                        placeholder="Nomor HP aktif penerima"
+                                                        class="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-300"
+                                                    />
+                                                </div>
+                                            </div>
+                                        {/if}
+
+                                        <!-- Full Address -->
+                                        <div>
+                                            <label
+                                                class="block text-xs font-bold text-slate-700 mb-1"
+                                            >
+                                                Alamat Lengkap (Jalan, No.
+                                                Rumah, RT/RW, Patokan) <span
+                                                    class="text-rose-500">*</span
+                                                >
+                                            </label>
+                                            <textarea
+                                                bind:value={guestFullAddress}
+                                                rows="2"
+                                                placeholder="Contoh: Jl. Raya Darmo No. 45, RT 02 / RW 05, Kel. Wonokromo, dekat minimarket"
+                                                class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none leading-relaxed"
+                                                required
+                                            ></textarea>
+                                        </div>
+
+                                        <!-- Search Destination / Area -->
+                                        <div>
+                                            <label
+                                                class="block text-xs font-bold text-slate-700 mb-1"
+                                            >
+                                                Cari Kota / Kecamatan / Kode Pos
+                                                Tujuan <span
+                                                    class="text-rose-500">*</span
+                                                >
+                                            </label>
+                                            <div class="relative">
+                                                <i
+                                                    class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"
+                                                ></i>
+                                                <input
+                                                    type="text"
+                                                    value={destinationQuery}
+                                                    oninput={(e) =>
+                                                        handleDestinationSearch(
+                                                            (
+                                                                e.target as HTMLInputElement
+                                                            ).value,
+                                                        )}
+                                                    placeholder="Ketik minimal 3 huruf (cth: Wonokromo Surabaya, atau kode pos 60245)..."
+                                                    class="w-full pl-9 pr-9 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-300"
+                                                />
+                                                {#if isSearchingDestination}
+                                                    <div
+                                                        class="absolute right-3 top-1/2 -translate-y-1/2"
+                                                    >
+                                                        <i
+                                                            class="ti ti-loader-2 animate-spin text-slate-400 text-sm"
+                                                        ></i>
+                                                    </div>
+                                                {:else if destinationQuery}
+                                                    <button
+                                                        type="button"
+                                                        onclick={clearDestination}
+                                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                                        aria-label="Hapus tujuan"
+                                                    >
+                                                        <i
+                                                            class="ti ti-x text-sm"
+                                                        ></i>
+                                                    </button>
+                                                {/if}
+
+                                                <!-- Autocomplete Dropdown -->
+                                                {#if showDestinationDropdown && destinationResults.length > 0}
+                                                    <div
+                                                        class="absolute left-0 right-0 top-full mt-1.5 z-30 bg-white rounded-xl shadow-lg border border-slate-200 max-h-52 overflow-y-auto divide-y divide-slate-100"
+                                                    >
+                                                        {#each destinationResults as item}
+                                                            <button
+                                                                type="button"
+                                                                onclick={() =>
+                                                                    selectDestination(
+                                                                        item,
+                                                                    )}
+                                                                class="w-full text-left px-3.5 py-2.5 hover:bg-slate-50 transition flex items-center justify-between gap-2"
+                                                            >
+                                                                <div
+                                                                    class="min-w-0"
+                                                                >
+                                                                    <p
+                                                                        class="text-xs font-bold text-slate-800 truncate"
+                                                                    >
+                                                                        {item.label ||
+                                                                            `${item.district_name || ''}, ${item.city_name || ''}`}
+                                                                    </p>
+                                                                    <p
+                                                                        class="text-[11px] text-slate-500 truncate"
+                                                                    >
+                                                                        {item.district_name
+                                                                            ? `${item.district_name}, `
+                                                                            : ''}{item.city_name ||
+                                                                            ''}
+                                                                        {item.postal_code ||
+                                                                        item.zip_code
+                                                                            ? `(${item.postal_code || item.zip_code})`
+                                                                            : ''}
+                                                                    </p>
+                                                                </div>
+                                                                <span
+                                                                    class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0"
+                                                                >
+                                                                    Pilih
+                                                                </span>
+                                                            </button>
+                                                        {/each}
+                                                    </div>
+                                                {/if}
+                                            </div>
+
+                                            <!-- Destination Selected Confirmation Banner -->
+                                            {#if guestRegencyName || guestDistrictName}
+                                                <div
+                                                    class="mt-2 p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between gap-2"
+                                                >
+                                                    <div
+                                                        class="flex items-center gap-2 min-w-0"
+                                                    >
+                                                        <i
+                                                            class="ti ti-circle-check-filled text-emerald-600 text-base shrink-0"
+                                                        ></i>
+                                                        <div class="min-w-0">
+                                                            <p
+                                                                class="text-[10px] uppercase font-bold text-emerald-700 leading-none"
+                                                            >
+                                                                Lokasi
+                                                                Pengiriman
+                                                                Terpilih
+                                                            </p>
+                                                            <p
+                                                                class="text-xs font-bold text-slate-800 truncate mt-0.5"
+                                                            >
+                                                                {guestDistrictName
+                                                                    ? `${guestDistrictName}, `
+                                                                    : ''}{guestRegencyName}
+                                                                {guestPostalCode
+                                                                    ? `(${guestPostalCode})`
+                                                                    : ''}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onclick={clearDestination}
+                                                        class="text-[11px] font-bold text-rose-600 hover:text-rose-700 shrink-0"
+                                                    >
+                                                        Ubah
+                                                    </button>
+                                                </div>
+                                            {/if}
+                                        </div>
+
+                                        <!-- Toggle for Manual Regional Inputs -->
+                                        <div>
+                                            <button
+                                                type="button"
+                                                onclick={() =>
+                                                    (showManualRegionalFields =
+                                                        !showManualRegionalFields)}
+                                                class="text-[11px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 transition"
+                                            >
+                                                <i
+                                                    class="ti ti-chevron-{showManualRegionalFields
+                                                        ? 'up'
+                                                        : 'down'} text-xs"
+                                                ></i>
+                                                {showManualRegionalFields
+                                                    ? 'Sembunyikan detail manual'
+                                                    : 'Atur detail wilayah (Provinsi, Kota, Kecamatan, Kode Pos) secara manual'}
+                                            </button>
+
+                                            {#if showManualRegionalFields}
+                                                <div
+                                                    class="mt-2.5 grid grid-cols-2 gap-2.5 p-3 bg-slate-50/70 rounded-xl border border-slate-100"
+                                                >
+                                                    <div>
+                                                        <label
+                                                            class="block text-[10.5px] font-bold text-slate-600 mb-1"
+                                                        >
+                                                            Provinsi
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            bind:value={guestProvinceName}
+                                                            placeholder="Contoh: Jawa Timur"
+                                                            class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-slate-200 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-300"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label
+                                                            class="block text-[10.5px] font-bold text-slate-600 mb-1"
+                                                        >
+                                                            Kota / Kabupaten <span
+                                                                class="text-rose-500"
+                                                                >*</span
+                                                            >
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            bind:value={guestRegencyName}
+                                                            placeholder="Contoh: Kota Surabaya"
+                                                            class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-slate-200 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-300"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label
+                                                            class="block text-[10.5px] font-bold text-slate-600 mb-1"
+                                                        >
+                                                            Kecamatan
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            bind:value={guestDistrictName}
+                                                            placeholder="Contoh: Wonokromo"
+                                                            class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-slate-200 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-300"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label
+                                                            class="block text-[10.5px] font-bold text-slate-600 mb-1"
+                                                        >
+                                                            Kode Pos <span
+                                                                class="text-rose-500"
+                                                                >*</span
+                                                            >
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            bind:value={guestPostalCode}
+                                                            placeholder="Contoh: 60245"
+                                                            class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-slate-200 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-300"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            {/if}
                                         </div>
                                     </div>
                                 {/if}
@@ -1708,8 +2691,9 @@
 
                                 {#if selectedCourier !== 'self_pickup' && !selectedAddress}
                                     <p class="text-xs text-slate-400 italic">
-                                        Pilih alamat terlebih dahulu untuk
-                                        mengecek ongkir.
+                                        {isGuest
+                                            ? 'Isi alamat dan pilih kota/kecamatan tujuan di atas terlebih dahulu untuk mengecek ongkir.'
+                                            : 'Pilih alamat terlebih dahulu untuk mengecek ongkir.'}
                                     </p>
                                 {:else}
                                     <!-- International Shipping Option -->
@@ -2216,7 +3200,7 @@
                     </div>
 
                     <!-- Poin Saya Loyalty Section -->
-                    {#if coinsEnabled}
+                    {#if coinsEnabled && !isGuest}
                         <div
                             class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden p-5 space-y-4"
                         >
@@ -2934,9 +3918,14 @@
                                     isCheckoutLocked ||
                                     (!isDigitalOnly &&
                                         selectedCourier !== 'self_pickup' &&
-                                        !selectedAddressId) ||
+                                        (!isGuest
+                                            ? !selectedAddressId
+                                            : !isGuestAddressFilled)) ||
+                                    (isGuest && !isGuestCustomerValid) ||
                                     !selectedPaymentMethodId ||
-                                    (!isDigitalOnly && !selectedShipping) ||
+                                    (!isDigitalOnly &&
+                                        selectedCourier !== 'self_pickup' &&
+                                        !selectedShipping) ||
                                     !isStoreOpen}
                                 class="hidden lg:flex w-full mt-4 items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                                 style="background:linear-gradient(to right, {primary}, {primary})"
@@ -2972,9 +3961,14 @@
                         isCheckoutLocked ||
                         (!isDigitalOnly &&
                             selectedCourier !== 'self_pickup' &&
-                            !selectedAddressId) ||
+                            (!isGuest
+                                ? !selectedAddressId
+                                : !isGuestAddressFilled)) ||
+                        (isGuest && !isGuestCustomerValid) ||
                         !selectedPaymentMethodId ||
-                        (!isDigitalOnly && !selectedShipping) ||
+                        (!isDigitalOnly &&
+                            selectedCourier !== 'self_pickup' &&
+                            !selectedShipping) ||
                         !isStoreOpen}
                     class="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                     style="background:linear-gradient(to right, {primary}, {primary})"

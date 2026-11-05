@@ -59,6 +59,14 @@
             (page.props as any).settings?.padelgigs_login_enabled ??
             true,
     );
+    const isCheckoutWithoutLogin = $derived(
+        Boolean(
+            (page.props as any).app_config?.is_checkout_without_login ??
+            (page.props as any).settings?.is_checkout_without_login ??
+            (page.props as any).isCheckoutWithoutLogin ??
+            false,
+        ),
+    );
     const activePath = $derived((page.url || '').split('?')[0] || '/');
 
     const adminWaNumber = $derived(
@@ -1137,7 +1145,7 @@
     }
 
     function goToCart() {
-        if (auth) {
+        if (auth || isCheckoutWithoutLogin) {
             router.visit('/cart');
         } else {
             openLogin();
@@ -2004,6 +2012,21 @@
                         </div>
                     {/if}
 
+                    <!-- Cek Pesanan (Desktop) -->
+                    <Link
+                        href="/cek-pesanan"
+                        prefetch
+                        class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
+                        aria-label="Cek Pesanan"
+                    >
+                        <div class="w-6 h-6 flex items-center justify-center relative">
+                            <i class="ti ti-receipt-2 text-xl"></i>
+                        </div>
+                        <span class="text-[9px] font-bold text-white/80 mt-0.5"
+                            >Cek Pesanan</span
+                        >
+                    </Link>
+
                     <!-- Notifications (Desktop) -->
                     {#if auth}
                         <div class="relative">
@@ -2306,6 +2329,15 @@
                                         >
                                             <i class="ti ti-user text-base"></i> Profil
                                             Saya
+                                        </Link>
+                                        <Link
+                                            href="/cek-pesanan"
+                                            prefetch
+                                            class="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                                            onclick={() =>
+                                                (profileDropOpen = false)}
+                                        >
+                                            <i class="ti ti-receipt-2 text-base text-indigo-600"></i> Cek & Lacak Pesanan
                                         </Link>
                                         <Link
                                             href="/about"
@@ -2958,6 +2990,15 @@
                         <i class="ti ti-receipt-refund text-lg"></i> Refund Saya
                     </Link>
                 {/if}
+
+                <Link
+                    href="/cek-pesanan"
+                    prefetch
+                    class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 rounded-xl transition"
+                    onclick={() => (profileDropOpen = false)}
+                >
+                    <i class="ti ti-receipt-2 text-lg text-indigo-600"></i> Cek & Lacak Pesanan
+                </Link>
 
                 <Link
                     href="/about"

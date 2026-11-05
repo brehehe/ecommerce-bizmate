@@ -10,7 +10,7 @@ class SelectCartVouchersAction
     /**
      * Store chosen voucher IDs in session.
      */
-    public function execute(?string $belanjaId, ?string $ongkirId, User $user): array
+    public function execute(?string $belanjaId, ?string $ongkirId, ?User $user = null): array
     {
         $codes = [];
 

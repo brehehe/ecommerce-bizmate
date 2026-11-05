@@ -9,6 +9,7 @@ use App\Http\Requests\Checkout\ApplyVoucherRequest;
 use App\Http\Requests\Checkout\ProcessCheckoutRequest;
 use App\Http\Requests\Checkout\ShippingCostRequest;
 use App\Http\Requests\Checkout\UploadProofRequest;
+use App\Mail\OrderConfirmation;
 use App\Models\CartItem;
 use App\Models\Courier;
 use App\Models\CustomerAddress;
@@ -28,8 +29,12 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\Permission\Models\Role;
 
 class CheckoutController extends Controller
 {
@@ -50,7 +55,17 @@ class CheckoutController extends Controller
         KomerceService::syncPaymentMethods();
 
         $user = $request->user();
-        $cartItems = $this->getCheckoutItems($user);
+        if ($user && $user->hasRole('Customer') && ! $user->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice');
+        }
+
+        $isGuest = ($user === null);
+
+        if (! $user && ! config('app.is_checkout_without_login', false)) {
+            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu untuk checkout.');
+        }
+
+        $cartItems = $this->getCheckoutItems($user, $isGuest);
 
         if ($cartItems->isEmpty()) {
             return redirect()->route('cart.index')->with('error', 'Pilih produk terlebih dahulu sebelum checkout.');
@@ -134,9 +149,11 @@ class CheckoutController extends Controller
         }
         session(['checkout_promo_prices' => $checkoutPromoSnapshot]);
 
-        $addresses = CustomerAddress::where('user_id', $user->id)
-            ->orderBy('is_primary', 'desc')
-            ->get();
+        $addresses = $user
+            ? CustomerAddress::where('user_id', $user->id)
+                ->orderBy('is_primary', 'desc')
+                ->get()
+            : collect([]);
 
         $paymentMethods = PaymentMethod::where('is_active', true)
             ->orderBy('type')
@@ -202,7 +219,7 @@ class CheckoutController extends Controller
             'allVouchers' => $allVouchers,
             'additionalCosts' => $additionalCosts,
             'midtransPaymentTypes' => MidtransService::$paymentTypes,
-            'membershipBenefits' => $this->membershipService->getMembershipCheckoutBenefits($user),
+            'membershipBenefits' => $user ? $this->membershipService->getMembershipCheckoutBenefits($user) : [],
             'storeAddress' => $storeAddress,
             'storeOriginCityId' => $storeOriginCityId,
             'storeLat' => $storeLat,
@@ -213,6 +230,7 @@ class CheckoutController extends Controller
             'selfPickupFee' => (float) (Setting::where('key', 'self_pickup_fee')->value('value') ?? 0),
             'isStoreCourierEnabled' => Setting::where('key', 'store_courier_enabled')->value('value') === '1',
             'biteshipEnabled' => BiteshipService::isEnabled(),
+            'isGuestCheckout' => $user === null,
         ]);
     }
 
@@ -228,7 +246,66 @@ class CheckoutController extends Controller
         }
 
         $user = $request->user();
-        $cartItems = $this->getCheckoutItems($user);
+        if ($user && $user->hasRole('Customer') && ! $user->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice');
+        }
+
+        if (! $user && ! config('app.is_checkout_without_login', false)) {
+            return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu untuk checkout.');
+        }
+
+        $isGuest = ($user === null);
+        if ($isGuest) {
+            $customerName = trim((string) $request->input('customer_name'));
+            $customerEmail = trim(strtolower((string) $request->input('customer_email')));
+            $customerPhone = trim((string) $request->input('customer_phone'));
+
+            $user = User::where('email', $customerEmail)->first();
+            if (! $user) {
+                $user = User::create([
+                    'name' => $customerName ?: 'Customer',
+                    'email' => $customerEmail,
+                    'phone_number' => $customerPhone,
+                    'password' => bcrypt(Str::random(32)),
+                    'email_verified_at' => now(),
+                ]);
+
+                if (Role::where('name', 'Customer')->exists()) {
+                    $user->assignRole('Customer');
+                }
+            } else {
+                if (empty($user->phone_number) && ! empty($customerPhone)) {
+                    $user->update(['phone_number' => $customerPhone]);
+                }
+            }
+
+            if ($request->input('shipping_courier') !== 'self_pickup' && $request->input('shipping_courier') !== 'digital') {
+                $address = CustomerAddress::create([
+                    'user_id' => $user->id,
+                    'label' => 'Alamat Pengiriman',
+                    'receiver_name' => $request->input('receiver_name') ?: $customerName,
+                    'phone_number' => $request->input('phone_number') ?: $customerPhone,
+                    'full_address' => (string) $request->input('full_address'),
+                    'province_id' => $request->input('province_id'),
+                    'province_name' => (string) $request->input('province_name'),
+                    'regency_id' => $request->input('regency_id'),
+                    'regency_name' => (string) $request->input('regency_name'),
+                    'district_id' => $request->input('district_id'),
+                    'district_name' => (string) $request->input('district_name'),
+                    'village_id' => $request->input('village_id'),
+                    'village_name' => $request->input('village_name'),
+                    'postal_code' => (string) $request->input('postal_code'),
+                    'biteship_area_id' => $request->input('biteship_area_id'),
+                    'rajaongkir_destination_id' => $request->input('rajaongkir_destination_id'),
+                    'latitude' => $request->input('latitude'),
+                    'longitude' => $request->input('longitude'),
+                    'is_primary' => false,
+                ]);
+                $request->merge(['customer_address_id' => $address->id]);
+            }
+        }
+
+        $cartItems = $this->getCheckoutItems($user, $isGuest);
 
         if ($cartItems->isEmpty()) {
             return back()->with('error', 'Tidak ada produk yang dipilih untuk checkout.');
@@ -292,6 +369,34 @@ class CheckoutController extends Controller
 
         $transaction = $this->processCheckoutAction->execute($user, $request->validated(), $cartItems);
 
+        // Queue order confirmation email
+        try {
+            $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+            $storeLogo = Setting::where('key', 'store_logo')->value('value');
+            $recipientEmail = $transaction->customer_email;
+
+            if (! empty($recipientEmail) && filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
+                Mail::to($recipientEmail)->queue(
+                    new OrderConfirmation(
+                        $transaction->load(['items.product', 'customerAddress', 'paymentMethod']),
+                        $storeName,
+                        $storeLogo
+                    )
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to queue order confirmation email: '.$e->getMessage());
+        }
+
+        if ($isGuest) {
+            session()->forget('guest_cart');
+            session()->forget('buy_now_item');
+            session(['guest_order_'.$transaction->transaction_number => true]);
+
+            return redirect()->route('order.track', ['trx' => $transaction->transaction_number])
+                ->with('success', 'Pesanan #'.$transaction->transaction_number.' berhasil dibuat! Rincian pesanan telah dikirim ke email '.$transaction->customer_email.'.');
+        }
+
         return redirect()->route('transactions.show', $transaction->id)
             ->with('success', 'Pesanan berhasil dibuat!');
     }
@@ -336,7 +441,7 @@ class CheckoutController extends Controller
     public function shippingCost(ShippingCostRequest $request): JsonResponse
     {
         $user = $request->user();
-        $cartItems = $user ? $this->getCheckoutItems($user) : collect();
+        $cartItems = $this->getCheckoutItems($user, $user === null);
 
         return $this->shippingCalculationService->calculate($request->validated(), $cartItems);
     }
@@ -346,7 +451,7 @@ class CheckoutController extends Controller
      *
      * @return Collection<int, CartItem>
      */
-    protected function getCheckoutItems(User $user): Collection
+    protected function getCheckoutItems(?User $user, bool $isGuest = false): Collection
     {
         if (session()->has('buy_now_item')) {
             $buyNow = session('buy_now_item');
@@ -360,7 +465,7 @@ class CheckoutController extends Controller
 
             $fakeItem = new CartItem([
                 'id' => 'buy-now',
-                'user_id' => $user->id,
+                'user_id' => $user?->id ?? null,
                 'product_id' => $product->id,
                 'product_variant_id' => $buyNow['product_variant_id'] ?? null,
                 'quantity' => $buyNow['quantity'] ?? 1,
@@ -374,6 +479,45 @@ class CheckoutController extends Controller
             }
 
             return new Collection([$fakeItem]);
+        }
+
+        if (! $user || $isGuest) {
+            $guestCart = session('guest_cart', []);
+            $items = new Collection;
+            foreach ($guestCart as $raw) {
+                if (! ($raw['is_checked'] ?? true)) {
+                    continue;
+                }
+                $product = Product::with([
+                    'productPrice',
+                    'productStock',
+                    'images',
+                    'tierPrices',
+                    'variants.productPrice',
+                    'variants.productStock',
+                    'variants.options',
+                    'variants.tierPrices',
+                ])->find($raw['product_id']);
+
+                if ($product) {
+                    $item = new CartItem([
+                        'id' => $raw['id'] ?? ('guest-'.uniqid()),
+                        'user_id' => $user?->id,
+                        'product_id' => $product->id,
+                        'product_variant_id' => $raw['product_variant_id'] ?? null,
+                        'quantity' => $raw['quantity'],
+                        'is_checked' => true,
+                    ]);
+                    $item->setRelation('product', $product);
+                    if (! empty($raw['product_variant_id'])) {
+                        $variant = $product->variants->firstWhere('id', $raw['product_variant_id']);
+                        $item->setRelation('productVariant', $variant);
+                    }
+                    $items->push($item);
+                }
+            }
+
+            return $items;
         }
 
         return CartItem::with([

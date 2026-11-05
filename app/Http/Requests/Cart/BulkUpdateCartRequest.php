@@ -8,7 +8,7 @@ class BulkUpdateCartRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() !== null;
+        return $this->user() !== null || (bool) config('app.is_checkout_without_login', false);
     }
 
     /**
@@ -19,7 +19,7 @@ class BulkUpdateCartRequest extends FormRequest
         return [
             'is_checked' => 'required|boolean',
             'ids' => 'nullable|array',
-            'ids.*' => 'string|exists:cart_items,id',
+            'ids.*' => 'string',
         ];
     }
 }

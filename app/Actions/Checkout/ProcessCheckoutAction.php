@@ -18,6 +18,7 @@ use App\Services\KomerceService;
 use App\Services\MembershipService;
 use App\Services\MidtransService;
 use App\Services\Promotion\PromotionCalculationService;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -247,6 +248,21 @@ class ProcessCheckoutAction
             $membershipDiscountAmount,
             $membershipLevelId
         ) {
+            $pickupAt = null;
+            if (! empty($data['pickup_at'])) {
+                try {
+                    $pickupAt = Carbon::parse($data['pickup_at']);
+                } catch (\Throwable) {
+                    $pickupAt = null;
+                }
+            } elseif (! empty($data['pickup_date']) && ! empty($data['pickup_time'])) {
+                try {
+                    $pickupAt = Carbon::parse($data['pickup_date'].' '.$data['pickup_time']);
+                } catch (\Throwable) {
+                    $pickupAt = null;
+                }
+            }
+
             $transaction = Transaction::create([
                 'transaction_number' => Transaction::generateNumber(),
                 'user_id' => $user->id,
@@ -265,6 +281,7 @@ class ProcessCheckoutAction
                 'shipping_courier' => $data['shipping_courier'],
                 'shipping_service' => $data['shipping_service'],
                 'shipping_etd' => $data['shipping_etd'] ?? null,
+                'pickup_at' => $pickupAt,
                 'voucher_code' => $voucherCode,
                 'voucher_discount_type' => $voucherDiscountType,
                 'voucher_discount_value' => $voucherDiscountValue,

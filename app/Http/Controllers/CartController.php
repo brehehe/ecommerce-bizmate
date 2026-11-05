@@ -10,6 +10,7 @@ use App\Http\Requests\Cart\BulkUpdateCartRequest;
 use App\Http\Requests\Cart\SelectVouchersRequest;
 use App\Http\Requests\Cart\UpdateCartRequest;
 use App\Models\CartItem;
+use App\Models\Product;
 use App\Services\Promotion\PromotionCalculationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,22 +33,57 @@ class CartController extends Controller
     {
         session()->forget('buy_now_item');
 
-        $cartItems = CartItem::with([
-            'product.productPrice',
-            'product.productStock',
-            'product.images',
-            'product.category',
-            'product.variants.productPrice',
-            'product.variants.productStock',
-            'product.variants.options',
-            'product.variants.tierPrices',
-            'productVariant.productPrice',
-            'productVariant.productStock',
-            'productVariant.options',
-        ])
-            ->where('user_id', $request->user()->id)
-            ->latest()
-            ->get();
+        $user = $request->user();
+        if ($user) {
+            $cartItems = CartItem::with([
+                'product.productPrice',
+                'product.productStock',
+                'product.images',
+                'product.category',
+                'product.variants.productPrice',
+                'product.variants.productStock',
+                'product.variants.options',
+                'product.variants.tierPrices',
+                'productVariant.productPrice',
+                'productVariant.productStock',
+                'productVariant.options',
+            ])
+                ->where('user_id', $user->id)
+                ->latest()
+                ->get();
+        } else {
+            $guestCart = session('guest_cart', []);
+            $cartItems = collect();
+            foreach ($guestCart as $raw) {
+                $product = Product::with([
+                    'productPrice',
+                    'productStock',
+                    'images',
+                    'category',
+                    'tierPrices',
+                    'variants.productPrice',
+                    'variants.productStock',
+                    'variants.options',
+                    'variants.tierPrices',
+                ])->find($raw['product_id']);
+
+                if ($product) {
+                    $item = new CartItem([
+                        'id' => $raw['id'],
+                        'product_id' => $product->id,
+                        'product_variant_id' => $raw['product_variant_id'] ?? null,
+                        'quantity' => $raw['quantity'],
+                        'is_checked' => $raw['is_checked'] ?? true,
+                    ]);
+                    $item->setRelation('product', $product);
+                    if (! empty($raw['product_variant_id'])) {
+                        $variant = $product->variants->firstWhere('id', $raw['product_variant_id']);
+                        $item->setRelation('productVariant', $variant);
+                    }
+                    $cartItems->push($item);
+                }
+            }
+        }
 
         $activePromotions = $this->promotionService->getActivePromotions();
         $this->promotionService->populateBundlingProducts($activePromotions);
@@ -149,14 +185,31 @@ class CartController extends Controller
     /**
      * Update quantity or variant of a cart item.
      */
-    public function update(UpdateCartRequest $request, CartItem $cartItem): RedirectResponse
+    public function update(UpdateCartRequest $request, string $cartItem): RedirectResponse
     {
-        $this->authorize('update', $cartItem);
+        $user = $request->user();
+        if ($user) {
+            $item = CartItem::where('user_id', $user->id)->findOrFail($cartItem);
+            $this->authorize('update', $item);
+            $result = $this->updateCartItemAction->execute($item, $request->validated());
 
-        $result = $this->updateCartItemAction->execute($cartItem, $request->validated());
-
-        if ($result['merged']) {
-            return redirect()->back()->with('success', 'Keranjang digabungkan karena produk sejenis sudah ada!');
+            if ($result['merged']) {
+                return redirect()->back()->with('success', 'Keranjang digabungkan karena produk sejenis sudah ada!');
+            }
+        } else {
+            $guestCart = session('guest_cart', []);
+            foreach ($guestCart as $k => $item) {
+                if ($item['id'] === $cartItem) {
+                    if ($request->has('quantity')) {
+                        $guestCart[$k]['quantity'] = (int) $request->input('quantity');
+                    }
+                    if ($request->has('is_checked')) {
+                        $guestCart[$k]['is_checked'] = (bool) $request->input('is_checked');
+                    }
+                    break;
+                }
+            }
+            session(['guest_cart' => $guestCart]);
         }
 
         return redirect()->back();
@@ -167,15 +220,28 @@ class CartController extends Controller
      */
     public function bulkUpdate(BulkUpdateCartRequest $request): RedirectResponse
     {
-        $query = CartItem::where('user_id', $request->user()->id);
+        $user = $request->user();
+        if ($user) {
+            $query = CartItem::where('user_id', $user->id);
 
-        if ($request->has('ids')) {
-            $query->whereIn('id', $request->input('ids'));
+            if ($request->has('ids')) {
+                $query->whereIn('id', $request->input('ids'));
+            }
+
+            $query->update([
+                'is_checked' => (bool) $request->input('is_checked'),
+            ]);
+        } else {
+            $guestCart = session('guest_cart', []);
+            $ids = $request->input('ids', []);
+            $isChecked = (bool) $request->input('is_checked');
+            foreach ($guestCart as $k => $item) {
+                if (empty($ids) || in_array($item['id'], $ids)) {
+                    $guestCart[$k]['is_checked'] = $isChecked;
+                }
+            }
+            session(['guest_cart' => $guestCart]);
         }
-
-        $query->update([
-            'is_checked' => (bool) $request->input('is_checked'),
-        ]);
 
         return redirect()->back();
     }
@@ -183,11 +249,18 @@ class CartController extends Controller
     /**
      * Remove a cart item.
      */
-    public function destroy(Request $request, CartItem $cartItem): RedirectResponse
+    public function destroy(Request $request, string $cartItem): RedirectResponse
     {
-        $this->authorize('delete', $cartItem);
-
-        $cartItem->delete();
+        $user = $request->user();
+        if ($user) {
+            $item = CartItem::where('user_id', $user->id)->findOrFail($cartItem);
+            $this->authorize('delete', $item);
+            $item->delete();
+        } else {
+            $guestCart = session('guest_cart', []);
+            $guestCart = array_filter($guestCart, fn ($i) => $i['id'] !== $cartItem);
+            session(['guest_cart' => $guestCart]);
+        }
 
         return redirect()->back()->with('success', 'Produk berhasil dihapus dari keranjang!');
     }

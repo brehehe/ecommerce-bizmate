@@ -8,7 +8,7 @@ class SelectVouchersRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() !== null;
+        return $this->user() !== null || (bool) config('app.is_checkout_without_login', false);
     }
 
     /**

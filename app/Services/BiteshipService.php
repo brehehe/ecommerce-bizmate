@@ -147,7 +147,7 @@ class BiteshipService
     /**
      * Calculate Domestic Shipping Cost using Biteship.
      */
-    public static function getDomesticCost(string $originRegencyId, string $destinationRegencyId, int $weight, string $courier, ?string $addressId = null, $cartItems = null): array
+    public static function getDomesticCost(string $originRegencyId, string $destinationRegencyId, int $weight, string $courier, ?string $addressId = null, $cartItems = null, ?string $explicitAreaId = null): array
     {
         $apiKey = self::getBiteshipKey();
         if (empty($apiKey)) {
@@ -195,6 +195,10 @@ class BiteshipService
             }
             $destLat = $address->latitude;
             $destLng = $address->longitude;
+        } elseif (! empty($explicitAreaId)) {
+            $destAreaId = $explicitAreaId;
+        } elseif (str_starts_with($destinationRegencyId, 'IDN') || strlen($destinationRegencyId) > 15) {
+            $destAreaId = $destinationRegencyId;
         } else {
             // Fallback: try resolving via destination regency name or ID if address record is not found
             $destAreaId = self::resolveBiteshipAreaId('', $destinationRegencyId, '');

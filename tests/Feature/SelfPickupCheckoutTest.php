@@ -9,6 +9,7 @@ use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -95,4 +96,66 @@ test('customer can process checkout with self_pickup without address', function 
     expect($transaction->shipping_service)->toBe('Self Pickup');
     expect((float) $transaction->shipping_fee)->toBe(1000.0);
     expect($transaction->customer_address_id)->toBeNull();
+});
+
+test('customer can process checkout with self_pickup and custom pickup time', function () {
+    CartItem::create([
+        'user_id' => $this->user->id,
+        'product_id' => $this->product->id,
+        'quantity' => 1,
+        'is_checked' => true,
+    ]);
+
+    $pickupDate = now()->addDay()->format('Y-m-d');
+    $pickupTime = '15:30';
+
+    $response = $this->actingAs($this->user)->post(route('checkout.store'), [
+        'customer_address_id' => null,
+        'payment_method_id' => $this->paymentMethod->id,
+        'shipping_courier' => 'self_pickup',
+        'shipping_service' => 'Self Pickup',
+        'shipping_fee' => 1000,
+        'shipping_etd' => '0',
+        'pickup_date' => $pickupDate,
+        'pickup_time' => $pickupTime,
+        'pickup_at' => "{$pickupDate} {$pickupTime}:00",
+    ]);
+
+    $response->assertRedirect();
+    $transaction = Transaction::latest('created_at')->first();
+    expect($transaction)->not->toBeNull();
+    expect($transaction->shipping_courier)->toBe('self_pickup');
+    expect($transaction->pickup_at)->not->toBeNull();
+    expect($transaction->pickup_at->format('Y-m-d H:i'))->toBe("{$pickupDate} 15:30");
+    expect($transaction->pickup_at_formatted)->not->toBeNull();
+});
+
+test('admin can update pickup time for self_pickup transaction', function () {
+    $admin = User::factory()->create();
+    $adminRole = Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
+    $admin->assignRole($adminRole);
+
+    $transaction = Transaction::create([
+        'transaction_number' => Transaction::generateNumber(),
+        'user_id' => $this->user->id,
+        'customer_address_id' => null,
+        'payment_method_id' => $this->paymentMethod->id,
+        'status' => 'diproses',
+        'subtotal' => 100000,
+        'shipping_fee' => 1000,
+        'grand_total' => 101000,
+        'shipping_courier' => 'self_pickup',
+        'shipping_service' => 'Self Pickup',
+        'pickup_at' => now()->addHours(2),
+    ]);
+
+    $newPickupAt = now()->addDays(2)->format('Y-m-d H:i:s');
+
+    $response = $this->actingAs($admin)->post(route('admin.transactions.update-pickup-time', $transaction->id), [
+        'pickup_at' => $newPickupAt,
+    ]);
+
+    $response->assertRedirect();
+    $transaction->refresh();
+    expect($transaction->pickup_at->format('Y-m-d H:i:s'))->toBe($newPickupAt);
 });

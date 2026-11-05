@@ -24,6 +24,10 @@ class ShippingCostRequest extends FormRequest
             'courier' => 'required|string',
             'is_international' => 'nullable|boolean',
             'address_id' => 'nullable|string',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric',
+            'dest_area_id' => 'nullable|string',
+            'biteship_area_id' => 'nullable|string',
         ];
     }
 }

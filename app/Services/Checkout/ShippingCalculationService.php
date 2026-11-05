@@ -5,6 +5,7 @@ namespace App\Services\Checkout;
 use App\Models\CustomerAddress;
 use App\Models\Setting;
 use App\Services\BiteshipService;
+use App\Services\KomerceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -61,7 +62,10 @@ class ShippingCalculationService
             }
 
             $customerAddress = $addressId ? CustomerAddress::find($addressId) : null;
-            if (! $customerAddress) {
+            $customerLat = $customerAddress?->latitude ?? $data['latitude'] ?? null;
+            $customerLng = $customerAddress?->longitude ?? $data['longitude'] ?? null;
+
+            if (! $customerAddress && (! $customerLat || ! $customerLng)) {
                 return response()->json(['error' => 'Alamat pengiriman tidak ditemukan.'], 422);
             }
 
@@ -72,16 +76,16 @@ class ShippingCalculationService
                 return response()->json(['error' => 'Koordinat toko (latitude/longitude) belum diatur di pengaturan.'], 422);
             }
 
-            if (! $customerAddress->latitude || ! $customerAddress->longitude) {
-                return response()->json(['error' => 'Koordinat alamat pengiriman Anda belum diatur. Silakan edit alamat untuk menentukan pin point pada peta.'], 422);
+            if (! $customerLat || ! $customerLng) {
+                return response()->json(['error' => 'Koordinat alamat pengiriman belum diatur. Silakan edit alamat untuk menentukan pin point pada peta.'], 422);
             }
 
             // Haversine distance
             $earthRadius = 6371; // km
-            $latDelta = deg2rad((float) $customerAddress->latitude - (float) $storeLat);
-            $lonDelta = deg2rad((float) $customerAddress->longitude - (float) $storeLng);
+            $latDelta = deg2rad((float) $customerLat - (float) $storeLat);
+            $lonDelta = deg2rad((float) $customerLng - (float) $storeLng);
             $a = sin($latDelta / 2) * sin($latDelta / 2) +
-                cos(deg2rad((float) $storeLat)) * cos(deg2rad((float) $customerAddress->latitude)) *
+                cos(deg2rad((float) $storeLat)) * cos(deg2rad((float) $customerLat)) *
                 sin($lonDelta / 2) * sin($lonDelta / 2);
             $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
             $distance = $earthRadius * $c; // in km
@@ -176,21 +180,41 @@ class ShippingCalculationService
         ]);
 
         if ($isInternational) {
-            return response()->json(['error' => 'Pengiriman internasional belum tersedia.'], 422);
-        }
+            $response = KomerceService::getInternationalCost(
+                $origin,
+                (string) ($destination ?? ''),
+                $weight,
+                $courier
+            );
+        } elseif (BiteshipService::isEnabled()) {
+            $destAreaId = $data['dest_area_id'] ?? $data['biteship_area_id'] ?? null;
 
-        if (! BiteshipService::isEnabled()) {
-            return response()->json(['error' => 'Layanan pengiriman Biteship belum aktif.'], 422);
+            $response = BiteshipService::getDomesticCost(
+                $origin,
+                (string) ($destination ?? ''),
+                $weight,
+                $courier,
+                $addressId,
+                $cartItems ?? collect(),
+                $destAreaId
+            );
+        } elseif (KomerceService::isDeliveryEnabled()) {
+            $response = KomerceService::getDomesticCost(
+                $origin,
+                (string) ($destination ?? ''),
+                $weight,
+                $courier,
+                $addressId
+            );
+        } else {
+            $response = KomerceService::getDomesticCost(
+                $origin,
+                (string) ($destination ?? ''),
+                $weight,
+                $courier,
+                $addressId
+            );
         }
-
-        $response = BiteshipService::getDomesticCost(
-            $origin,
-            (string) ($destination ?? ''),
-            $weight,
-            $courier,
-            $addressId,
-            $cartItems ?? collect()
-        );
 
         if (isset($response['error'])) {
             return response()->json(['error' => $response['error']], 422);

@@ -352,7 +352,9 @@ class HandleInertiaRequests extends Middleware
                 'enable_3d_models' => (bool) config('app.enable_3d_models', true),
                 'is_seller_enabled' => (bool) config('app.is_seller', false),
                 'padelgigs_login_enabled' => (bool) config('services.padelgigs.enabled', true),
+                'is_checkout_without_login' => (bool) config('app.is_checkout_without_login', false),
             ],
+            'isCheckoutWithoutLogin' => (bool) config('app.is_checkout_without_login', false),
             'settings' => [
                 'membership_enabled' => (bool) config('app.membership_enabled', true),
                 'midtrans_enabled' => (bool) config('app.midtrans_enabled', true),
@@ -360,6 +362,7 @@ class HandleInertiaRequests extends Middleware
                 'enable_3d_models' => (bool) config('app.enable_3d_models', true),
                 'is_seller_enabled' => (bool) config('app.is_seller', false),
                 'padelgigs_login_enabled' => (bool) config('services.padelgigs.enabled', true),
+                'is_checkout_without_login' => (bool) config('app.is_checkout_without_login', false),
                 'tax_enabled' => $taxEnabled,
                 'tax_percentage' => (float) $taxPercentage,
                 'store_name' => $storeName,

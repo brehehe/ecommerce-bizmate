@@ -3144,6 +3144,17 @@
                                             {storeSettings.store_postal_code}{/if}
                                     </p>
                                 </div>
+                                {#if transaction.pickup_at_formatted}
+                                    <div class="p-3 bg-purple-50 rounded-xl border border-purple-100 flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                                            <i class="ti ti-clock text-sm"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-[10px] font-bold text-purple-700 uppercase tracking-wider">Jadwal Pengambilan di Toko</p>
+                                            <p class="text-xs font-black text-slate-800">{transaction.pickup_at_formatted}</p>
+                                        </div>
+                                    </div>
+                                {/if}
                                 <div class="h-px bg-slate-100"></div>
                                 <div
                                     class="flex flex-col items-center text-center space-y-2"

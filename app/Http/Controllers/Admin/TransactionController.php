@@ -142,6 +142,8 @@ class TransactionController extends Controller
                 'transactions.created_at',
                 'transactions.user_id',
                 'transactions.payment_method_id',
+                'transactions.shipping_courier',
+                'transactions.pickup_at',
                 'users.name as user_name',
                 'users.email as user_email',
                 'users.phone_number as user_phone',
@@ -268,6 +270,9 @@ class TransactionController extends Controller
                         'name' => $tx->payment_method_name,
                         'type' => $tx->payment_method_type,
                     ] : 'Transfer Bank BCA (Manual)'),
+                    'shipping_courier' => $tx->shipping_courier,
+                    'pickup_at' => $tx->pickup_at,
+                    'pickup_at_formatted' => $tx->pickup_at ? Carbon::parse($tx->pickup_at)->translatedFormat('d F Y, H:i') : null,
                     'payment' => $payment,
                     'items' => $items,
                 ];
@@ -506,6 +511,22 @@ class TransactionController extends Controller
         ]);
 
         return back()->with('success', 'Riwayat pengiriman berhasil ditambahkan.');
+    }
+
+    /**
+     * Update pickup time for self-pickup transactions.
+     */
+    public function updatePickupTime(Request $request, Transaction $transaction): RedirectResponse
+    {
+        $validated = $request->validate([
+            'pickup_at' => 'required|date',
+        ]);
+
+        $transaction->update([
+            'pickup_at' => Carbon::parse($validated['pickup_at']),
+        ]);
+
+        return back()->with('success', 'Jadwal pengambilan berhasil diperbarui.');
     }
 
     /**

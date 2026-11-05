@@ -60,6 +60,7 @@ class Transaction extends Model
         'delivery_arrived_at',
         'delivery_photos',
         'courier_user_id',
+        'pickup_at',
     ];
 
     protected $casts = [
@@ -83,6 +84,7 @@ class Transaction extends Model
         'is_extended' => 'boolean',
         'delivery_arrived_at' => 'datetime',
         'delivery_photos' => 'array',
+        'pickup_at' => 'datetime',
     ];
 
     protected $appends = [
@@ -95,6 +97,7 @@ class Transaction extends Model
         'discount_amount_formatted',
         'shipping_cost_formatted',
         'created_at_formatted',
+        'pickup_at_formatted',
     ];
 
     /**
@@ -599,5 +602,13 @@ class Transaction extends Model
     public function getCreatedAtFormattedAttribute(): string
     {
         return $this->created_at?->translatedFormat('d F Y H:i') ?? $this->created_at?->format('d M Y H:i') ?? '—';
+    }
+
+    /**
+     * Get the formatted pickup time.
+     */
+    public function getPickupAtFormattedAttribute(): ?string
+    {
+        return $this->pickup_at?->translatedFormat('d F Y, H:i') ?? $this->pickup_at?->format('d M Y, H:i');
     }
 }

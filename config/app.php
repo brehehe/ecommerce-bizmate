@@ -145,6 +145,7 @@ return [
 
     'checkout_locked' => (bool) env('CHECKOUT_LOCKED', false),
     'checkout_locked_message' => env('CHECKOUT_LOCKED_MESSAGE', 'Checkout sedang dinonaktifkan sementara. Silakan coba lagi nanti.'),
+    'is_checkout_without_login' => (bool) env('IS_CHECKOUT_WITHOUT_LOGIN', env('is_checkout_without_login', false)),
 
     /*
     |--------------------------------------------------------------------------

@@ -14,22 +14,28 @@ class AddToCartAction
      *
      * @return array{success: bool, message?: string, item?: CartItem, buy_now?: bool}
      */
-    public function execute(User $user, int|string $productId, int|string|null $variantId, int $quantity, bool $buyNow = false): array
+    public function execute(?User $user, int|string $productId, int|string|null $variantId, int $quantity, bool $buyNow = false): array
     {
         $product = Product::with(['productStock', 'variants.productStock'])->findOrFail($productId);
         $variant = $variantId ? ProductVariant::with('productStock')->findOrFail($variantId) : null;
 
         $stockRecord = $variant ? $variant->productStock : $product->productStock;
         $productLabel = $variant ? "{$product->name} (".($variant->sku ?: 'Varian').')' : $product->name;
+        $cartKey = "{$productId}_".($variantId ?? '0');
 
         if ($stockRecord && ! $stockRecord->is_unlimited) {
             $existingQty = 0;
             if (! $buyNow) {
-                $existingItem = CartItem::where('user_id', $user->id)
-                    ->where('product_id', $productId)
-                    ->where('product_variant_id', $variantId)
-                    ->first();
-                $existingQty = $existingItem ? $existingItem->quantity : 0;
+                if ($user) {
+                    $existingItem = CartItem::where('user_id', $user->id)
+                        ->where('product_id', $productId)
+                        ->where('product_variant_id', $variantId)
+                        ->first();
+                    $existingQty = $existingItem ? $existingItem->quantity : 0;
+                } else {
+                    $guestCart = session('guest_cart', []);
+                    $existingQty = isset($guestCart[$cartKey]) ? (int) $guestCart[$cartKey]['quantity'] : 0;
+                }
             }
 
             $totalRequestedQty = $existingQty + $quantity;
@@ -58,6 +64,24 @@ class AddToCartAction
             ]);
 
             return ['success' => true, 'buy_now' => true];
+        }
+
+        if (! $user) {
+            $guestCart = session('guest_cart', []);
+            if (isset($guestCart[$cartKey])) {
+                $guestCart[$cartKey]['quantity'] += $quantity;
+            } else {
+                $guestCart[$cartKey] = [
+                    'id' => 'guest-'.uniqid(),
+                    'product_id' => $productId,
+                    'product_variant_id' => $variantId,
+                    'quantity' => $quantity,
+                    'is_checked' => true,
+                ];
+            }
+            session(['guest_cart' => $guestCart]);
+
+            return ['success' => true, 'buy_now' => false];
         }
 
         $cartItem = CartItem::where('user_id', $user->id)
