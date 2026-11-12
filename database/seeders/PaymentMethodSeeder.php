@@ -69,6 +69,23 @@ class PaymentMethodSeeder extends Seeder
             ]
         );
 
+        // 5. WARIS Dynamic QRIS Gateway
+        PaymentMethod::updateOrCreate(
+            ['name' => 'QRIS (Semua Pembayaran / E-Wallet)'],
+            [
+                'type' => 'gateway',
+                'api_key' => config('services.waris.api_key') ?: '',
+                'api_secret' => config('services.waris.webhook_secret') ?: '',
+                'admin_fee' => 0,
+                'is_active' => true,
+                'settings' => [
+                    'gateway' => 'waris',
+                    'url' => config('services.waris.url') ?: 'https://analisis.giradia.id/api/v1',
+                    'qris_code' => config('services.waris.default_qris_code') ?: 'random',
+                ],
+            ]
+        );
+
         // 5. Flip Gateway
         // PaymentMethod::updateOrCreate(
         //     ['name' => 'Flip'],

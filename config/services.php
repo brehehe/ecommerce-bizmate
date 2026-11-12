@@ -65,4 +65,12 @@ return [
         'redirect' => env('PADELGIGS_OAUTH_REDIRECT_URI'),
     ],
 
+    'waris' => [
+        'enabled' => filter_var(env('WARIS_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+        'url' => rtrim(env('WARIS_API_URL', 'https://webapiqris.biz.id/api/v1'), '/'),
+        'api_key' => env('WARIS_API_KEY'),
+        'webhook_secret' => env('WARIS_WEBHOOK_SECRET'),
+        'default_qris_code' => env('WARIS_QRIS_CODE', 'random'),
+    ],
+
 ];

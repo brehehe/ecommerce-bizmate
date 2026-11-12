@@ -730,6 +730,9 @@
         if (!target.closest('.courier-select-container')) {
             showCourierDropdown = false;
         }
+        if (!target.closest('.destination-search-container')) {
+            showDestinationDropdown = false;
+        }
     }
     let shippingOptions: any[] = $state([]);
     let selectedShipping: any = $state(null);
@@ -1944,11 +1947,11 @@
                     {#if !isDigitalOnly}
                         <!-- Address Section -->
                         <div
-                            class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
+                            class="bg-white rounded-2xl shadow-sm border border-slate-100 relative"
                         >
                             {#if selectedCourier === 'self_pickup'}
                                 <div
-                                    class="py-2.5 px-4 flex items-center justify-between border-b border-slate-100 bg-slate-50"
+                                    class="py-2.5 px-4 flex items-center justify-between border-b border-slate-100 bg-slate-50 rounded-t-2xl"
                                 >
                                     <div class="flex items-center gap-2">
                                         <i
@@ -2083,7 +2086,7 @@
                                 </div>
                             {:else}
                                 <div
-                                    class="py-2.5 px-4 flex items-center justify-between border-b border-slate-100"
+                                    class="py-2.5 px-4 flex items-center justify-between border-b border-slate-100 rounded-t-2xl"
                                 >
                                     <div class="flex items-center gap-2">
                                         <i
@@ -2247,48 +2250,55 @@
                                         </div>
 
                                         <!-- Search Destination / Area -->
-                                        <div>
-                                            <label
-                                                class="block text-xs font-bold text-slate-700 mb-1"
-                                            >
-                                                Cari Kota / Kecamatan / Kode Pos
-                                                Tujuan <span
-                                                    class="text-rose-500">*</span
+                                        <div class="destination-search-container relative">
+                                            <div class="flex items-center justify-between mb-1.5">
+                                                <label
+                                                    class="block text-xs font-bold text-slate-700"
                                                 >
-                                            </label>
+                                                    Cari Kota / Kecamatan / Kode Pos Tujuan <span class="text-rose-500">*</span>
+                                                </label>
+                                                <span class="text-[10.5px] font-medium text-slate-400">
+                                                    Ketik min. 3 karakter
+                                                </span>
+                                            </div>
                                             <div class="relative">
                                                 <i
-                                                    class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"
+                                                    class="ti ti-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base pointer-events-none"
                                                 ></i>
                                                 <input
                                                     type="text"
                                                     value={destinationQuery}
+                                                    onfocus={() => {
+                                                        if (destinationResults.length > 0) {
+                                                            showDestinationDropdown = true;
+                                                        }
+                                                    }}
                                                     oninput={(e) =>
                                                         handleDestinationSearch(
                                                             (
                                                                 e.target as HTMLInputElement
                                                             ).value,
                                                         )}
-                                                    placeholder="Ketik minimal 3 huruf (cth: Wonokromo Surabaya, atau kode pos 60245)..."
-                                                    class="w-full pl-9 pr-9 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-300"
+                                                    placeholder="Contoh: Wonokromo Surabaya, atau kode pos 60245..."
+                                                    class="w-full pl-10 pr-10 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition shadow-2xs"
                                                 />
                                                 {#if isSearchingDestination}
                                                     <div
-                                                        class="absolute right-3 top-1/2 -translate-y-1/2"
+                                                        class="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center"
                                                     >
                                                         <i
-                                                            class="ti ti-loader-2 animate-spin text-slate-400 text-sm"
+                                                            class="ti ti-loader-2 animate-spin text-blue-600 text-sm"
                                                         ></i>
                                                     </div>
                                                 {:else if destinationQuery}
                                                     <button
                                                         type="button"
                                                         onclick={clearDestination}
-                                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                                        class="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center cursor-pointer"
                                                         aria-label="Hapus tujuan"
                                                     >
                                                         <i
-                                                            class="ti ti-x text-sm"
+                                                            class="ti ti-x text-xs"
                                                         ></i>
                                                     </button>
                                                 {/if}
@@ -2296,46 +2306,61 @@
                                                 <!-- Autocomplete Dropdown -->
                                                 {#if showDestinationDropdown && destinationResults.length > 0}
                                                     <div
-                                                        class="absolute left-0 right-0 top-full mt-1.5 z-30 bg-white rounded-xl shadow-lg border border-slate-200 max-h-52 overflow-y-auto divide-y divide-slate-100"
+                                                        class="absolute left-0 right-0 top-full mt-2 z-50 bg-white rounded-2xl shadow-2xl shadow-slate-900/15 border border-slate-200/90 overflow-hidden ring-1 ring-black/5"
                                                     >
-                                                        {#each destinationResults as item}
-                                                            <button
-                                                                type="button"
-                                                                onclick={() =>
-                                                                    selectDestination(
-                                                                        item,
-                                                                    )}
-                                                                class="w-full text-left px-3.5 py-2.5 hover:bg-slate-50 transition flex items-center justify-between gap-2"
-                                                            >
-                                                                <div
-                                                                    class="min-w-0"
+                                                        <div class="px-3.5 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
+                                                            <span class="flex items-center gap-1.5 text-slate-700">
+                                                                <i class="ti ti-map-pin text-blue-600"></i>
+                                                                Hasil Pencarian ({destinationResults.length})
+                                                            </span>
+                                                            <span class="text-[10px] text-slate-400 font-medium">Klik untuk memilih</span>
+                                                        </div>
+                                                        <div class="max-h-60 overflow-y-auto divide-y divide-slate-100 overscroll-contain">
+                                                            {#each destinationResults as item}
+                                                                <button
+                                                                    type="button"
+                                                                    onclick={() =>
+                                                                        selectDestination(
+                                                                            item,
+                                                                        )}
+                                                                    class="w-full text-left px-3.5 py-2.5 hover:bg-blue-50/50 transition-colors flex items-center justify-between gap-3 group cursor-pointer"
                                                                 >
-                                                                    <p
-                                                                        class="text-xs font-bold text-slate-800 truncate"
+                                                                    <div
+                                                                        class="flex items-start gap-2.5 min-w-0"
                                                                     >
-                                                                        {item.label ||
-                                                                            `${item.district_name || ''}, ${item.city_name || ''}`}
-                                                                    </p>
-                                                                    <p
-                                                                        class="text-[11px] text-slate-500 truncate"
+                                                                        <div class="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-blue-100 group-hover:text-blue-600 transition">
+                                                                            <i class="ti ti-map-pin text-xs"></i>
+                                                                        </div>
+                                                                        <div class="min-w-0 flex-1">
+                                                                            <p
+                                                                                class="text-xs font-bold text-slate-800 group-hover:text-blue-700 transition truncate"
+                                                                            >
+                                                                                {item.label ||
+                                                                                    `${item.district_name || ''}, ${item.city_name || ''}`}
+                                                                            </p>
+                                                                            <p
+                                                                                class="text-[11px] text-slate-500 truncate mt-0.5 flex items-center gap-1.5 flex-wrap"
+                                                                            >
+                                                                                <span>{item.district_name
+                                                                                    ? `${item.district_name}, `
+                                                                                    : ''}{item.city_name ||
+                                                                                    ''}</span>
+                                                                                {#if item.postal_code || item.zip_code}
+                                                                                    <span class="inline-block px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[10px] font-semibold border border-slate-200/60">
+                                                                                        {item.postal_code || item.zip_code}
+                                                                                    </span>
+                                                                                {/if}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <span
+                                                                        class="text-xs font-bold text-emerald-700 bg-emerald-50 group-hover:bg-emerald-600 group-hover:text-white px-2.5 py-1 rounded-lg shrink-0 transition flex items-center gap-1 border border-emerald-200 group-hover:border-transparent"
                                                                     >
-                                                                        {item.district_name
-                                                                            ? `${item.district_name}, `
-                                                                            : ''}{item.city_name ||
-                                                                            ''}
-                                                                        {item.postal_code ||
-                                                                        item.zip_code
-                                                                            ? `(${item.postal_code || item.zip_code})`
-                                                                            : ''}
-                                                                    </p>
-                                                                </div>
-                                                                <span
-                                                                    class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0"
-                                                                >
-                                                                    Pilih
-                                                                </span>
-                                                            </button>
-                                                        {/each}
+                                                                        Pilih <i class="ti ti-check text-[10px]"></i>
+                                                                    </span>
+                                                                </button>
+                                                            {/each}
+                                                        </div>
                                                     </div>
                                                 {/if}
                                             </div>
@@ -2343,39 +2368,41 @@
                                             <!-- Destination Selected Confirmation Banner -->
                                             {#if guestRegencyName || guestDistrictName}
                                                 <div
-                                                    class="mt-2 p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between gap-2"
+                                                    class="mt-2.5 p-3 bg-gradient-to-r from-emerald-50 to-teal-50/40 rounded-2xl border border-emerald-200/80 flex items-center justify-between gap-3 shadow-2xs"
                                                 >
                                                     <div
-                                                        class="flex items-center gap-2 min-w-0"
+                                                        class="flex items-center gap-2.5 min-w-0"
                                                     >
-                                                        <i
-                                                            class="ti ti-circle-check-filled text-emerald-600 text-base shrink-0"
-                                                        ></i>
+                                                        <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                                            <i class="ti ti-map-pin-check text-base"></i>
+                                                        </div>
                                                         <div class="min-w-0">
-                                                            <p
-                                                                class="text-[10px] uppercase font-bold text-emerald-700 leading-none"
-                                                            >
-                                                                Lokasi
-                                                                Pengiriman
-                                                                Terpilih
-                                                            </p>
+                                                            <div class="flex items-center gap-1.5">
+                                                                <span
+                                                                    class="text-[10px] uppercase font-black text-emerald-800 tracking-wider"
+                                                                >
+                                                                    Lokasi Pengiriman Terpilih
+                                                                </span>
+                                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                            </div>
                                                             <p
                                                                 class="text-xs font-bold text-slate-800 truncate mt-0.5"
                                                             >
                                                                 {guestDistrictName
                                                                     ? `${guestDistrictName}, `
                                                                     : ''}{guestRegencyName}
-                                                                {guestPostalCode
-                                                                    ? `(${guestPostalCode})`
-                                                                    : ''}
+                                                                {#if guestPostalCode}
+                                                                    <span class="font-mono text-emerald-700 font-bold">({guestPostalCode})</span>
+                                                                {/if}
                                                             </p>
                                                         </div>
                                                     </div>
                                                     <button
                                                         type="button"
                                                         onclick={clearDestination}
-                                                        class="text-[11px] font-bold text-rose-600 hover:text-rose-700 shrink-0"
+                                                        class="px-3 py-1.5 text-xs font-bold text-rose-600 hover:text-white hover:bg-rose-600 rounded-xl transition border border-rose-200 bg-white shadow-2xs shrink-0 flex items-center gap-1 cursor-pointer"
                                                     >
+                                                        <i class="ti ti-edit text-xs"></i>
                                                         Ubah
                                                     </button>
                                                 </div>
@@ -3510,7 +3537,7 @@
                                             <i
                                                 class="ti {pm.type === 'manual'
                                                     ? 'ti-building-bank'
-                                                    : 'ti-credit-card'} text-sm"
+                                                    : (pm.name?.toLowerCase().includes('qris') ? 'ti-qrcode' : 'ti-credit-card')} text-sm"
                                             ></i>
                                         </div>
                                         <div class="flex-1 min-w-0">

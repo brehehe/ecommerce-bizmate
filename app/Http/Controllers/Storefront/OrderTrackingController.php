@@ -7,8 +7,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Services\BiteshipService;
+use App\Services\WarisQrisService;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -69,6 +72,61 @@ class OrderTrackingController extends Controller
 
                 if ($isOwnerLoggedIn || $isSessionAuthorized || $isContactMatched) {
                     $transaction = $found;
+
+                    // If transaction is unpaid, handle QRIS recovery and live status sync
+                    if ($transaction->status === 'belum_bayar') {
+                        $latestPayment = $transaction->payment;
+
+                        // 1. If QRIS generation failed previously, attempt auto-regeneration
+                        if ($latestPayment && $latestPayment->gateway_status === 'FAILED_API' && WarisQrisService::isWarisPaymentMethod($transaction->paymentMethod)) {
+                            $regen = WarisQrisService::generateDynamicQris($transaction);
+                            if ($regen['success']) {
+                                $latestPayment->update([
+                                    'gateway_transaction_id' => $regen['reference_id'] ?? $transaction->transaction_number,
+                                    'gateway_status' => 'PENDING',
+                                    'gateway_response' => [
+                                        'qr_image_url' => $regen['qr_image_url'] ?? '',
+                                        'qr_image_data_uri' => $regen['qr_image_url'] ?? '',
+                                        'qr_string' => $regen['qr_string'] ?? '',
+                                        'qris_image' => $regen['qr_image_url'] ?? '',
+                                        'qris_string' => $regen['qr_string'] ?? '',
+                                        'reference_id' => $regen['reference_id'] ?? $transaction->transaction_number,
+                                        'amount' => $regen['amount'] ?? $transaction->grand_total,
+                                        'final_amount' => $regen['final_amount'] ?? $transaction->grand_total,
+                                        'fee_charged' => $regen['fee_charged'] ?? 0,
+                                        'expires_at' => $regen['expires_at'] ?? null,
+                                        'qris_source' => $regen['qris_source'] ?? null,
+                                    ],
+                                ]);
+                                $transaction->load(['payment', 'payments']);
+                            }
+                        }
+
+                        // 2. Real-time check from gateway API (/qris/status/{reference_id})
+                        if (WarisQrisService::isWarisPaymentMethod($transaction->paymentMethod)) {
+                            $check = WarisQrisService::checkTransactionStatus($transaction->transaction_number);
+                            if ($check['is_paid']) {
+                                DB::transaction(function () use ($transaction, $check) {
+                                    if ($transaction->payment) {
+                                        $transaction->payment->update([
+                                            'status' => 'confirmed',
+                                            'gateway_status' => 'PAID',
+                                            'confirmed_at' => $check['paid_at'] ? Carbon::parse($check['paid_at']) : now(),
+                                        ]);
+                                    }
+                                    $transaction->update([
+                                        'status' => 'diproses',
+                                        'payment_status' => 'lunas',
+                                    ]);
+                                    $transaction->statusHistories()->create([
+                                        'status' => 'diproses',
+                                        'description' => 'Pembayaran QRIS berhasil diverifikasi otomatis melalui pengecekan status gateway.',
+                                    ]);
+                                });
+                                $transaction->load(['payment', 'payments', 'statusHistories']);
+                            }
+                        }
+                    }
                 } elseif (empty($contact)) {
                     $error = 'Masukkan email atau nomor HP yang digunakan saat pemesanan untuk melihat rincian.';
                 } else {

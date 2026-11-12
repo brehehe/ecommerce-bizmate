@@ -39,6 +39,87 @@
 
     // Countdown for unpaid transactions
     let countdownText = $state('');
+    let checkingStatus = $state(false);
+
+    function checkPaymentStatus() {
+        if (!transaction) return;
+        checkingStatus = true;
+        router.reload({
+            only: ['transaction'],
+            preserveScroll: true,
+            onFinish: () => {
+                checkingStatus = false;
+            },
+        });
+    }
+
+    // Auto-poll payment status every 6 seconds if status is belum_bayar or menunggu
+    $effect(() => {
+        if (
+            transaction &&
+            (transaction.status === 'belum_bayar' || transaction.status === 'menunggu')
+        ) {
+            const pollTimer = setInterval(() => {
+                router.reload({
+                    only: ['transaction'],
+                    preserveScroll: true,
+                });
+            }, 6000);
+            return () => clearInterval(pollTimer);
+        }
+    });
+
+    const latestPayment = $derived(
+        transaction?.payment ??
+            (transaction?.payments && transaction.payments.length > 0
+                ? transaction.payments[transaction.payments.length - 1]
+                : null)
+    );
+
+    const isQris = $derived(
+        transaction?.payment_method?.name?.toLowerCase().includes('qris') ||
+        transaction?.payment_method?.type === 'waris_qris' ||
+        transaction?.payment_method?.settings?.gateway === 'waris'
+    );
+
+    const qrisData = $derived.by(() => {
+        if (!isQris || !latestPayment || !latestPayment.gateway_response)
+            return null;
+        try {
+            let resp = latestPayment.gateway_response;
+            while (typeof resp === 'string') {
+                try {
+                    resp = JSON.parse(resp);
+                } catch {
+                    break;
+                }
+            }
+            const rawData = resp?.raw?.data;
+            const qrStr = resp?.qr_string ?? resp?.qris_string ?? rawData?.qr_string ?? '';
+            let qrImg = resp?.qr_image_data_uri ?? resp?.qr_image_url ?? resp?.qris_image ?? rawData?.qr_image_data_uri ?? rawData?.qr_image_url ?? '';
+            if (!qrImg && qrStr) {
+                qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrStr)}`;
+            }
+            const apiError = resp?.error || (latestPayment?.gateway_status === 'FAILED_API' ? 'Gagal memuat QRIS dari gateway.' : null);
+            return {
+                image: qrImg,
+                string: qrStr,
+                nmid: resp?.qris_source?.nmid ?? rawData?.nmid ?? '',
+                merchant: resp?.qris_source?.label ?? rawData?.merchant_name ?? '',
+                error: apiError,
+            };
+        } catch {
+            return null;
+        }
+    });
+
+    function downloadQrisImage() {
+        if (!qrisData?.image) return;
+        const link = document.createElement('a');
+        link.href = qrisData.image;
+        link.download = `QRIS-${transaction.transaction_number}.png`;
+        link.click();
+    }
 
     $effect(() => {
         if (
@@ -387,6 +468,100 @@
                                         <i class="ti ti-copy mr-1"></i> Salin Jumlah
                                     </button>
                                 </div>
+
+                                <!-- Dynamic QRIS Instruction Block -->
+                                {#if isQris && qrisData}
+                                    <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 flex flex-col items-center justify-center space-y-4 shadow-sm">
+                                        <div class="text-center">
+                                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 mb-1">
+                                                <i class="ti ti-qrcode"></i> QRIS Dinamis Otomatis
+                                            </span>
+                                            <p class="text-xs text-slate-500 dark:text-slate-400">
+                                                Scan QRIS di bawah ini menggunakan GoPay, OVO, Dana, ShopeePay, BCA Mobile, atau m-Banking apapun.
+                                            </p>
+                                            {#if qrisData.nmid}
+                                                <p class="text-[10px] text-slate-400 mt-0.5">NMID: {qrisData.nmid}</p>
+                                            {/if}
+                                        </div>
+
+                                        <div class="p-2.5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-inner flex items-center justify-center">
+                                            {#if qrisData.image}
+                                                <img
+                                                    src={qrisData.image}
+                                                    alt="QRIS Dinamis"
+                                                    class="w-52 h-52 object-contain rounded-xl"
+                                                    onerror={(e) => {
+                                                        if (qrisData.string) {
+                                                            const fallback = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrisData.string)}`;
+                                                            if (e.currentTarget.src !== fallback) {
+                                                                e.currentTarget.src = fallback;
+                                                            }
+                                                        }
+                                                    }}
+                                                />
+                                            {:else if qrisData.string}
+                                                <img
+                                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrisData.string)}`}
+                                                    alt="QRIS Dinamis"
+                                                    class="w-52 h-52 object-contain rounded-xl"
+                                                />
+                                            {:else if qrisData.error}
+                                                <div class="w-64 min-h-52 p-4 flex flex-col items-center justify-center bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 rounded-2xl text-center space-y-2">
+                                                    <i class="ti ti-alert-circle text-3xl text-rose-500"></i>
+                                                    <p class="text-xs font-bold text-rose-700 dark:text-rose-300">
+                                                        QRIS Belum Tersedia
+                                                    </p>
+                                                    <p class="text-[11px] text-rose-600/90 dark:text-rose-400 leading-snug">
+                                                        {qrisData.error}
+                                                    </p>
+                                                    <p class="text-[10px] text-slate-400">
+                                                        Silakan daftarkan QRIS di dashboard gateway, lalu klik tombol muat ulang di bawah.
+                                                    </p>
+                                                </div>
+                                            {:else}
+                                                <div class="w-52 h-52 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-xl">
+                                                    <i class="ti ti-qrcode text-4xl text-slate-400"></i>
+                                                </div>
+                                            {/if}
+                                        </div>
+
+                                        <div class="flex flex-col sm:flex-row items-center gap-2 w-full pt-1">
+                                            {#if qrisData.image}
+                                                <button
+                                                    type="button"
+                                                    onclick={downloadQrisImage}
+                                                    class="w-full sm:flex-1 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition flex items-center justify-center gap-1.5 shadow-sm"
+                                                >
+                                                    <i class="ti ti-download"></i> Unduh QR Code
+                                                </button>
+                                            {/if}
+                                            <button
+                                                type="button"
+                                                onclick={checkPaymentStatus}
+                                                disabled={checkingStatus}
+                                                class="w-full sm:flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 shadow-sm"
+                                            >
+                                                <i class="ti ti-refresh text-sm {checkingStatus ? 'animate-spin' : ''}"></i>
+                                                <span>{checkingStatus ? 'Mengecek...' : (qrisData?.error && !qrisData?.image ? 'Muat Ulang QRIS' : 'Cek Status Pembayaran')}</span>
+                                            </button>
+                                        </div>
+
+                                        <div class="flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
+                                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            <span>Mengecek status pembayaran otomatis secara berkala...</span>
+                                        </div>
+
+                                        <div class="w-full text-left text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl space-y-1">
+                                            <p class="font-bold text-slate-700 dark:text-slate-300">Cara Pembayaran:</p>
+                                            <ol class="list-decimal pl-4 space-y-0.5 text-[11px]">
+                                                <li>Buka aplikasi m-Banking atau E-Wallet pilihan Anda.</li>
+                                                <li>Pilih menu <strong>Scan / Bayar QRIS</strong>.</li>
+                                                <li>Arahkan kamera ke QR Code di atas.</li>
+                                                <li>Periksa nominal tagihan ({formatRupiah(transaction.grand_total)}) dan konfirmasi pembayaran.</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                {/if}
 
                                 <!-- Manual Bank Transfer Instruction -->
                                 {#if transaction.payment_method?.type === 'manual'}

@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use App\Services\BiteshipService;
 use App\Services\KomerceService;
 use App\Services\MidtransService as MidtransServiceAlias;
+use App\Services\WarisQrisService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -100,14 +101,29 @@ class TransactionController extends Controller
     /**
      * Display a single transaction detail for the customer.
      */
-    public function show(Request $request, Transaction $transaction): Response
+    public function show(Request $request, Transaction $transaction): Response|RedirectResponse
     {
+        if (! $request->user()) {
+            return redirect()->route('order.track', [
+                'trx' => $transaction->transaction_number,
+                'contact' => $transaction->customer_email ?: $transaction->customer_phone,
+            ]);
+        }
+
         Transaction::processAutoStatusUpdates($request->user()->id);
 
-        // Sync Komerce payment methods to ensure they reflect current setting status and admin fees
+        // Sync payment methods to ensure they reflect current setting status and admin fees
         KomerceService::syncPaymentMethods();
+        WarisQrisService::syncPaymentMethod();
 
         if ($transaction->user_id !== $request->user()->id) {
+            if (session('guest_order_'.$transaction->transaction_number) === true) {
+                return redirect()->route('order.track', [
+                    'trx' => $transaction->transaction_number,
+                    'contact' => $transaction->customer_email ?: $transaction->customer_phone,
+                ]);
+            }
+
             abort(403);
         }
 
@@ -439,6 +455,49 @@ class TransactionController extends Controller
         $transaction->update([
             'payment_method_id' => $paymentMethod->id,
         ]);
+
+        // If WARIS QRIS selected, generate a new dynamic QRIS
+        if (WarisQrisService::isWarisPaymentMethod($paymentMethod)) {
+            $qrisRes = WarisQrisService::generateDynamicQris($transaction);
+            if ($qrisRes['success']) {
+                $gatewayResponse = [
+                    'qr_image_url' => $qrisRes['qr_image_url'] ?? '',
+                    'qr_image_data_uri' => $qrisRes['qr_image_url'] ?? '',
+                    'qr_string' => $qrisRes['qr_string'] ?? '',
+                    'qris_image' => $qrisRes['qr_image_url'] ?? '',
+                    'qris_string' => $qrisRes['qr_string'] ?? '',
+                    'reference_id' => $qrisRes['reference_id'] ?? $transaction->transaction_number,
+                    'amount' => $qrisRes['amount'] ?? $transaction->grand_total,
+                    'final_amount' => $qrisRes['final_amount'] ?? $transaction->grand_total,
+                    'fee_charged' => $qrisRes['fee_charged'] ?? 0,
+                    'expires_at' => $qrisRes['expires_at'] ?? null,
+                    'qris_source' => $qrisRes['qris_source'] ?? null,
+                    'raw' => $qrisRes['raw'] ?? [],
+                ];
+
+                $latestPayment = $transaction->payments()->latest()->first() ?? $transaction->payment;
+                if ($latestPayment) {
+                    $latestPayment->update([
+                        'payment_method_id' => $paymentMethod->id,
+                        'gateway_transaction_id' => $qrisRes['reference_id'] ?? $transaction->transaction_number,
+                        'gateway_status' => 'PENDING',
+                        'gateway_response' => $gatewayResponse,
+                    ]);
+                } else {
+                    $transaction->payments()->create([
+                        'payment_method_id' => $paymentMethod->id,
+                        'amount' => $transaction->grand_total,
+                        'gateway_transaction_id' => $qrisRes['reference_id'] ?? $transaction->transaction_number,
+                        'gateway_status' => 'PENDING',
+                        'gateway_response' => $gatewayResponse,
+                        'status' => 'pending',
+                    ]);
+                }
+            } else {
+                return redirect()->route('transactions.show', $transaction->id)
+                    ->with('error', 'Metode pembayaran diubah, tetapi gagal generate QRIS: '.($qrisRes['error'] ?? 'Terjadi kesalahan'));
+            }
+        }
 
         // If Midtrans Core API selected, create a new charge
         if ($midtransPaymentTypeKey && str_contains(strtolower($paymentMethod->name), 'midtrans')) {

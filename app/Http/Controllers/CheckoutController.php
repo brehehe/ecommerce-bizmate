@@ -228,6 +228,7 @@ class CheckoutController extends Controller
             'coinsEnabled' => Setting::where('key', 'coins_enabled')->value('value') === '1',
             'isSelfPickupEnabled' => Setting::where('key', 'self_pickup_enabled')->value('value') === '1',
             'selfPickupFee' => (float) (Setting::where('key', 'self_pickup_fee')->value('value') ?? 0),
+            'appFee' => (float) (Setting::where('key', 'shipping_rate')->value('value') ?? 0),
             'isStoreCourierEnabled' => Setting::where('key', 'store_courier_enabled')->value('value') === '1',
             'biteshipEnabled' => BiteshipService::isEnabled(),
             'isGuestCheckout' => $user === null,

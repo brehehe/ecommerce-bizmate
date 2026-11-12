@@ -20,6 +20,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\KomerceService;
 use App\Services\MidtransService;
+use App\Services\WarisQrisService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -351,12 +352,20 @@ class MasterDataController extends Controller
             'xendit_public_key',
             'xendit_url',
             'xendit_admin_fee',
+            'waris_api_enabled',
+            'waris_api_url',
+            'waris_api_key',
+            'waris_webhook_secret',
+            'waris_qris_code',
+            'waris_admin_fee',
         ], $coreApiKeys);
         $gatewaySettings = Setting::whereIn('key', $gatewayKeys)->pluck('value', 'key')->toArray();
 
         $envKeys = [
             'payment_api_key' => (bool) config('app.rajaongkir.has_payment_api_key_env', false),
             'qrisly_api_key' => (bool) config('app.rajaongkir.has_qrisly_api_key_env', false),
+            'waris_api_key' => (bool) ! empty(config('services.waris.api_key')),
+            'waris_webhook_secret' => (bool) ! empty(config('services.waris.webhook_secret')),
         ];
 
         return Inertia::render('Admin/MasterData/PaymentMethods', [
@@ -395,6 +404,12 @@ class MasterDataController extends Controller
             'xendit_public_key',
             'xendit_url',
             'xendit_admin_fee',
+            'waris_api_enabled',
+            'waris_api_url',
+            'waris_api_key',
+            'waris_webhook_secret',
+            'waris_qris_code',
+            'waris_admin_fee',
         ], $coreApiKeys);
 
         $envLocked = [
@@ -418,6 +433,7 @@ class MasterDataController extends Controller
         }
 
         KomerceService::syncPaymentMethods();
+        WarisQrisService::syncPaymentMethod();
 
         return back()->with('success', 'Konfigurasi Payment Gateway berhasil disimpan.');
     }

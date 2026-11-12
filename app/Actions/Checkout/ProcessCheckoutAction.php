@@ -18,6 +18,7 @@ use App\Services\KomerceService;
 use App\Services\MembershipService;
 use App\Services\MidtransService;
 use App\Services\Promotion\PromotionCalculationService;
+use App\Services\WarisQrisService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -392,9 +393,36 @@ class ProcessCheckoutAction
                 'status' => 'pending',
             ];
 
-            if ($paymentMethod->type === 'gateway') {
+            if ($paymentMethod->type === 'gateway' || $paymentMethod->type === 'waris_qris') {
                 $methodName = strtolower($paymentMethod->name);
-                if ($methodName === 'qris (komerce)') {
+                if (WarisQrisService::isWarisPaymentMethod($paymentMethod)) {
+                    try {
+                        $response = WarisQrisService::generateDynamicQris($transaction);
+                        if ($response['success']) {
+                            $paymentData['gateway_transaction_id'] = $response['reference_id'] ?? $transaction->transaction_number;
+                            $paymentData['gateway_status'] = 'PENDING';
+                            $paymentData['gateway_response'] = [
+                                'qr_image_url' => $response['qr_image_url'] ?? '',
+                                'qr_image_data_uri' => $response['qr_image_url'] ?? '',
+                                'qr_string' => $response['qr_string'] ?? '',
+                                'qris_image' => $response['qr_image_url'] ?? '',
+                                'qris_string' => $response['qr_string'] ?? '',
+                                'reference_id' => $response['reference_id'] ?? $transaction->transaction_number,
+                                'amount' => $response['amount'] ?? $grandTotal,
+                                'final_amount' => $response['final_amount'] ?? $grandTotal,
+                                'fee_charged' => $response['fee_charged'] ?? 0,
+                                'expires_at' => $response['expires_at'] ?? null,
+                                'qris_source' => $response['qris_source'] ?? null,
+                            ];
+                        } else {
+                            $paymentData['gateway_status'] = 'FAILED_API';
+                            $paymentData['gateway_response'] = ['error' => $response['error'] ?? 'Gagal generate pembayaran QRIS.'];
+                        }
+                    } catch (\Exception $e) {
+                        $paymentData['gateway_status'] = 'FAILED_API';
+                        $paymentData['gateway_response'] = ['error' => $e->getMessage()];
+                    }
+                } elseif ($methodName === 'qris (komerce)') {
                     try {
                         $response = KomerceService::generateQris($transaction->transaction_number, $grandTotal);
                         if ($response['success']) {

@@ -776,13 +776,29 @@
         if (!isQris || !latestPayment || !latestPayment.gateway_response)
             return null;
         try {
-            const resp =
-                typeof latestPayment.gateway_response === 'string'
-                    ? JSON.parse(latestPayment.gateway_response)
-                    : latestPayment.gateway_response;
+            let resp = latestPayment.gateway_response;
+            while (typeof resp === 'string') {
+                try {
+                    resp = JSON.parse(resp);
+                } catch {
+                    break;
+                }
+            }
+            const rawData = resp?.raw?.data;
+            const qrStr = resp?.qr_string ?? resp?.qris_string ?? rawData?.qr_string ?? '';
+            let qrImg = resp?.qr_image_data_uri ?? resp?.qr_image_url ?? resp?.qris_image ?? rawData?.qr_image_data_uri ?? rawData?.qr_image_url ?? '';
+            if (!qrImg && qrStr) {
+                qrImg = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrStr)}`;
+            }
+            const apiError = resp?.error || (latestPayment?.gateway_status === 'FAILED_API' ? 'Gagal memuat QRIS dari gateway.' : null);
             return {
-                image: resp?.qris_image ?? '',
-                string: resp?.qris_string ?? '',
+                image: qrImg,
+                string: qrStr,
+                nmid: resp?.qris_source?.nmid ?? rawData?.nmid ?? '',
+                merchant: resp?.qris_source?.label ?? rawData?.merchant_name ?? '',
+                expires_at: resp?.expires_at ?? null,
+                reference_id: resp?.reference_id ?? '',
+                error: apiError,
             };
         } catch (e) {
             return null;
@@ -835,6 +851,36 @@
     const isMidtransCoreApi = $derived(
         !!(coreApiPaymentInstructions && paymentMethod?.name?.toLowerCase().includes('midtrans'))
     );
+
+    let checkingStatus = $state(false);
+
+    function checkPaymentStatus() {
+        if (!transaction) return;
+        checkingStatus = true;
+        router.reload({
+            only: ['transaction'],
+            preserveScroll: true,
+            onFinish: () => {
+                checkingStatus = false;
+            },
+        });
+    }
+
+    // Auto-poll transaction status if waiting for payment
+    $effect(() => {
+        if (
+            transaction &&
+            (transaction.status === 'belum_bayar' || transaction.status === 'menunggu')
+        ) {
+            const pollTimer = setInterval(() => {
+                router.reload({
+                    only: ['transaction'],
+                    preserveScroll: true,
+                });
+            }, 6000);
+            return () => clearInterval(pollTimer);
+        }
+    });
 
     async function downloadQrisImage(): Promise<void> {
         if (!qrisData?.image) return;
@@ -2637,20 +2683,40 @@
                                                 <p
                                                     class="text-[9px] text-slate-400 font-medium tracking-wide"
                                                 >
-                                                    NMID: ID102030405060
+                                                    NMID: {qrisData.nmid || 'ID102030405060'}
                                                 </p>
                                             </div>
 
                                             <!-- QR Code Wrapper (No green corners, no scanner line) -->
                                             <div
-                                                class="p-2 bg-slate-50 rounded-2xl border border-slate-100/80"
+                                                class="p-2 bg-slate-50 rounded-2xl border border-slate-100/80 flex items-center justify-center"
                                             >
                                                 {#if qrisData.image}
                                                     <img
                                                         src={qrisData.image}
                                                         alt="QRIS Code"
                                                         class="w-48 h-48 object-contain bg-white p-2 rounded-xl border border-slate-100/50 shadow-inner"
+                                                        onerror={(e) => {
+                                                            if (qrisData.string) {
+                                                                const fallback = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrisData.string)}`;
+                                                                if (e.currentTarget.src !== fallback) {
+                                                                    e.currentTarget.src = fallback;
+                                                                }
+                                                            }
+                                                        }}
                                                     />
+                                                {:else if qrisData.string}
+                                                    <img
+                                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrisData.string)}`}
+                                                        alt="QRIS Code"
+                                                        class="w-48 h-48 object-contain bg-white p-2 rounded-xl border border-slate-100/50 shadow-inner"
+                                                    />
+                                                {:else if qrisData.error}
+                                                    <div class="w-48 min-h-48 p-3 flex flex-col items-center justify-center bg-rose-50/70 border border-rose-200 rounded-xl text-center space-y-1.5">
+                                                        <i class="ti ti-alert-circle text-2xl text-rose-500"></i>
+                                                        <p class="text-[11px] font-bold text-rose-700">QRIS Belum Tersedia</p>
+                                                        <p class="text-[10px] text-rose-600 leading-snug">{qrisData.error}</p>
+                                                    </div>
                                                 {:else}
                                                     <div
                                                         class="w-48 h-48 bg-slate-200 animate-pulse rounded-xl flex items-center justify-center"
@@ -2730,7 +2796,7 @@
                                             </div>
 
                                             <!-- Action Buttons -->
-                                            <div class="flex gap-2 w-full mt-4">
+                                            <div class="flex flex-col sm:flex-row gap-2 w-full mt-4">
                                                 {#if qrisData.image}
                                                     <button
                                                         type="button"
@@ -2743,6 +2809,21 @@
                                                         Simpan QR Code
                                                     </button>
                                                 {/if}
+                                                <button
+                                                    type="button"
+                                                    onclick={checkPaymentStatus}
+                                                    disabled={checkingStatus}
+                                                    class="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-all active:scale-95"
+                                                >
+                                                    <i
+                                                        class="ti ti-refresh text-sm {checkingStatus ? 'animate-spin' : ''}"
+                                                    ></i>
+                                                    {checkingStatus ? 'Memeriksa...' : 'Cek Status'}
+                                                </button>
+                                            </div>
+                                            <div class="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 mt-2">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                <span>Mengecek status pembayaran otomatis...</span>
                                             </div>
                                         </div>
                                     {:else}

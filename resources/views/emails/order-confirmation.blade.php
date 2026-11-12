@@ -263,10 +263,16 @@
                         @endif
 
                         {{-- Button CTA --}}
+                        @php
+                            $trackingUrl = route('order.track', [
+                                'trx' => $transaction->transaction_number,
+                                'contact' => $transaction->customer_email ?: $transaction->customer_phone,
+                            ]);
+                        @endphp
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:30px auto 10px auto;">
                             <tr>
                                 <td align="center" bgcolor="#0056b3" style="border-radius:4px;">
-                                    <a href="{{ $appUrl }}/transactions/{{ $transaction->id }}" target="_blank" style="font-size:15px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#ffffff;text-decoration:none;border-radius:4px;padding:12px 35px;border:1px solid #0056b3;display:inline-block;font-weight:bold;">
+                                    <a href="{{ $trackingUrl }}" target="_blank" style="font-size:15px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#ffffff;text-decoration:none;border-radius:4px;padding:12px 35px;border:1px solid #0056b3;display:inline-block;font-weight:bold;">
                                         Lihat Detail Pesanan
                                     </a>
                                 </td>

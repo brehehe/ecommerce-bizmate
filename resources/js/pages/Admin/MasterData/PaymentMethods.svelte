@@ -84,6 +84,12 @@
         xendit_public_key: gateway_settings.xendit_public_key || '',
         xendit_url: gateway_settings.xendit_url || 'https://api.xendit.co',
         xendit_admin_fee: gateway_settings.xendit_admin_fee || 0,
+        waris_api_enabled: gateway_settings.waris_api_enabled === '1',
+        waris_api_url: gateway_settings.waris_api_url || 'https://analisis.giradia.id/api/v1',
+        waris_api_key: gateway_settings.waris_api_key || '',
+        waris_webhook_secret: gateway_settings.waris_webhook_secret || '',
+        waris_qris_code: gateway_settings.waris_qris_code || 'random',
+        waris_admin_fee: gateway_settings.waris_admin_fee || 0,
     });
 
     const gateways = [
@@ -144,6 +150,12 @@
             midtrans_client_key: gatewayForm.midtrans_client_key,
             midtrans_snap_url: gatewayForm.midtrans_snap_url,
             midtrans_admin_fee: gatewayForm.midtrans_admin_fee,
+            waris_api_enabled: gatewayForm.waris_api_enabled ? '1' : '0',
+            waris_api_url: gatewayForm.waris_api_url,
+            waris_api_key: gatewayForm.waris_api_key,
+            waris_webhook_secret: gatewayForm.waris_webhook_secret,
+            waris_qris_code: gatewayForm.waris_qris_code,
+            waris_admin_fee: gatewayForm.waris_admin_fee,
             // Core API payment type toggles
             ...Object.fromEntries(
                 midtransCoreApiMethods.map((m) => [coreApiSettingKeys[m.key], coreApiEnabled[m.key] ? '1' : '0'])
@@ -516,6 +528,102 @@
                 </div>
             </div>
             {/if}
+
+            <!-- WARIS QRIS Gateway Section -->
+            <div class="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 space-y-5">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 rounded-xl bg-rose-50 text-rose-600">
+                            <i class="ti ti-qrcode text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-outfit font-black text-slate-800 text-base leading-none">Payment Gateway: WARIS QRIS Dinamis</h3>
+                            <p class="text-xs text-slate-400 font-medium mt-1">Generate Dynamic QRIS real-time dengan verifikasi instan melalui Webhook.</p>
+                        </div>
+                    </div>
+                    <!-- Toggle Switch -->
+                    <label class="relative inline-flex items-center cursor-pointer select-none shrink-0">
+                        <input
+                            type="checkbox"
+                            bind:checked={gatewayForm.waris_api_enabled}
+                            class="sr-only peer"
+                        />
+                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
+                        <span class="ml-3 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                            {gatewayForm.waris_api_enabled ? 'Aktif' : 'Nonaktif'}
+                        </span>
+                    </label>
+                </div>
+
+                <!-- Config fields for WARIS QRIS -->
+                <div class="space-y-4 pt-2 font-sans">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input
+                            id="input-waris-api-url"
+                            bind:value={gatewayForm.waris_api_url}
+                            label="API Base URL"
+                            placeholder="https://analisis.giradia.id/api/v1"
+                            required={gatewayForm.waris_api_enabled}
+                        />
+                        <Input
+                            id="input-waris-api-key"
+                            bind:value={gatewayForm.waris_api_key}
+                            label="WARIS API Key (X-API-KEY)"
+                            placeholder="wrs_live_..."
+                            required={gatewayForm.waris_api_enabled}
+                        />
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Input
+                            id="input-waris-webhook-secret"
+                            bind:value={gatewayForm.waris_webhook_secret}
+                            label="Webhook Secret (HMAC-SHA256)"
+                            placeholder="Secret untuk verifikasi signature"
+                        />
+                        <Input
+                            id="input-waris-qris-code"
+                            bind:value={gatewayForm.waris_qris_code}
+                            label="QRIS Code Target"
+                            placeholder="random atau kode spesifik"
+                        />
+                        <InputCurrency
+                            id="input-waris-admin-fee"
+                            bind:value={gatewayForm.waris_admin_fee}
+                            label="Biaya Admin (Rupiah)"
+                            placeholder="Contoh: 0"
+                        />
+                    </div>
+                    <div class="bg-rose-50/70 border border-rose-200 rounded-2xl p-4 text-xs text-rose-800 space-y-1">
+                        <p class="font-bold flex items-center gap-1.5 text-rose-900">
+                            <i class="ti ti-link"></i> URL Webhook Callback untuk Dashboard WARIS:
+                        </p>
+                        <p class="font-mono bg-white p-2 rounded-xl border border-rose-200 select-all text-[11px] break-all">
+                            /api/webhooks/waris
+                        </p>
+                        <p class="text-[11px] text-rose-600">
+                            Masukkan URL callback ini ke menu Webhook portal WARIS untuk notifikasi pembayaran real-time.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-1">
+                    <button
+                        type="button"
+                        onclick={saveGateway}
+                        disabled={gatewayForm.processing}
+                        class="px-5 py-2.5 text-white font-bold text-sm rounded-xl shadow-sm hover:shadow-md transition flex items-center gap-2 disabled:opacity-70 cursor-pointer"
+                        style="background-color: {primaryColor};"
+                    >
+                        {#if gatewayForm.processing}
+                            <i class="ti ti-loader animate-spin text-base"></i>
+                            <span>Menyimpan...</span>
+                        {:else}
+                            <i class="ti ti-device-floppy text-base"></i>
+                            <span>Simpan Konfigurasi</span>
+                        {/if}
+                    </button>
+                </div>
+            </div>
 
 
             <!-- Main Section: Table Card -->

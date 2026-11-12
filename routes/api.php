@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\BiteshipWebhookController;
 use App\Http\Controllers\Api\FlipWebhookController;
 use App\Http\Controllers\Api\KomerceWebhookController;
 use App\Http\Controllers\Api\MidtransWebhookController;
+use App\Http\Controllers\Api\WarisWebhookController;
 use App\Http\Controllers\Api\XenditWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -17,3 +18,7 @@ Route::post('/payment/midtrans/callback', [MidtransWebhookController::class, 'ha
 Route::post('/payment/flip/callback', [FlipWebhookController::class, 'handleCallback']);
 Route::match(['post', 'put'], '/payment/komerce/callback', [KomerceWebhookController::class, 'handleCallback'])->name('api.komerce.webhook');
 Route::post('/payment/biteship/callback', [BiteshipWebhookController::class, 'handleCallback'])->name('api.biteship.webhook');
+
+// WARIS QRIS Payment Gateway Webhooks
+Route::post('/webhooks/waris', [WarisWebhookController::class, 'handleCallback'])->name('api.waris.webhook');
+Route::post('/payment/waris/callback', [WarisWebhookController::class, 'handleCallback']);
