@@ -12,6 +12,7 @@ beforeEach(function () {
     Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
 
     config([
+        'services.google.enabled' => true,
         'services.google.client_id' => 'test-client-id.apps.googleusercontent.com',
         'services.google.client_secret' => 'test-client-secret',
         'services.google.redirect' => 'http://localhost:8000/auth/google/callback',

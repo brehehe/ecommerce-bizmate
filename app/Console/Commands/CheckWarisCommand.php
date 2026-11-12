@@ -87,4 +87,3 @@ class CheckWarisCommand extends Command
         return Command::SUCCESS;
     }
 }
-

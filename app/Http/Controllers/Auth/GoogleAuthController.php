@@ -16,6 +16,12 @@ class GoogleAuthController extends Controller
      */
     public function redirect(): RedirectResponse
     {
+        if (! config('services.google.enabled', false)) {
+            return redirect()->route('login')->withErrors([
+                'email' => 'Fitur Masuk dengan Google sedang dinonaktifkan.',
+            ]);
+        }
+
         if (empty(config('services.google.client_id')) || empty(config('services.google.client_secret'))) {
             return redirect()->route('login')->withErrors([
                 'email' => 'Fitur Masuk dengan Google belum dikonfigurasi di server.',
@@ -30,6 +36,11 @@ class GoogleAuthController extends Controller
      */
     public function callback(Request $request): RedirectResponse
     {
+        if (! config('services.google.enabled', false)) {
+            return redirect()->route('login')->withErrors([
+                'email' => 'Fitur Masuk dengan Google sedang dinonaktifkan.',
+            ]);
+        }
         if ($request->has('error')) {
             $errorDesc = $request->input('error_description') ?: 'Otorisasi masuk dengan Google dibatalkan.';
 
