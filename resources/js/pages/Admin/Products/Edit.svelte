@@ -59,6 +59,15 @@
         page.props.auth?.user?.roles?.some((r) => r.name === 'Super Admin' || r.name === 'Admin') ?? false
     );
     let membershipEnabled = $derived(page.props.settings?.membership_enabled ?? true);
+    const isFoodPick = $derived(
+        Boolean(
+            page.props?.is_foodpick ??
+                page.props?.isFoodPick ??
+                page.props?.app_config?.is_foodpick ??
+                page.props?.settings?.is_foodpick ??
+                false,
+        ),
+    );
 
     // AI Description state
     let isGeneratingAi = $state(false);
@@ -4015,14 +4024,24 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h1 class="text-xl font-semibold tracking-tight text-slate-900">Edit Produk</h1>
-                <p class="mt-0.5 text-sm text-slate-550">Perbarui data produk mebel di katalog toko Anda</p>
+                <p class="mt-0.5 text-sm text-slate-550">Perbarui data produk katalog atau menu resto Anda</p>
             </div>
-            <Link
-                href={adminProductsIndex.url()}
-                class="h-9 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-650 transition-colors hover:bg-slate-50 flex items-center justify-center self-start sm:self-auto cursor-pointer"
-            >
-                Kembali
-            </Link>
+            <div class="flex items-center gap-2 flex-wrap">
+                <Link
+                    href={`/admin/products/${product.id}/modifiers`}
+                    class="h-9 rounded-lg border border-amber-300 bg-amber-50 px-3.5 text-sm font-bold text-amber-900 transition-colors hover:bg-amber-100 flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                    title="Atur pilihan topping, level pedas, dan kustomisasi menu"
+                >
+                    <i class="ti ti-tools-kitchen text-base text-amber-600"></i>
+                    <span>Kustomisasi Menu & Topping</span>
+                </Link>
+                <Link
+                    href={adminProductsIndex.url()}
+                    class="h-9 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-650 transition-colors hover:bg-slate-50 flex items-center justify-center self-start sm:self-auto cursor-pointer"
+                >
+                    Kembali
+                </Link>
+            </div>
         </div>
 
         <form
@@ -4344,82 +4363,84 @@
                         />
                     </div>
 
-                    <!-- Kondisi Produk -->
-                    <div class="mb-6 space-y-2">
-                        <label class="block text-xs font-semibold text-slate-700">Kondisi Produk</label>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <button
-                                type="button"
-                                onclick={() => (form.condition = 'new')}
-                                class="p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer {form.condition === 'new'
-                                    ? 'bg-emerald-50/80 border-emerald-500 text-emerald-900 ring-2 ring-emerald-500/20 shadow-2xs'
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'}"
-                            >
-                                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 {form.condition === 'new' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}">
-                                    <i class="ti ti-sparkles text-sm"></i>
-                                </div>
-                                <div>
-                                    <p class="text-xs font-bold {form.condition === 'new' ? 'text-emerald-950' : 'text-slate-800'}">New</p>
-                                    <p class="text-[10px] text-slate-500 leading-tight">100% Baru & Tersegel</p>
-                                </div>
-                            </button>
+                    {#if !isFoodPick}
+                        <!-- Kondisi Produk -->
+                        <div class="mb-6 space-y-2">
+                            <label class="block text-xs font-semibold text-slate-700">Kondisi Produk</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <button
+                                    type="button"
+                                    onclick={() => (form.condition = 'new')}
+                                    class="p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer {form.condition === 'new'
+                                        ? 'bg-emerald-50/80 border-emerald-500 text-emerald-900 ring-2 ring-emerald-500/20 shadow-2xs'
+                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'}"
+                                >
+                                    <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 {form.condition === 'new' ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}">
+                                        <i class="ti ti-sparkles text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-bold {form.condition === 'new' ? 'text-emerald-950' : 'text-slate-800'}">New</p>
+                                        <p class="text-[10px] text-slate-500 leading-tight">100% Baru & Tersegel</p>
+                                    </div>
+                                </button>
 
-                            <button
-                                type="button"
-                                onclick={() => (form.condition = 'second')}
-                                class="p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer {form.condition === 'second' || form.condition === 'used'
-                                    ? 'bg-amber-50/80 border-amber-500 text-amber-900 ring-2 ring-amber-500/20 shadow-2xs'
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'}"
-                            >
-                                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 {form.condition === 'second' || form.condition === 'used' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500'}">
-                                    <i class="ti ti-refresh text-sm"></i>
-                                </div>
-                                <div>
-                                    <p class="text-xs font-bold {form.condition === 'second' || form.condition === 'used' ? 'text-amber-950' : 'text-slate-800'}">Second</p>
-                                    <p class="text-[10px] text-slate-500 leading-tight">Pernah Digunakan</p>
-                                </div>
-                            </button>
+                                <button
+                                    type="button"
+                                    onclick={() => (form.condition = 'second')}
+                                    class="p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer {form.condition === 'second' || form.condition === 'used'
+                                        ? 'bg-amber-50/80 border-amber-500 text-amber-900 ring-2 ring-amber-500/20 shadow-2xs'
+                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'}"
+                                >
+                                    <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 {form.condition === 'second' || form.condition === 'used' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500'}">
+                                        <i class="ti ti-refresh text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-bold {form.condition === 'second' || form.condition === 'used' ? 'text-amber-950' : 'text-slate-800'}">Second</p>
+                                        <p class="text-[10px] text-slate-500 leading-tight">Pernah Digunakan</p>
+                                    </div>
+                                </button>
 
-                            <button
-                                type="button"
-                                onclick={() => (form.condition = 'rent')}
-                                class="p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer {form.condition === 'rent'
-                                    ? 'bg-purple-50/80 border-purple-500 text-purple-900 ring-2 ring-purple-500/20 shadow-2xs'
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'}"
-                            >
-                                <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 {form.condition === 'rent' ? 'bg-purple-500 text-white' : 'bg-slate-100 text-slate-500'}">
-                                    <i class="ti ti-repeat text-sm"></i>
-                                </div>
-                                <div>
-                                    <p class="text-xs font-bold {form.condition === 'rent' ? 'text-purple-950' : 'text-slate-800'}">Rent</p>
-                                    <p class="text-[10px] text-slate-500 leading-tight">Barang Sewa / Rental</p>
-                                </div>
-                            </button>
+                                <button
+                                    type="button"
+                                    onclick={() => (form.condition = 'rent')}
+                                    class="p-3 rounded-2xl border text-left transition flex items-center gap-3 cursor-pointer {form.condition === 'rent'
+                                        ? 'bg-purple-50/80 border-purple-500 text-purple-900 ring-2 ring-purple-500/20 shadow-2xs'
+                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'}"
+                                >
+                                    <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 {form.condition === 'rent' ? 'bg-purple-500 text-white' : 'bg-slate-100 text-slate-500'}">
+                                        <i class="ti ti-repeat text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-bold {form.condition === 'rent' ? 'text-purple-950' : 'text-slate-800'}">Rent</p>
+                                        <p class="text-[10px] text-slate-500 leading-tight">Barang Sewa / Rental</p>
+                                    </div>
+                                </button>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Masa / Tanggal Pemakaian -->
-                    <div class="mb-6">
-                        <Input
-                            bind:value={form.usage_period}
-                            id="usage_period"
-                            label="Masa / Tanggal Pemakaian (Opsional)"
-                            placeholder="Cth: 3 Bulan / Beli Jan 2024 / Pemakaian Ringan"
-                            error={form.errors.usage_period}
-                        />
-                        <p class="text-[11px] text-slate-400 mt-1">Menginformasikan durasi atau tanggal pemakaian produk ke calon pembeli.</p>
-                    </div>
+                        <!-- Masa / Tanggal Pemakaian -->
+                        <div class="mb-6">
+                            <Input
+                                bind:value={form.usage_period}
+                                id="usage_period"
+                                label="Masa / Tanggal Pemakaian (Opsional)"
+                                placeholder="Cth: 3 Bulan / Beli Jan 2024 / Pemakaian Ringan"
+                                error={form.errors.usage_period}
+                            />
+                            <p class="text-[11px] text-slate-400 mt-1">Menginformasikan durasi atau tanggal pemakaian produk ke calon pembeli.</p>
+                        </div>
 
-                    <div
-                        class="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-2xl"
-                    >
-                        <Toggle
-                            bind:checked={form.is_digital}
-                            label="Produk Digital"
-                            description="Aktifkan jika produk ini tidak memerlukan pengiriman fisik (voucher, lisensi, dll)"
-                            icon="ti-device-laptop"
-                        />
-                    </div>
+                        <div
+                            class="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-2xl"
+                        >
+                            <Toggle
+                                bind:checked={form.is_digital}
+                                label="Produk Digital"
+                                description="Aktifkan jika produk ini tidak memerlukan pengiriman fisik (voucher, lisensi, dll)"
+                                icon="ti-device-laptop"
+                            />
+                        </div>
+                    {/if}
 
                     <!-- Membership Settings -->
                     {#if membershipEnabled}
@@ -4481,13 +4502,13 @@
                             </div>
                         </div>
                     {/if}
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="grid grid-cols-1 {isFoodPick ? '' : 'md:grid-cols-2'} gap-6 mb-6">
                         <div class="space-y-2">
                             <div class="flex items-center justify-between">
                                 <span
                                     class="text-xs font-bold text-slate-600 block"
                                 >
-                                    Kategori Produk
+                                    Kategori {isFoodPick ? 'Menu' : 'Produk'}
                                 </span>
                                 <button
                                     type="button"
@@ -4502,35 +4523,37 @@
                                 bind:value={form.category_ids}
                                 options={categoryOptions}
                                 label=""
-                                placeholder="Pilih Kategori Produk"
+                                placeholder={isFoodPick ? "Pilih Kategori Menu" : "Pilih Kategori Produk"}
                                 error={form.errors.category_ids}
                             />
                         </div>
 
-                        <div class="space-y-2">
-                            <div class="flex items-center justify-between">
-                                <span
-                                    class="text-xs font-bold text-slate-600 block"
-                                >
-                                    Merek (Brand)
-                                </span>
-                                <button
-                                    type="button"
-                                    onclick={() =>
-                                        (showQuickAddBrandModal = true)}
-                                    class="text-xs text-brand-blueRoyal hover:text-brand-blueRoyal/85 font-black flex items-center gap-1 transition cursor-pointer"
-                                >
-                                    <i class="ti ti-plus"></i> Tambah Merek
-                                </button>
+                        {#if !isFoodPick}
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span
+                                        class="text-xs font-bold text-slate-600 block"
+                                    >
+                                        Merek (Brand)
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onclick={() =>
+                                            (showQuickAddBrandModal = true)}
+                                        class="text-xs text-brand-blueRoyal hover:text-brand-blueRoyal/85 font-black flex items-center gap-1 transition cursor-pointer"
+                                    >
+                                        <i class="ti ti-plus"></i> Tambah Merek
+                                    </button>
+                                </div>
+                                <SelectSearchMultiple
+                                    bind:value={form.brand_ids}
+                                    options={brandOptions}
+                                    label=""
+                                    placeholder="Pilih Merek (Brand)"
+                                    error={form.errors.brand_ids}
+                                />
                             </div>
-                            <SelectSearchMultiple
-                                bind:value={form.brand_ids}
-                                options={brandOptions}
-                                label=""
-                                placeholder="Pilih Merek (Brand)"
-                                error={form.errors.brand_ids}
-                            />
-                        </div>
+                        {/if}
                     </div>
                     <div class="space-y-4">
                         <!-- AI Description Generator -->
@@ -4644,33 +4667,6 @@
                             error={form.errors.cost}
                         />
                         {/if}
-                    </div>
-
-                    <!-- Tipe Harga (NET / NEGO) -->
-                    <div class="mb-6">
-                        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Status Harga (NET / NEGO)</label>
-                        <div class="grid grid-cols-2 gap-3 max-w-xs">
-                            <button
-                                type="button"
-                                onclick={() => (form.price_type = 'net')}
-                                class="px-3 py-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {form.price_type === 'net' || !form.price_type
-                                    ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-2 ring-emerald-500/20 shadow-2xs'
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                            >
-                                <i class="ti ti-check text-sm"></i>
-                                NET (Harga Pas)
-                            </button>
-                            <button
-                                type="button"
-                                onclick={() => (form.price_type = 'nego')}
-                                class="px-3 py-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer {form.price_type === 'nego'
-                                    ? 'bg-amber-50 border-amber-500 text-amber-800 ring-2 ring-amber-500/20 shadow-2xs'
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                            >
-                                <i class="ti ti-tag text-sm"></i>
-                                NEGO (Bisa Nego)
-                            </button>
-                        </div>
                     </div>
 
                     {#if !isSellerMode}

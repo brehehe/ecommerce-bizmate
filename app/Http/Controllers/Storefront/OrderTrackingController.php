@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Storefront;
 
 use App\Actions\Checkout\UploadPaymentProofAction;
 use App\Http\Controllers\Controller;
+use App\Models\RestoProfile;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Services\BiteshipService;
@@ -42,6 +43,9 @@ class OrderTrackingController extends Controller
                 'courier',
                 'courierUser',
                 'statusHistories',
+                'restoProfile',
+                'resto:id,name,store_name,phone_number,email',
+                'storeReview',
             ]);
 
             $found = $query->where('transaction_number', $orderNumber)->first();
@@ -53,7 +57,11 @@ class OrderTrackingController extends Controller
             if (! $found) {
                 $error = 'Pesanan dengan nomor "'.$orderNumber.'" tidak ditemukan. Pastikan nomor pesanan sudah benar.';
             } else {
-                $isOwnerLoggedIn = $request->user() && $request->user()->id === $found->user_id;
+                $isOwnerLoggedIn = $request->user() && (
+                    $request->user()->id === $found->user_id ||
+                    $request->user()->id === $found->resto_id ||
+                    $request->user()->hasAnyRole(['Super Admin', 'Admin'])
+                );
                 $isSessionAuthorized = session('guest_order_'.$found->transaction_number) === true;
 
                 $isContactMatched = false;
@@ -151,6 +159,8 @@ class OrderTrackingController extends Controller
             'storeLogo' => $storeLogo,
             'storeWhatsapp' => $storeWhatsapp,
             'biteshipEnabled' => $isBiteshipEnabled,
+            'isFoodPick' => (bool) config('app.is_foodpick', false),
+            'foodpickSettings' => config('app.foodpick', []),
         ]);
     }
 
@@ -167,5 +177,41 @@ class OrderTrackingController extends Controller
         $this->uploadPaymentProofAction->execute($transaction, $file, $request->user());
 
         return back()->with('success', 'Bukti pembayaran berhasil diunggah. Kami akan segera memverifikasinya.');
+    }
+
+    /**
+     * Submit store rating and review for completed order.
+     */
+    public function rateStore(Request $request, Transaction $transaction): RedirectResponse
+    {
+        $validated = $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'comment' => 'nullable|string|max:1000',
+        ]);
+
+        if ($transaction->status !== 'selesai') {
+            return back()->with('error', 'Penilaian hanya dapat diberikan untuk pesanan yang telah selesai.');
+        }
+
+        if ($transaction->storeReview()->exists()) {
+            return back()->with('error', 'Pesanan ini sudah pernah diberi ulasan.');
+        }
+
+        $restoProfileId = $transaction->restoProfile?->id
+            ?? RestoProfile::where('user_id', $transaction->resto_id)->value('id');
+        $sellerId = $transaction->resto_id ?? $transaction->items()->first()?->product?->user_id;
+
+        $transaction->storeReview()->create([
+            'resto_profile_id' => $restoProfileId,
+            'seller_id' => $sellerId,
+            'user_id' => $request->user()?->id ?? $transaction->user_id,
+            'customer_name' => $request->user()?->name ?? $transaction->user?->name ?? 'Pelanggan',
+            'customer_phone' => $request->user()?->phone_number ?? $transaction->user?->phone_number ?? $transaction->customerAddress?->phone,
+            'rating' => (int) $validated['rating'],
+            'comment' => $validated['comment'] ?? null,
+            'is_public' => true,
+        ]);
+
+        return back()->with('success', 'Terima kasih atas ulasan Anda! Penilaian Anda telah tersimpan secara langsung.');
     }
 }

@@ -16,6 +16,7 @@ use App\Models\CustomerAddress;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Promotion;
+use App\Models\RestoProfile;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\User;
@@ -71,6 +72,13 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->with('error', 'Pilih produk terlebih dahulu sebelum checkout.');
         }
 
+        if (Product::isFoodPickEnabled()) {
+            $uniqueRestos = $cartItems->pluck('product.user_id')->filter()->unique();
+            if ($uniqueRestos->count() > 1) {
+                return redirect()->route('cart.index')->with('error', 'Pesanan makanan hanya boleh berasal dari 1 Resto dalam satu transaksi.');
+            }
+        }
+
         $activePromotions = $this->promotionService->getActiveNonVoucherPromotions();
         $this->promotionService->populateBundlingProducts($activePromotions);
 
@@ -97,13 +105,18 @@ class CheckoutController extends Controller
             $tiers = $variant ? $variant->tierPrices : $product->tierPrices;
 
             $appliedTier = null;
-            $effectivePrice = $basePrice;
+            $modifierExtra = 0.0;
+            if (! empty($item->selected_modifiers) && is_iterable($item->selected_modifiers)) {
+                $modifierExtra = (float) collect($item->selected_modifiers)->sum('additional_price');
+            }
+
+            $effectivePrice = $basePrice + $modifierExtra;
 
             if ($tiers && $tiers->isNotEmpty()) {
                 $matchingTiers = $tiers->filter(fn ($t) => $item->quantity >= $t->min_qty)->sortByDesc('min_qty');
                 if ($matchingTiers->isNotEmpty()) {
                     $appliedTier = $matchingTiers->first();
-                    $tierPriceVal = (float) $appliedTier->price;
+                    $tierPriceVal = (float) $appliedTier->price + $modifierExtra;
                     if ($tierPriceVal < $effectivePrice) {
                         $effectivePrice = $tierPriceVal;
                     }
@@ -160,20 +173,186 @@ class CheckoutController extends Controller
             ->orderBy('name')
             ->get();
 
-        $couriers = Courier::where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $isFoodPick = (bool) config('app.is_foodpick', false);
+        $foodpickConfig = config('app.foodpick', []);
+        $hideExpedition = $isFoodPick && ($foodpickConfig['hide_expedition'] ?? true);
+        $restoProfile = null;
+
+        if ($isFoodPick) {
+            $restoId = $cartItems->first()?->product?->user_id;
+            if ($restoId) {
+                $restoProfile = RestoProfile::where('user_id', $restoId)->first();
+            }
+            if (! $restoProfile) {
+                $restoProfile = RestoProfile::first();
+            }
+
+            if ($restoProfile) {
+                $resolvedMethods = $restoProfile->getResolvedPaymentMethods();
+                $customMethods = collect();
+
+                $codMaster = PaymentMethod::where('type', 'manual')->where(function ($q) {
+                    $q->where('bank_name', 'COD')->orWhere('name', 'like', '%COD%');
+                })->first() ?: PaymentMethod::firstOrCreate(
+                    ['bank_name' => 'COD'],
+                    [
+                        'name' => 'Bayar di Tempat (COD / Kasir Resto)',
+                        'type' => 'manual',
+                        'is_active' => true,
+                        'admin_fee' => 0,
+                        'settings' => [
+                            'code' => 'cod',
+                            'description' => 'Bayar tunai langsung saat makanan diambil di resto atau diantar kurir.',
+                        ],
+                    ]
+                );
+
+                $bankMaster = PaymentMethod::where('type', 'manual')->where(function ($q) {
+                    $q->where('name', 'like', '%Transfer Bank Resto%')->orWhere('name', 'like', '%Transfer Bank%');
+                })->first() ?: PaymentMethod::firstOrCreate(
+                    ['name' => 'Transfer Bank Resto'],
+                    [
+                        'type' => 'manual',
+                        'bank_name' => 'BCA',
+                        'is_active' => true,
+                        'admin_fee' => 0,
+                        'settings' => [
+                            'description' => 'Transfer manual langsung ke rekening resto dan kirim bukti bayar.',
+                        ],
+                    ]
+                );
+
+                $qrisMaster = PaymentMethod::where('type', 'manual')->where(function ($q) {
+                    $q->where('bank_name', 'QRIS')->orWhere('name', 'like', '%QRIS Resto%');
+                })->first() ?: PaymentMethod::firstOrCreate(
+                    ['name' => 'QRIS Resto'],
+                    [
+                        'type' => 'manual',
+                        'bank_name' => 'QRIS',
+                        'is_active' => true,
+                        'admin_fee' => 0,
+                        'settings' => [
+                            'description' => 'Scan QRIS resto menggunakan GoPay, OVO, ShopeePay, DANA, atau Mobile Banking.',
+                        ],
+                    ]
+                );
+
+                // 1. COD
+                if (! empty($resolvedMethods['cod']['is_active']) && $codMaster) {
+                    $item = clone $codMaster;
+                    $item->name = $resolvedMethods['cod']['label'] ?? 'Bayar di Tempat (COD / Kasir Resto)';
+                    $item->bank_name = 'COD';
+                    $item->account_number = null;
+                    $item->account_name = null;
+                    $item->description = $resolvedMethods['cod']['description'] ?? 'Bayar tunai saat pesanan diterima.';
+                    $item->settings = array_merge($item->settings ?? [], [
+                        'code' => 'cod',
+                        'description' => $item->description,
+                    ]);
+                    $customMethods->push($item);
+                }
+
+                // 2. Transfer Bank Resto
+                if (! empty($resolvedMethods['bank_transfer']['is_active']) && $bankMaster) {
+                    $item = clone $bankMaster;
+                    $bankName = $resolvedMethods['bank_transfer']['bank_name'] ?? 'BCA';
+                    $item->name = ($resolvedMethods['bank_transfer']['label'] ?? 'Transfer Bank Resto')." ({$bankName})";
+                    $item->bank_name = $bankName;
+                    $item->account_number = $resolvedMethods['bank_transfer']['account_number'] ?? '-';
+                    $item->account_name = $resolvedMethods['bank_transfer']['account_name'] ?? ($restoProfile->resto_name ?? 'Dapur Resto');
+                    $item->description = $resolvedMethods['bank_transfer']['description'] ?? 'Transfer langsung ke rekening resto.';
+                    $item->settings = array_merge($item->settings ?? [], [
+                        'code' => 'bank_transfer',
+                        'bank_name' => $item->bank_name,
+                        'account_number' => $item->account_number,
+                        'account_name' => $item->account_name,
+                        'description' => $item->description,
+                    ]);
+                    $customMethods->push($item);
+                }
+
+                // 3. QRIS Resto
+                if (! empty($resolvedMethods['qris']['is_active']) && $qrisMaster) {
+                    $item = clone $qrisMaster;
+                    $item->name = $resolvedMethods['qris']['label'] ?? 'QRIS Resto (Semua E-Wallet)';
+                    $item->bank_name = 'QRIS';
+                    $item->account_number = null;
+                    $item->account_name = $resolvedMethods['qris']['merchant_name'] ?? ($restoProfile->resto_name ?? 'Dapur Resto');
+                    $item->description = $resolvedMethods['qris']['description'] ?? 'Scan QRIS resto menggunakan GoPay, OVO, ShopeePay, DANA.';
+                    $qrisPath = $resolvedMethods['qris']['image_path'] ?? $restoProfile->qris_image_path ?? null;
+                    $item->settings = array_merge($item->settings ?? [], [
+                        'code' => 'qris',
+                        'qris_image_path' => $qrisPath ? (str_starts_with($qrisPath, 'http') ? $qrisPath : ('/storage/'.ltrim($qrisPath, '/'))) : null,
+                        'merchant_name' => $item->account_name,
+                        'description' => $item->description,
+                    ]);
+                    $customMethods->push($item);
+                }
+
+                // 4. WARIS QRIS Dinamis Resto
+                if (! empty($resolvedMethods['waris']['is_active'])) {
+                    $warisMaster = PaymentMethod::where('is_active', true)
+                        ->where(function ($q) {
+                            $q->where('type', 'gateway')
+                                ->where(function ($q2) {
+                                    $q2->where('settings->gateway', 'waris')
+                                        ->orWhere('name', 'like', '%Waris%')
+                                        ->orWhere('name', 'like', '%QRIS%');
+                                });
+                        })
+                        ->first() ?: PaymentMethod::firstOrCreate(
+                            ['name' => 'QRIS (Semua Pembayaran / E-Wallet)'],
+                            [
+                                'type' => 'gateway',
+                                'api_key' => config('services.waris.api_key') ?: '',
+                                'api_secret' => config('services.waris.webhook_secret') ?: '',
+                                'admin_fee' => 0,
+                                'is_active' => true,
+                                'settings' => [
+                                    'gateway' => 'waris',
+                                    'url' => config('services.waris.url') ?: 'https://webapiqris.biz.id/api/v1',
+                                    'qris_code' => config('services.waris.default_qris_code') ?: 'random',
+                                ],
+                            ]
+                        );
+
+                    if ($warisMaster) {
+                        $item = clone $warisMaster;
+                        $item->name = $resolvedMethods['waris']['label'] ?? 'WARIS QRIS Dinamis Resto';
+                        $item->type = 'gateway';
+                        $item->bank_name = 'WARIS QRIS';
+                        $item->account_number = null;
+                        $item->account_name = $resolvedMethods['waris']['qris_code'] ?? 'random';
+                        $item->description = $resolvedMethods['waris']['description'] ?? 'Generate QRIS otomatis real-time dengan verifikasi instan via Webhook.';
+                        $item->admin_fee = $resolvedMethods['waris']['admin_fee'] ?? 0;
+                        $item->settings = array_merge($item->settings ?? [], [
+                            'code' => 'waris',
+                            'gateway' => 'waris',
+                            'api_url' => $resolvedMethods['waris']['api_url'] ?? '',
+                            'qris_code' => $resolvedMethods['waris']['qris_code'] ?? 'random',
+                            'admin_fee' => $item->admin_fee,
+                            'description' => $item->description,
+                        ]);
+                        $customMethods->push($item);
+                    }
+                }
+
+                $paymentMethods = $customMethods;
+            }
+        }
+
+        $couriers = $hideExpedition
+            ? collect([])
+            : Courier::where('is_active', true)
+                ->orderBy('name')
+                ->get();
 
         $cartVoucherCode = session('cart_voucher_code');
         $appliedVoucher = null;
 
         $subtotal = 0;
         foreach ($cartItems as $item) {
-            $variant = $item->productVariant;
-            $product = $item->product;
-            $price = $variant
-                ? ($variant->is_promo ? (float) $variant->promo_price : (float) ($variant->productPrice?->price ?? 0))
-                : ($product->is_promo ? (float) $product->promo_price : (float) ($product->productPrice?->price ?? 0));
+            $price = (float) ($item->unit_price ?? $item->computed_price ?? $item->price ?? 0);
             $subtotal += $price * $item->quantity;
         }
 
@@ -210,6 +389,13 @@ class CheckoutController extends Controller
         $storeLat = Setting::where('key', 'latitude')->value('value');
         $storeLng = Setting::where('key', 'longitude')->value('value');
 
+        if ($isFoodPick && $restoProfile) {
+            if ($restoProfile->latitude && $restoProfile->longitude) {
+                $storeLat = (float) $restoProfile->latitude;
+                $storeLng = (float) $restoProfile->longitude;
+            }
+        }
+
         return Inertia::render('Storefront/Checkout', [
             'cartItems' => $cartItems,
             'addresses' => $addresses,
@@ -224,14 +410,42 @@ class CheckoutController extends Controller
             'storeOriginCityId' => $storeOriginCityId,
             'storeLat' => $storeLat,
             'storeLng' => $storeLng,
+            'restoProfile' => $restoProfile ? [
+                'id' => $restoProfile->id,
+                'user_id' => $restoProfile->user_id,
+                'resto_name' => $restoProfile->resto_name,
+                'address' => $restoProfile->address,
+                'latitude' => (float) $restoProfile->latitude,
+                'longitude' => (float) $restoProfile->longitude,
+                'allow_pickup' => (bool) $restoProfile->allow_pickup,
+                'allow_delivery' => (bool) $restoProfile->allow_delivery,
+                'max_delivery_radius_km' => (float) ($restoProfile->max_delivery_radius_km ?: 10),
+                'delivery_fee_type' => $restoProfile->delivery_fee_type ?: 'flat',
+                'delivery_fee_base' => (float) ($restoProfile->delivery_fee_base ?? 10000),
+                'delivery_free_min_order' => (float) ($restoProfile->delivery_free_min_order ?? 0),
+                'avg_prep_time_minutes' => (int) ($restoProfile->avg_prep_time_minutes ?: 20),
+                'is_open_now' => $restoProfile->is_open_now !== false,
+            ] : null,
             'coinsBalance' => $user->coins_balance ?? 0,
             'coinsEnabled' => Setting::where('key', 'coins_enabled')->value('value') === '1',
-            'isSelfPickupEnabled' => Setting::where('key', 'self_pickup_enabled')->value('value') === '1',
+            'isSelfPickupEnabled' => $isFoodPick
+                ? (bool) ($foodpickConfig['allow_self_pickup'] ?? true)
+                : (Setting::where('key', 'self_pickup_enabled')->value('value') === '1'),
             'selfPickupFee' => (float) (Setting::where('key', 'self_pickup_fee')->value('value') ?? 0),
             'appFee' => (float) (Setting::where('key', 'shipping_rate')->value('value') ?? 0),
-            'isStoreCourierEnabled' => Setting::where('key', 'store_courier_enabled')->value('value') === '1',
-            'biteshipEnabled' => BiteshipService::isEnabled(),
+            'isStoreCourierEnabled' => $isFoodPick
+                ? (bool) ($foodpickConfig['allow_store_courier'] ?? true)
+                : (Setting::where('key', 'store_courier_enabled')->value('value') === '1'),
+            'biteshipEnabled' => $hideExpedition ? false : BiteshipService::isEnabled(),
             'isGuestCheckout' => $user === null,
+            'isFoodPick' => $isFoodPick,
+            'foodpick' => [
+                'allow_store_courier' => $isFoodPick ? (bool) ($foodpickConfig['allow_store_courier'] ?? true) : false,
+                'allow_self_pickup' => $isFoodPick ? (bool) ($foodpickConfig['allow_self_pickup'] ?? true) : false,
+                'hide_expedition' => $hideExpedition,
+                'default_prep_minutes' => (int) ($foodpickConfig['default_prep_minutes'] ?? 20),
+                'slot_interval_minutes' => (int) ($foodpickConfig['slot_interval_minutes'] ?? 15),
+            ],
         ]);
     }
 
@@ -310,6 +524,13 @@ class CheckoutController extends Controller
 
         if ($cartItems->isEmpty()) {
             return back()->with('error', 'Tidak ada produk yang dipilih untuk checkout.');
+        }
+
+        if (Product::isFoodPickEnabled()) {
+            $uniqueRestos = $cartItems->pluck('product.user_id')->filter()->unique();
+            if ($uniqueRestos->count() > 1) {
+                return back()->with('error', 'Pesanan makanan hanya boleh berasal dari 1 Resto dalam satu transaksi.');
+            }
         }
 
         // Apply active promotions
@@ -443,8 +664,13 @@ class CheckoutController extends Controller
     {
         $user = $request->user();
         $cartItems = $this->getCheckoutItems($user, $user === null);
+        $data = $request->validated();
 
-        return $this->shippingCalculationService->calculate($request->validated(), $cartItems);
+        if (config('app.is_foodpick') && empty($data['resto_id']) && $cartItems->isNotEmpty()) {
+            $data['resto_id'] = $cartItems->first()?->product?->user_id;
+        }
+
+        return $this->shippingCalculationService->calculate($data, $cartItems);
     }
 
     /**
@@ -464,14 +690,18 @@ class CheckoutController extends Controller
                 return new Collection;
             }
 
+            $buyNowItemId = 'buy-now';
             $fakeItem = new CartItem([
-                'id' => 'buy-now',
+                'id' => $buyNowItemId,
                 'user_id' => $user?->id ?? null,
                 'product_id' => $product->id,
                 'product_variant_id' => $buyNow['product_variant_id'] ?? null,
                 'quantity' => $buyNow['quantity'] ?? 1,
                 'is_checked' => true,
+                'note' => $buyNow['note'] ?? null,
+                'selected_modifiers' => $buyNow['selected_modifiers'] ?? null,
             ]);
+            $fakeItem->id = $buyNowItemId;
 
             $fakeItem->setRelation('product', $product);
             if (! empty($buyNow['product_variant_id'])) {
@@ -501,14 +731,18 @@ class CheckoutController extends Controller
                 ])->find($raw['product_id']);
 
                 if ($product) {
+                    $guestItemId = (string) ($raw['id'] ?? ('guest-'.uniqid()));
                     $item = new CartItem([
-                        'id' => $raw['id'] ?? ('guest-'.uniqid()),
+                        'id' => $guestItemId,
                         'user_id' => $user?->id,
                         'product_id' => $product->id,
                         'product_variant_id' => $raw['product_variant_id'] ?? null,
                         'quantity' => $raw['quantity'],
                         'is_checked' => true,
+                        'note' => $raw['note'] ?? null,
+                        'selected_modifiers' => $raw['selected_modifiers'] ?? null,
                     ]);
+                    $item->id = $guestItemId;
                     $item->setRelation('product', $product);
                     if (! empty($raw['product_variant_id'])) {
                         $variant = $product->variants->firstWhere('id', $raw['product_variant_id']);

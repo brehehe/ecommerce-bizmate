@@ -61,6 +61,13 @@ class Transaction extends Model
         'delivery_photos',
         'courier_user_id',
         'pickup_at',
+        'resto_id',
+        'fulfillment_type',
+        'pickup_type',
+        'table_number',
+        'scheduled_date',
+        'scheduled_time_slot',
+        'kitchen_status',
     ];
 
     protected $casts = [
@@ -465,6 +472,16 @@ class Transaction extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function resto(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'resto_id');
+    }
+
+    public function restoProfile(): BelongsTo
+    {
+        return $this->belongsTo(RestoProfile::class, 'resto_id', 'user_id');
+    }
+
     public function customerAddress(): BelongsTo
     {
         return $this->belongsTo(CustomerAddress::class);
@@ -530,6 +547,11 @@ class Transaction extends Model
         return $this->hasOne(RefundRequest::class)->whereNotIn('status', ['ditolak'])->orderBy('created_at', 'desc');
     }
 
+    public function storeReview(): HasOne
+    {
+        return $this->hasOne(StoreReview::class);
+    }
+
     /**
      * Get the customer name.
      */
@@ -560,8 +582,19 @@ class Transaction extends Model
     public function getItemsSummaryAttribute(): string
     {
         return $this->items->map(function ($item): ?string {
-            return $item->product_name;
-        })->filter()->implode(', ') ?: '—';
+            $name = $item->product_name;
+            if ($item->variant_name) {
+                $name .= " ({$item->variant_name})";
+            }
+            if (! empty($item->selected_modifiers) && is_array($item->selected_modifiers)) {
+                $modNames = collect($item->selected_modifiers)->pluck('name')->join(', ');
+                if ($modNames) {
+                    $name .= " [{$modNames}]";
+                }
+            }
+
+            return $name;
+        })->filter()->implode('; ') ?: '—';
     }
 
     /**

@@ -9,6 +9,7 @@ use App\Models\Courier;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\ProductReview;
+use App\Models\StoreReview;
 use App\Models\Transaction;
 use App\Models\User;
 use Carbon\Carbon;
@@ -275,6 +276,13 @@ class ReportController extends Controller
             'paymentMethods' => $paymentMethods,
             'chartData' => $chartData,
             'transactions' => $transactions,
+            'culinaryFulfillment' => config('app.is_foodpick') ? [
+                'takeaway' => (clone $baseQuery)->where('pickup_type', 'takeaway')->count(),
+                'dine_in' => (clone $baseQuery)->where('pickup_type', 'dine_in')->count(),
+                'delivery' => (clone $baseQuery)->where(function ($q) {
+                    $q->where('shipping_courier', 'store_courier')->orWhere('fulfillment_type', 'store_courier');
+                })->count(),
+            ] : null,
             'filters' => [
                 'date_from' => $dateFrom->format('Y-m-d'),
                 'date_to' => $dateTo->format('Y-m-d'),
@@ -1251,6 +1259,93 @@ class ReportController extends Controller
                 'reported_only' => $reportedOnly,
                 'anonymous_only' => $anonymousOnly,
             ],
+        ]);
+    }
+
+    /**
+     * Laporan Rating Toko / Resto (Store Ratings Report).
+     */
+    public function storeRatings(Request $request): Response
+    {
+        [$dateFrom, $dateTo, $preset] = $this->getDateRange($request);
+        $sellerInfo = $this->getSellerInfo($request);
+
+        $search = $request->input('search');
+        $ratingFilter = $request->input('rating');
+
+        $query = StoreReview::with([
+            'transaction:id,transaction_number,created_at,status',
+            'restoProfile:id,resto_name,culinary_category',
+            'seller:id,name,store_name',
+            'user:id,name,email',
+        ])
+            ->whereBetween('created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()]);
+
+        if ($sellerInfo) {
+            $query->where('seller_id', $sellerInfo['user']->id);
+        }
+
+        $driver = DB::connection()->getDriverName();
+        $likeOperator = $driver === 'pgsql' ? 'ilike' : 'like';
+
+        if ($search) {
+            $query->where(function ($q) use ($search, $likeOperator) {
+                $q->where('customer_name', $likeOperator, "%{$search}%")
+                    ->orWhere('comment', $likeOperator, "%{$search}%")
+                    ->orWhereHas('transaction', fn ($tq) => $tq->where('transaction_number', $likeOperator, "%{$search}%"))
+                    ->orWhereHas('restoProfile', fn ($rq) => $rq->where('resto_name', $likeOperator, "%{$search}%"));
+            });
+        }
+
+        if ($ratingFilter) {
+            $query->where('rating', (int) $ratingFilter);
+        }
+
+        $reviews = $query->latest('created_at')->paginate(15)->withQueryString();
+
+        $baseQuery = StoreReview::whereBetween('created_at', [$dateFrom->startOfDay(), $dateTo->copy()->endOfDay()]);
+        if ($sellerInfo) {
+            $baseQuery->where('seller_id', $sellerInfo['user']->id);
+        }
+
+        $ratingDistribution = (clone $baseQuery)
+            ->selectRaw('rating, count(*) as total')
+            ->groupBy('rating')
+            ->pluck('total', 'rating')
+            ->toArray();
+
+        $totalReviews = (clone $baseQuery)->count();
+        $avgRating = (clone $baseQuery)->avg('rating');
+        $fiveStarCount = $ratingDistribution[5] ?? 0;
+        $withCommentCount = (clone $baseQuery)->whereNotNull('comment')->where('comment', '!=', '')->count();
+        $satisfactionRate = $totalReviews > 0
+            ? round(((($ratingDistribution[4] ?? 0) + ($ratingDistribution[5] ?? 0)) / $totalReviews) * 100, 1)
+            : 100;
+
+        return Inertia::render('Admin/Reports/StoreRatings', [
+            'reviews' => $reviews,
+            'summary' => [
+                'total' => $totalReviews,
+                'avg_rating' => $avgRating !== null ? round((float) $avgRating, 1) : null,
+                'five_star_count' => $fiveStarCount,
+                'with_comment_count' => $withCommentCount,
+                'satisfaction_rate' => $satisfactionRate,
+            ],
+            'ratingDistribution' => [
+                5 => $ratingDistribution[5] ?? 0,
+                4 => $ratingDistribution[4] ?? 0,
+                3 => $ratingDistribution[3] ?? 0,
+                2 => $ratingDistribution[2] ?? 0,
+                1 => $ratingDistribution[1] ?? 0,
+            ],
+            'filters' => [
+                'date_from' => $dateFrom->format('Y-m-d'),
+                'date_to' => $dateTo->format('Y-m-d'),
+                'preset' => $preset,
+                'search' => $search,
+                'rating' => $ratingFilter,
+            ],
+            'isFoodPick' => (bool) config('app.is_foodpick', false),
         ]);
     }
 

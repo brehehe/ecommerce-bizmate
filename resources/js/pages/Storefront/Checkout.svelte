@@ -1,9 +1,22 @@
 <script lang="ts">
-    import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
     import { page, router, Link } from '@inertiajs/svelte';
-    import { showToast } from '@/utils/toast';
-    import { fade } from 'svelte/transition';
     import { untrack, onDestroy } from 'svelte';
+    import { fade } from 'svelte/transition';
+    import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
+    import { showToast } from '@/utils/toast';
+    import AddressModal from './Checkout/AddressModal.svelte';
+    import CheckoutHeader from './Checkout/CheckoutHeader.svelte';
+    import GuestCustomerSection from './Checkout/GuestCustomerSection.svelte';
+    import LoyaltyPointsSection from './Checkout/LoyaltyPointsSection.svelte';
+    import MobileCheckoutBar from './Checkout/MobileCheckoutBar.svelte';
+    import OrderNotesSection from './Checkout/OrderNotesSection.svelte';
+    import OrderSummarySection from './Checkout/OrderSummarySection.svelte';
+    import PaymentMethodsSection from './Checkout/PaymentMethodsSection.svelte';
+    import ProductListSection from './Checkout/ProductListSection.svelte';
+    import PromoExpiryNotice from './Checkout/PromoExpiryNotice.svelte';
+    import ScannerModal from './Checkout/ScannerModal.svelte';
+    import VoucherModal from './Checkout/VoucherModal.svelte';
+    import VoucherSection from './Checkout/VoucherSection.svelte';
 
     // QR/Barcode Scanner States for Checkout
     let showScanModal = $state(false);
@@ -55,7 +68,8 @@
                     },
                 );
             } else {
-                scanError = 'Kamera tidak ditemukan. Pastikan izin kamera telah diberikan.';
+                scanError =
+                    'Kamera tidak ditemukan. Pastikan izin kamera telah diberikan.';
             }
         } catch (err: any) {
             scanError = 'Gagal mengakses kamera: ' + (err.message || err);
@@ -102,14 +116,19 @@
         await stopScanning();
         // Play beep sound
         try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const ctx = new (
+                window.AudioContext || (window as any).webkitAudioContext
+            )();
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.type = 'sine';
             osc.frequency.setValueAtTime(1000, ctx.currentTime);
             gain.gain.setValueAtTime(0, ctx.currentTime);
             gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
-            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
+            gain.gain.exponentialRampToValueAtTime(
+                0.0001,
+                ctx.currentTime + 0.25,
+            );
             osc.connect(gain);
             gain.connect(ctx.destination);
             osc.start();
@@ -117,7 +136,7 @@
         } catch (e) {
             console.error('AudioContext error:', e);
         }
-        
+
         // Put decoded text in input field
         manualPromoCode = decodedText.trim().toUpperCase();
         showScanModal = false;
@@ -146,9 +165,28 @@
         isNewUser = false,
         biteshipEnabled = false,
         isGuestCheckout = false,
+        isFoodPick = false,
+        foodpick = null,
     } = $props();
 
-    const isGuest = $derived(isGuestCheckout || !(page.props as any).auth?.user);
+    const storeSettings = $derived((page.props as any).settings || {});
+    const isFoodPickMode = $derived(
+        Boolean(
+            isFoodPick ||
+            storeSettings.is_foodpick ||
+            (page.props as any).app_config?.is_foodpick,
+        ),
+    );
+    const foodpickConfig = $derived(
+        foodpick ||
+            storeSettings.foodpick ||
+            (page.props as any).app_config?.foodpick ||
+            {},
+    );
+
+    const isGuest = $derived(
+        isGuestCheckout || !(page.props as any).auth?.user,
+    );
 
     // Guest Customer Information States
     let guestName = $state('');
@@ -206,13 +244,19 @@
                     );
                     if (bResp.ok) {
                         const bJson = await bResp.json();
-                        destinationResults = (bJson.areas ?? []).map((a: any) => ({
-                            id: a.id,
-                            label: a.name,
-                            city_name: a.administrative_division_level_2_name,
-                            district_name: a.administrative_division_level_3_name,
-                            postal_code: a.postal_code,
-                        }));
+                        destinationResults = (bJson.areas ?? []).map(
+                            (a: any) => ({
+                                id: a.id,
+                                label: a.name,
+                                city_name:
+                                    a.administrative_division_level_2_name,
+                                district_name:
+                                    a.administrative_division_level_3_name,
+                                postal_code: a.postal_code,
+                                latitude: a.latitude ?? null,
+                                longitude: a.longitude ?? null,
+                            }),
+                        );
                         showDestinationDropdown = destinationResults.length > 0;
                     }
                 }
@@ -224,6 +268,34 @@
         }, 350);
     }
 
+    let isDetectingGuestGps = $state(false);
+    function detectGuestGps() {
+        if (!navigator.geolocation) {
+            showToast('Geolocation tidak didukung browser ini.', 'error');
+            return;
+        }
+        isDetectingGuestGps = true;
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                guestLat = Number(pos.coords.latitude.toFixed(6));
+                guestLng = Number(pos.coords.longitude.toFixed(6));
+                isDetectingGuestGps = false;
+                showToast(
+                    'Titik koordinat GPS berhasil terdeteksi!',
+                    'success',
+                );
+                if (selectedCourier) {
+                    fetchShipping();
+                }
+            },
+            () => {
+                isDetectingGuestGps = false;
+                showToast('Gagal mendeteksi lokasi GPS.', 'error');
+            },
+            { enableHighAccuracy: true, timeout: 10000 },
+        );
+    }
+
     function selectDestination(item: any) {
         destinationQuery =
             item.label ||
@@ -231,8 +303,12 @@
         guestRegencyName = item.city_name || '';
         guestDistrictName = item.district_name || '';
         guestPostalCode = String(item.postal_code || item.zip_code || '');
-        guestBiteshipAreaId = item.id || '';
-        guestRajaongkirDestId = item.id || '';
+        guestBiteshipAreaId = item.id != null ? String(item.id) : '';
+        guestRajaongkirDestId = item.id != null ? String(item.id) : '';
+        if (item.latitude && item.longitude) {
+            guestLat = Number(item.latitude);
+            guestLng = Number(item.longitude);
+        }
         showDestinationDropdown = false;
     }
 
@@ -269,8 +345,9 @@
         (page.props as any).theme?.secondary_color ?? '#fa7315',
     );
 
-    const storeSettings = $derived((page.props as any).settings || {});
-    const userIsNew = $derived(isNewUser || (page.props as any).isNewUser || false);
+    const userIsNew = $derived(
+        isNewUser || (page.props as any).isNewUser || false,
+    );
 
     // Store Open Logic
     const isStoreOpen = $derived.by(() => {
@@ -318,11 +395,11 @@
         const base = (vouchers || []).filter(
             (v: any) =>
                 (v.type === 'voucher_gratis_ongkir' ||
-                 v.type === 'voucher_belanja') &&
+                    v.type === 'voucher_belanja') &&
                 v.settings?.show_publicly !== false &&
                 v.settings?.show_publicly !== 'false',
         );
-        const extra = [];
+        const extra: any[] = [];
         if (appliedVoucher && Array.isArray(appliedVoucher.promotions)) {
             for (const p of appliedVoucher.promotions) {
                 if (!base.some((b) => b.id === p.id)) {
@@ -392,16 +469,30 @@
             receiver_name: finalReceiver || 'Pelanggan',
             phone_number: finalPhone || '',
             full_address: guestFullAddress,
-            province_id: guestProvinceId,
+            province_id: guestProvinceId != null ? String(guestProvinceId) : '',
             province_name: guestProvinceName,
-            regency_id: guestRegencyId || guestBiteshipAreaId,
-            city_id: guestRegencyId || guestBiteshipAreaId,
+            regency_id:
+                guestRegencyId != null
+                    ? String(guestRegencyId)
+                    : guestBiteshipAreaId
+                      ? String(guestBiteshipAreaId)
+                      : '',
+            city_id:
+                guestRegencyId != null
+                    ? String(guestRegencyId)
+                    : guestBiteshipAreaId
+                      ? String(guestBiteshipAreaId)
+                      : '',
             regency_name: guestRegencyName,
-            district_id: guestDistrictId,
+            district_id: guestDistrictId != null ? String(guestDistrictId) : '',
             district_name: guestDistrictName,
-            postal_code: guestPostalCode,
-            biteship_area_id: guestBiteshipAreaId,
-            rajaongkir_destination_id: guestRajaongkirDestId,
+            postal_code: guestPostalCode ? String(guestPostalCode) : '',
+            biteship_area_id: guestBiteshipAreaId
+                ? String(guestBiteshipAreaId)
+                : '',
+            rajaongkir_destination_id: guestRajaongkirDestId
+                ? String(guestRajaongkirDestId)
+                : '',
             latitude: guestLat,
             longitude: guestLng,
             is_primary: true,
@@ -423,11 +514,19 @@
         paymentMethods.find((pm: any) => pm.id === selectedPaymentMethodId),
     );
 
+    $effect(() => {
+        if (!selectedPaymentMethodId && paymentMethods?.length > 0) {
+            selectedPaymentMethodId = paymentMethods[0].id;
+        }
+    });
+
     // Midtrans Core API method selection
     let selectedMidtransMethodKey = $state<string | null>(null);
     // If midtransEnabledMethods is available and user selects it, detect 'midtrans' gateway
     const midtransPaymentMethod = $derived(
-        paymentMethods.find((pm: any) => pm.name?.toLowerCase().includes('midtrans'))
+        paymentMethods.find((pm: any) =>
+            pm.name?.toLowerCase().includes('midtrans'),
+        ),
     );
     // When a Core API method is selected, auto-select the Midtrans gateway payment method
     $effect(() => {
@@ -476,11 +575,25 @@
 
     // Shipping
     const availableCouriers = $derived.by(() => {
-        const list = biteshipEnabled ? couriers.map((c: any) => c.code) : [];
-        if (storeSettings.store_courier_enabled) {
+        const hideExpedition =
+            isFoodPickMode && (foodpickConfig.hide_expedition ?? true);
+        const list =
+            biteshipEnabled && !hideExpedition
+                ? couriers.map((c: any) => c.code)
+                : [];
+
+        const allowStoreCourier = isFoodPickMode
+            ? (foodpickConfig.allow_store_courier ?? true)
+            : Boolean(storeSettings.store_courier_enabled);
+
+        const allowSelfPickup = isFoodPickMode
+            ? (foodpickConfig.allow_self_pickup ?? true)
+            : Boolean(storeSettings.self_pickup_enabled);
+
+        if (allowStoreCourier) {
             list.push('store_courier');
         }
-        if (storeSettings.self_pickup_enabled) {
+        if (allowSelfPickup) {
             list.push('self_pickup');
         }
         return list;
@@ -494,8 +607,12 @@
             },
             {},
         );
-        labels['store_courier'] = 'Kurir Toko';
-        labels['self_pickup'] = 'Ambil di Toko';
+        labels['store_courier'] = isFoodPickMode
+            ? 'Kurir Resto / Pengantaran'
+            : 'Kurir Toko';
+        labels['self_pickup'] = isFoodPickMode
+            ? 'Ambil di Resto / Takeaway'
+            : 'Ambil di Toko';
         return labels;
     });
 
@@ -507,6 +624,8 @@
     // Self Pickup Scheduling State & Slot Calculations
     let pickupDate = $state('');
     let pickupTime = $state('');
+    let pickupSubtype = $state<'takeaway' | 'dine_in'>('takeaway');
+    let tableNumber = $state<string>('');
 
     const dayNamesId = [
         'Minggu',
@@ -559,36 +678,46 @@
         };
     }
 
-    function calculateTimeSlots(dateStr: string, isToday: boolean, hours: { open: string; close: string }) {
+    function calculateTimeSlots(
+        dateStr: string,
+        isToday: boolean,
+        hours: { open: string; close: string },
+    ) {
         const [openH, openM] = (hours.open || '08:00').split(':').map(Number);
-        const [closeH, closeM] = (hours.close || '21:00').split(':').map(Number);
+        const [closeH, closeM] = (hours.close || '21:00')
+            .split(':')
+            .map(Number);
         const openTotalM = openH * 60 + openM;
         const closeTotalM = closeH * 60 + closeM;
 
         let startM = openTotalM;
 
+        const prepMinutes = isFoodPickMode
+            ? Number(foodpickConfig.default_prep_minutes) || 20
+            : 60;
+        const intervalMinutes = isFoodPickMode
+            ? Number(foodpickConfig.slot_interval_minutes) || 15
+            : 30;
+
         if (isToday) {
             const now = new Date();
-            // Buffer: ~60 minutes rounded up to next 30-min boundary (:00 or :30)
-            // e.g. 14:17 -> +60m = 15:17 -> rounds up to 15:30
-            const nowBuffer = new Date(now.getTime() + 60 * 60 * 1000);
+            const nowBuffer = new Date(now.getTime() + prepMinutes * 60 * 1000);
             let bH = nowBuffer.getHours();
             let bM = nowBuffer.getMinutes();
-            let slotM = 0;
-            if (bM === 0) {
-                slotM = 0;
-            } else if (bM <= 30) {
-                slotM = 30;
-            } else {
-                bH += 1;
-                slotM = 0;
+            const rem = bM % intervalMinutes;
+            if (rem !== 0) {
+                bM += intervalMinutes - rem;
+                if (bM >= 60) {
+                    bH += Math.floor(bM / 60);
+                    bM = bM % 60;
+                }
             }
-            const bufferTotalM = bH * 60 + slotM;
+            const bufferTotalM = bH * 60 + bM;
             startM = Math.max(openTotalM, bufferTotalM);
         }
 
         const slots: string[] = [];
-        for (let m = startM; m <= closeTotalM; m += 30) {
+        for (let m = startM; m <= closeTotalM; m += intervalMinutes) {
             const h = Math.floor(m / 60);
             const min = m % 60;
             const hStr = String(h).padStart(2, '0');
@@ -668,7 +797,9 @@
     $effect(() => {
         if (selectedCourier === 'self_pickup') {
             if (availablePickupDates.length > 0) {
-                const found = availablePickupDates.find((d) => d.dateStr === pickupDate);
+                const found = availablePickupDates.find(
+                    (d) => d.dateStr === pickupDate,
+                );
                 if (!found) {
                     pickupDate = availablePickupDates[0].dateStr;
                 }
@@ -690,7 +821,9 @@
 
     const selectedPickupSummary = $derived.by(() => {
         if (!pickupDate || !pickupTime) return '';
-        const found = availablePickupDates.find((d) => d.dateStr === pickupDate);
+        const found = availablePickupDates.find(
+            (d) => d.dateStr === pickupDate,
+        );
         if (found) {
             return `${found.dayName}, ${found.dateFormatted} pukul ${pickupTime} WIB`;
         }
@@ -748,13 +881,17 @@
 
     async function autoSelectShipping(courierIndex = 0) {
         if (isDigitalOnly) return;
-        if (!selectedAddress) return;
+        if (!selectedAddress && selectedCourier !== 'self_pickup') return;
         if (courierIndex >= availableCouriers.length) {
-            selectedCourier = '';
-            shippingOptions = [];
-            selectedShipping = null;
-            shippingError =
-                'Tidak ada layanan pengiriman yang tersedia untuk alamat ini.';
+            if (isFoodPickMode && availableCouriers.length > 0) {
+                selectedCourier = availableCouriers[0];
+            } else {
+                selectedCourier = '';
+                shippingOptions = [];
+                selectedShipping = null;
+                shippingError =
+                    'Tidak ada layanan pengiriman yang tersedia untuk alamat ini.';
+            }
             return;
         }
 
@@ -915,7 +1052,24 @@
 
     // Notes
     let orderNotes = $state('');
-    let itemNotes = $state<Record<number, string>>({});
+    let itemNotes = $state<Record<string | number, string>>({});
+
+    $effect(() => {
+        if (cartItems && cartItems.length > 0) {
+            let updated = false;
+            const nextNotes = { ...itemNotes };
+            for (const it of cartItems) {
+                if (it.id && nextNotes[it.id] === undefined && it.note) {
+                    nextNotes[it.id] = it.note;
+                    updated = true;
+                }
+            }
+            if (updated) {
+                itemNotes = nextNotes;
+            }
+        }
+    });
+
     const isDigitalOnly = $derived(
         (cartItems || []).every((item: any) => item.product?.is_digital),
     );
@@ -1032,8 +1186,7 @@
                             item.price ??
                             item.product?.product_price?.price ??
                             item.product?.productPrice?.price ??
-                            0) *
-                            item.quantity,
+                            0) * item.quantity,
                 ),
             0,
         ),
@@ -1053,7 +1206,11 @@
     );
     const adminFee = $derived.by(() => {
         // If a Midtrans Core API method is selected, use midtransAdminFee
-        const isMidtransCoreSelected = !!(selectedMidtransMethodKey && midtransPaymentMethod && selectedPaymentMethodId === midtransPaymentMethod.id);
+        const isMidtransCoreSelected = !!(
+            selectedMidtransMethodKey &&
+            midtransPaymentMethod &&
+            selectedPaymentMethodId === midtransPaymentMethod.id
+        );
         return isMidtransCoreSelected
             ? Number(midtransAdminFee ?? 0)
             : Number((selectedPaymentMethod as any)?.admin_fee ?? 0);
@@ -1156,10 +1313,15 @@
     });
 
     const activeAdditionalCosts = $derived(
-        (additionalCosts || []).filter((c: any) => c.is_active || c.is_active === '1' || c.is_active === 1)
+        (additionalCosts || []).filter(
+            (c: any) => c.is_active || c.is_active === '1' || c.is_active === 1,
+        ),
     );
     const additionalCostsSum = $derived(
-        activeAdditionalCosts.reduce((sum: number, c: any) => sum + Number(c.value || 0), 0)
+        activeAdditionalCosts.reduce(
+            (sum: number, c: any) => sum + Number(c.value || 0),
+            0,
+        ),
     );
 
     const grandTotal = $derived(
@@ -1248,6 +1410,37 @@
         selectedShipping = null;
 
         try {
+            const rawDest =
+                selectedCourier === 'self_pickup'
+                    ? 'self_pickup'
+                    : isInternational
+                      ? selectedCountryId
+                          ? String(selectedCountryId)
+                          : ''
+                      : selectedAddress?.biteship_area_id ||
+                        selectedAddress?.city_id ||
+                        selectedAddress?.regency_id ||
+                        selectedAddress?.postal_code ||
+                        selectedAddress?.regency_name ||
+                        selectedAddress?.full_address ||
+                        (isFoodPickMode ? 'store_courier' : '');
+
+            const destinationStr =
+                selectedCourier === 'self_pickup'
+                    ? 'self_pickup'
+                    : rawDest
+                      ? String(rawDest)
+                      : isFoodPickMode
+                        ? 'store_courier'
+                        : '';
+
+            const destAreaIdStr =
+                selectedCourier !== 'self_pickup' &&
+                selectedAddress?.biteship_area_id != null &&
+                selectedAddress?.biteship_area_id !== ''
+                    ? String(selectedAddress.biteship_area_id)
+                    : undefined;
+
             const resp = await fetch('/checkout/shipping-cost', {
                 method: 'POST',
                 headers: {
@@ -1261,16 +1454,7 @@
                     Accept: 'application/json',
                 },
                 body: JSON.stringify({
-                    destination:
-                        selectedCourier === 'self_pickup'
-                            ? 'self_pickup'
-                            : isInternational
-                              ? selectedCountryId
-                              : (selectedAddress?.biteship_area_id ||
-                                selectedAddress?.city_id ||
-                                selectedAddress?.regency_id ||
-                                selectedAddress?.postal_code ||
-                                ''),
+                    destination: destinationStr,
                     weight:
                         Math.max(1, Math.ceil(totalWeightGrams / 1000)) * 1000,
                     courier: selectedCourier,
@@ -1278,11 +1462,22 @@
                     address_id:
                         selectedCourier === 'self_pickup' || isGuest
                             ? null
-                            : (selectedAddress?.id ?? null),
-                    latitude: selectedAddress?.latitude ?? undefined,
-                    longitude: selectedAddress?.longitude ?? undefined,
-                    dest_area_id: selectedAddress?.biteship_area_id ?? undefined,
-                    biteship_area_id: selectedAddress?.biteship_area_id ?? undefined,
+                            : selectedAddress?.id
+                              ? String(selectedAddress.id)
+                              : null,
+                    latitude:
+                        selectedAddress?.latitude != null
+                            ? Number(selectedAddress.latitude)
+                            : undefined,
+                    longitude:
+                        selectedAddress?.longitude != null
+                            ? Number(selectedAddress.longitude)
+                            : undefined,
+                    dest_area_id: destAreaIdStr,
+                    biteship_area_id: destAreaIdStr,
+                    resto_id: cartItems?.[0]?.product?.user_id
+                        ? String(cartItems[0].product.user_id)
+                        : undefined,
                 }),
             });
 
@@ -1325,7 +1520,9 @@
                     selectedCourier,
                 ]);
                 shippingError =
-                    data.error ?? data.message ?? 'Tidak ada layanan pengiriman tersedia.';
+                    data.error ??
+                    data.message ??
+                    'Tidak ada layanan pengiriman tersedia.';
             }
         } catch {
             shippingError = 'Gagal memuat ongkir. Coba lagi.';
@@ -1480,15 +1677,24 @@
         if (!isDigitalOnly) {
             if (selectedCourier !== 'self_pickup') {
                 if (!isGuest && !selectedAddressId) {
-                    showToast('Pilih alamat pengiriman terlebih dahulu.', 'error');
+                    showToast(
+                        'Pilih alamat pengiriman terlebih dahulu.',
+                        'error',
+                    );
                     return;
                 }
                 if (isGuest) {
                     if (!guestFullAddress.trim()) {
-                        showToast('Alamat lengkap pengiriman wajib diisi.', 'error');
+                        showToast(
+                            'Alamat lengkap pengiriman wajib diisi.',
+                            'error',
+                        );
                         return;
                     }
-                    if (!guestRegencyName.trim() && !guestBiteshipAreaId.trim()) {
+                    if (
+                        !guestRegencyName.trim() &&
+                        !guestBiteshipAreaId.trim()
+                    ) {
                         showToast(
                             'Kota/Kabupaten atau lokasi tujuan pengiriman wajib dipilih/diisi.',
                             'error',
@@ -1496,7 +1702,10 @@
                         return;
                     }
                     if (!guestPostalCode.trim()) {
-                        showToast('Kode pos tujuan pengiriman wajib diisi.', 'error');
+                        showToast(
+                            'Kode pos tujuan pengiriman wajib diisi.',
+                            'error',
+                        );
                         return;
                     }
                 }
@@ -1509,8 +1718,14 @@
                 showToast('Pilih layanan pengiriman terlebih dahulu.', 'error');
                 return;
             }
-            if (selectedCourier === 'self_pickup' && (!pickupDate || !pickupTime)) {
-                showToast('Pilih tanggal dan jam pengambilan barang terlebih dahulu.', 'error');
+            if (
+                selectedCourier === 'self_pickup' &&
+                (!pickupDate || !pickupTime)
+            ) {
+                showToast(
+                    'Pilih tanggal dan jam pengambilan barang terlebih dahulu.',
+                    'error',
+                );
                 return;
             }
         }
@@ -1518,11 +1733,22 @@
             showToast('Pilih metode pembayaran.', 'error');
             return;
         }
-        if (selectedPaymentMethodId === midtransPaymentMethod?.id && midtransEnabledMethods.length > 0 && !selectedMidtransMethodKey) {
-            showToast('Pilih metode pembayaran Midtrans terlebih dahulu.', 'error');
+        if (
+            selectedPaymentMethodId === midtransPaymentMethod?.id &&
+            midtransEnabledMethods.length > 0 &&
+            !selectedMidtransMethodKey
+        ) {
+            showToast(
+                'Pilih metode pembayaran Midtrans terlebih dahulu.',
+                'error',
+            );
             return;
         }
-        if (!selectedPaymentMethodId && midtransEnabledMethods.length > 0 && !selectedMidtransMethodKey) {
+        if (
+            !selectedPaymentMethodId &&
+            midtransEnabledMethods.length > 0 &&
+            !selectedMidtransMethodKey
+        ) {
             showToast('Pilih metode pembayaran terlebih dahulu.', 'error');
             return;
         }
@@ -1556,6 +1782,23 @@
                 selectedCourier === 'self_pickup' && pickupDate && pickupTime
                     ? `${pickupDate} ${pickupTime}:00`
                     : null,
+            resto_id: cartItems?.[0]?.product?.user_id ?? null,
+            fulfillment_type:
+                selectedCourier === 'self_pickup'
+                    ? pickupSubtype === 'dine_in'
+                        ? 'dine_in'
+                        : 'self_pickup'
+                    : 'store_courier',
+            pickup_type:
+                selectedCourier === 'self_pickup' ? pickupSubtype : 'delivery',
+            table_number:
+                selectedCourier === 'self_pickup' && pickupSubtype === 'dine_in'
+                    ? tableNumber.trim()
+                    : null,
+            scheduled_date:
+                selectedCourier === 'self_pickup' ? pickupDate : null,
+            scheduled_time_slot:
+                selectedCourier === 'self_pickup' ? pickupTime : null,
             voucher_code: voucherInputCode ?? '',
             notes: orderNotes,
             use_coins: isGuest ? false : useCoins,
@@ -1579,7 +1822,8 @@
                 payload.village_id = guestVillageId || null;
                 payload.village_name = guestVillageName || null;
                 payload.biteship_area_id = guestBiteshipAreaId || null;
-                payload.rajaongkir_destination_id = guestRajaongkirDestId || null;
+                payload.rajaongkir_destination_id =
+                    guestRajaongkirDestId || null;
                 payload.latitude = guestLat || null;
                 payload.longitude = guestLng || null;
                 payload.receiver_name = (
@@ -1595,23 +1839,20 @@
             }
         }
 
-        router.post(
-            '/checkout',
-            payload,
-            {
-                onError: (errors) => {
-                    isSubmitting = false;
-                    const errorMsg = (Object.values(errors)[0] as string) || '';
-                    showToast(
-                        errorMsg || 'Terjadi kesalahan. Periksa data dan coba lagi.',
-                        'error',
-                    );
-                },
-                onFinish: () => {
-                    isSubmitting = false;
-                },
+        router.post('/checkout', payload, {
+            onError: (errors) => {
+                isSubmitting = false;
+                const errorMsg = (Object.values(errors)[0] as string) || '';
+                showToast(
+                    errorMsg ||
+                        'Terjadi kesalahan. Periksa data dan coba lagi.',
+                    'error',
+                );
             },
-        );
+            onFinish: () => {
+                isSubmitting = false;
+            },
+        });
     }
 
     // ─── Promo Expiry Tracking ───────────────────────────────────────────────
@@ -1727,221 +1968,51 @@
         selesai: '#22c55e',
         batal: '#ef4444',
     };
+
+    const isCheckoutDisabled = $derived(
+        isSubmitting ||
+            isCheckoutLocked ||
+            (!isDigitalOnly &&
+                selectedCourier !== 'self_pickup' &&
+                (!isGuest ? !selectedAddressId : !isGuestAddressFilled)) ||
+            (isGuest && !isGuestCustomerValid) ||
+            !selectedPaymentMethodId ||
+            (!isDigitalOnly &&
+                selectedCourier !== 'self_pickup' &&
+                !selectedShipping) ||
+            !isStoreOpen,
+    );
 </script>
 
 <svelte:window onclick={closeCourierDropdown} />
 
-<StorefrontLayout {storeName} {storeLogo} hideMobileFooter={true} hideMobileBottomNav={true}>
+<StorefrontLayout
+    {storeName}
+    {storeLogo}
+    hideMobileFooter={true}
+    hideMobileBottomNav={true}
+>
     <div class="min-h-dvh bg-slate-50">
-        <!-- Header -->
-        <div class="bg-white border-b border-slate-200 sticky top-0 z-30">
-            <div class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
-                <button
-                    aria-label="Kembali"
-                    onclick={() => window.history.back()}
-                    class="p-2 hover:bg-slate-100 rounded-full transition"
-                >
-                    <i class="ti ti-arrow-left text-xl text-slate-700"></i>
-                </button>
-                <h1 class="text-base font-bold text-slate-800">Checkout</h1>
-            </div>
-        </div>
+        <CheckoutHeader />
 
         <div class="max-w-6xl mx-auto px-4 py-4 pb-24">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <!-- Left Column -->
                 <div class="lg:col-span-2 space-y-4">
-                    <!-- Promo Expiry Warning Banner -->
-                    {#if promoCountdowns.length > 0}
-                        <div
-                            class="rounded-2xl px-4 py-3 flex items-center gap-3 border {isPromoExpiringSoon
-                                ? 'bg-red-50 border-red-200'
-                                : 'bg-amber-50 border-amber-200'}"
-                        >
-                            <div
-                                class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center {isPromoExpiringSoon
-                                    ? 'bg-red-100'
-                                    : 'bg-amber-100'}"
-                            >
-                                <i
-                                    class="ti ti-clock-exclamation text-lg {isPromoExpiringSoon
-                                        ? 'text-red-500'
-                                        : 'text-amber-500'}"
-                                ></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p
-                                    class="text-xs font-bold {isPromoExpiringSoon
-                                        ? 'text-red-700'
-                                        : 'text-amber-700'}"
-                                >
-                                    {soonestPromoCountdown?.name} berakhir dalam
-                                    <span class="font-black tabular-nums"
-                                        >{soonestPromoCountdown?.label}</span
-                                    >
-                                </p>
-                                <p
-                                    class="text-[11px] {isPromoExpiringSoon
-                                        ? 'text-red-500'
-                                        : 'text-amber-500'} mt-0.5"
-                                >
-                                    Segera selesaikan checkout sebelum harga
-                                    kembali normal.
-                                </p>
-                            </div>
-                        </div>
-                    {/if}
-
-                    {#if promoExpiredNames.length > 0}
-                        <div
-                            class="rounded-2xl px-4 py-3 flex items-center gap-3 bg-slate-50 border border-slate-200"
-                        >
-                            <div
-                                class="shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-slate-100"
-                            >
-                                <i
-                                    class="ti ti-refresh text-lg text-slate-500 animate-spin"
-                                ></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-xs font-bold text-slate-700">
-                                    Memperbarui harga...
-                                </p>
-                                <p class="text-[11px] text-slate-500 mt-0.5">
-                                    {promoExpiredNames.join(', ')} telah berakhir.
-                                    Harga sedang diperbarui ke harga normal.
-                                </p>
-                            </div>
-                        </div>
-                    {/if}
+                    <PromoExpiryNotice
+                        {promoCountdowns}
+                        {promoExpiredNames}
+                        {soonestPromoCountdown}
+                        {isPromoExpiringSoon}
+                    />
 
                     {#if isGuest}
-                        <!-- Guest Customer Information Card -->
-                        <div
-                            class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
-                        >
-                            <div
-                                class="py-2.5 px-4 flex items-center justify-between border-b border-slate-100 bg-slate-50/70"
-                            >
-                                <div class="flex items-center gap-2">
-                                    <i
-                                        class="ti ti-user-check text-lg"
-                                        style="color:{primary}"
-                                    ></i>
-                                    <span
-                                        class="font-bold text-slate-800 text-sm"
-                                        >Data Pemesan (Guest Checkout)</span
-                                    >
-                                </div>
-                                <span
-                                    class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200"
-                                >
-                                    Tanpa Login
-                                </span>
-                            </div>
-                            <div class="p-4 space-y-3.5">
-                                <div
-                                    class="p-3 bg-blue-50/60 rounded-xl border border-blue-100 text-xs text-blue-800 flex items-start gap-2"
-                                >
-                                    <i
-                                        class="ti ti-info-circle text-base text-blue-600 shrink-0 mt-0.5"
-                                    ></i>
-                                    <div class="min-w-0">
-                                        <p class="font-bold">
-                                            Checkout Cepat Tanpa Perlu Daftar
-                                            Akun
-                                        </p>
-                                        <p
-                                            class="text-[11px] text-blue-700 mt-0.5 leading-relaxed"
-                                        >
-                                            Kode pesanan dan link pelacakan
-                                            status pesanan akan dikirimkan
-                                            otomatis ke alamat email Anda
-                                            melalui antrean sistem (queue).
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div
-                                    class="grid grid-cols-1 md:grid-cols-2 gap-3.5"
-                                >
-                                    <div>
-                                        <label
-                                            class="block text-xs font-bold text-slate-700 mb-1"
-                                        >
-                                            Nama Lengkap <span
-                                                class="text-rose-500">*</span
-                                            >
-                                        </label>
-                                        <div class="relative">
-                                            <i
-                                                class="ti ti-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"
-                                            ></i>
-                                            <input
-                                                type="text"
-                                                bind:value={guestName}
-                                                placeholder="Contoh: Budi Santoso"
-                                                class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-300"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label
-                                            class="block text-xs font-bold text-slate-700 mb-1"
-                                        >
-                                            Nomor WhatsApp / HP <span
-                                                class="text-rose-500">*</span
-                                            >
-                                        </label>
-                                        <div class="relative">
-                                            <i
-                                                class="ti ti-phone absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"
-                                            ></i>
-                                            <input
-                                                type="tel"
-                                                bind:value={guestPhone}
-                                                placeholder="Contoh: 081234567890"
-                                                class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-300"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div class="md:col-span-2">
-                                        <label
-                                            class="block text-xs font-bold text-slate-700 mb-1"
-                                        >
-                                            Alamat Email <span
-                                                class="text-rose-500">*</span
-                                            >
-                                        </label>
-                                        <div class="relative">
-                                            <i
-                                                class="ti ti-mail absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"
-                                            ></i>
-                                            <input
-                                                type="email"
-                                                bind:value={guestEmail}
-                                                placeholder="Contoh: budi@gmail.com (Untuk pengiriman kode pesanan)"
-                                                class="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-300"
-                                                required
-                                            />
-                                        </div>
-                                        <p
-                                            class="text-[10.5px] text-slate-500 mt-1 flex items-center gap-1"
-                                        >
-                                            <i
-                                                class="ti ti-shield-check text-emerald-600"
-                                            ></i>
-                                            Kode pesanan dan faktur akan dikirim
-                                            ke email ini via antrean sistem.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <GuestCustomerSection
+                            {primary}
+                            bind:guestName
+                            bind:guestPhone
+                            bind:guestEmail
+                        />
                     {/if}
 
                     {#if !isDigitalOnly}
@@ -1955,33 +2026,121 @@
                                 >
                                     <div class="flex items-center gap-2">
                                         <i
-                                            class="ti ti-building-store text-lg text-emerald-600"
+                                            class="ti {isFoodPickMode
+                                                ? 'ti-tools-kitchen-2 text-amber-600'
+                                                : 'ti-building-store text-emerald-600'} text-lg"
                                         ></i>
                                         <span
                                             class="font-bold text-slate-800 text-sm"
-                                            >Lokasi & Waktu Pengambilan (Ambil di Toko)</span
+                                            >{isFoodPickMode
+                                                ? 'Lokasi & Waktu Kesiapan (Ambil di Resto)'
+                                                : 'Lokasi & Waktu Pengambilan (Ambil di Toko)'}</span
                                         >
                                     </div>
                                     <span
-                                        class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                        class="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full {isFoodPickMode
+                                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'}"
                                     >
-                                        Self Pickup
+                                        {isFoodPickMode
+                                            ? 'Ambil di Resto'
+                                            : 'Self Pickup'}
                                     </span>
                                 </div>
                                 <div class="py-3.5 px-4 space-y-3.5">
+                                    {#if isFoodPickMode}
+                                        <!-- Pilihan Layanan: Takeaway vs Dine-In -->
+                                        <div class="space-y-2">
+                                            <label
+                                                class="block text-[11px] font-bold text-slate-700"
+                                            >
+                                                Pilihan Layanan Kuliner:
+                                            </label>
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <button
+                                                    type="button"
+                                                    onclick={() =>
+                                                        (pickupSubtype =
+                                                            'takeaway')}
+                                                    class="py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer {pickupSubtype ===
+                                                    'takeaway'
+                                                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                                                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}"
+                                                >
+                                                    <span>🥡</span>
+                                                    <span
+                                                        >Bungkus (Takeaway)</span
+                                                    >
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onclick={() =>
+                                                        (pickupSubtype =
+                                                            'dine_in')}
+                                                    class="py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer {pickupSubtype ===
+                                                    'dine_in'
+                                                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                                                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}"
+                                                >
+                                                    <span>🍽️</span>
+                                                    <span>Makan di Tempat</span>
+                                                </button>
+                                            </div>
+
+                                            {#if pickupSubtype === 'dine_in'}
+                                                <div
+                                                    class="p-2.5 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1"
+                                                >
+                                                    <label
+                                                        for="table_number_input"
+                                                        class="block text-2xs font-extrabold uppercase text-amber-900 tracking-wider"
+                                                    >
+                                                        Nomor Meja Resto:
+                                                    </label>
+                                                    <input
+                                                        id="table_number_input"
+                                                        type="text"
+                                                        bind:value={tableNumber}
+                                                        placeholder="Contoh: Meja 07 / Lantai 2"
+                                                        class="w-full text-xs px-3 py-1.5 rounded-lg border border-amber-300 bg-white focus:outline-hidden focus:ring-1 focus:ring-amber-500 font-bold"
+                                                    />
+                                                    <span
+                                                        class="text-3xs text-amber-700 block"
+                                                        >Pesanan akan langsung
+                                                        diantar pramusaji ke
+                                                        meja Anda.</span
+                                                    >
+                                                </div>
+                                            {/if}
+                                        </div>
+                                    {/if}
+
                                     <!-- Store Address Box -->
-                                    <div class="p-3 bg-slate-50/80 rounded-xl border border-slate-200/80 flex items-start gap-2.5">
-                                        <i class="ti ti-map-pin text-emerald-600 text-base mt-0.5 shrink-0"></i>
+                                    <div
+                                        class="p-3 bg-slate-50/80 rounded-xl border border-slate-200/80 flex items-start gap-2.5"
+                                    >
+                                        <i
+                                            class="ti ti-map-pin text-emerald-600 text-base mt-0.5 shrink-0"
+                                        ></i>
                                         <div class="min-w-0 flex-1">
-                                            <p class="text-xs font-bold text-slate-800 mb-0.5">
-                                                {storeSettings.store_name || storeName}
+                                            <p
+                                                class="text-xs font-bold text-slate-800 mb-0.5"
+                                            >
+                                                {storeSettings.store_name ||
+                                                    storeName}
                                             </p>
-                                            <p class="text-[11px] text-slate-600 leading-relaxed font-medium">
+                                            <p
+                                                class="text-[11px] text-slate-600 leading-relaxed font-medium"
+                                            >
                                                 {storeSettings.store_address}
-                                                {#if storeSettings.store_village}, {storeSettings.store_village}{/if}
-                                                {#if storeSettings.store_district}, {storeSettings.store_district}{/if}
-                                                {#if storeSettings.store_regency}, {storeSettings.store_regency}{/if}
-                                                {#if storeSettings.store_province}, {storeSettings.store_province}{/if}
+                                                {#if storeSettings.store_village},
+                                                    {storeSettings.store_village}{/if}
+                                                {#if storeSettings.store_district},
+                                                    {storeSettings.store_district}{/if}
+                                                {#if storeSettings.store_regency},
+                                                    {storeSettings.store_regency}{/if}
+                                                {#if storeSettings.store_province},
+                                                    {storeSettings.store_province}{/if}
                                                 {#if storeSettings.store_postal_code}
                                                     {storeSettings.store_postal_code}{/if}
                                             </p>
@@ -1989,29 +2148,51 @@
                                     </div>
 
                                     <!-- Pickup Schedule Picker -->
-                                    <div class="p-3.5 bg-gradient-to-br from-emerald-50/60 to-teal-50/30 rounded-2xl border border-emerald-200/80 space-y-3">
-                                        <div class="flex items-center justify-between">
-                                            <div class="flex items-center gap-1.5">
-                                                <i class="ti ti-calendar-time text-emerald-600 text-base"></i>
-                                                <span class="text-xs font-bold text-slate-800">Pilih Waktu Pengambilan</span>
+                                    <div
+                                        class="p-3.5 bg-gradient-to-br from-emerald-50/60 to-teal-50/30 rounded-2xl border border-emerald-200/80 space-y-3"
+                                    >
+                                        <div
+                                            class="flex items-center justify-between"
+                                        >
+                                            <div
+                                                class="flex items-center gap-1.5"
+                                            >
+                                                <i
+                                                    class="ti ti-calendar-time text-emerald-600 text-base"
+                                                ></i>
+                                                <span
+                                                    class="text-xs font-bold text-slate-800"
+                                                    >Pilih Waktu Pengambilan</span
+                                                >
                                             </div>
-                                            <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200">
-                                                Slot / 30 Menit
+                                            <span
+                                                class="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200"
+                                            >
+                                                {isFoodPickMode
+                                                    ? `Slot / ${foodpickConfig.slot_interval_minutes || 15} Menit`
+                                                    : 'Slot / 30 Menit'}
                                             </span>
                                         </div>
 
                                         <!-- Date Selector -->
                                         <div>
-                                            <label class="block text-[11px] font-bold text-slate-600 mb-1.5">
+                                            <label
+                                                class="block text-[11px] font-bold text-slate-600 mb-1.5"
+                                            >
                                                 Tanggal Pengambilan:
                                             </label>
                                             {#if availablePickupDates.length > 0}
-                                                <div class="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin">
+                                                <div
+                                                    class="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin"
+                                                >
                                                     {#each availablePickupDates as d}
                                                         <button
                                                             type="button"
-                                                            onclick={() => (pickupDate = d.dateStr)}
-                                                            class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border cursor-pointer {pickupDate === d.dateStr
+                                                            onclick={() =>
+                                                                (pickupDate =
+                                                                    d.dateStr)}
+                                                            class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border cursor-pointer {pickupDate ===
+                                                            d.dateStr
                                                                 ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                                                                 : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/40'}"
                                                         >
@@ -2020,32 +2201,49 @@
                                                     {/each}
                                                 </div>
                                             {:else}
-                                                <p class="text-xs text-rose-500 font-medium p-2 bg-rose-50 rounded-xl border border-rose-100">
-                                                    Toko tidak membuka jadwal pengambilan dalam waktu dekat.
+                                                <p
+                                                    class="text-xs text-rose-500 font-medium p-2 bg-rose-50 rounded-xl border border-rose-100"
+                                                >
+                                                    Toko tidak membuka jadwal
+                                                    pengambilan dalam waktu
+                                                    dekat.
                                                 </p>
                                             {/if}
                                         </div>
 
                                         <!-- Time Slot Selector -->
                                         <div>
-                                            <div class="flex items-center justify-between mb-1.5">
-                                                <label class="block text-[11px] font-bold text-slate-600">
+                                            <div
+                                                class="flex items-center justify-between mb-1.5"
+                                            >
+                                                <label
+                                                    class="block text-[11px] font-bold text-slate-600"
+                                                >
                                                     Jam Pengambilan:
                                                 </label>
                                                 {#if availablePickupSlots.length > 0}
-                                                    <span class="text-[10.5px] font-medium text-emerald-700">
-                                                        Paling cepat: <strong>{availablePickupSlots[0]}</strong>
+                                                    <span
+                                                        class="text-[10.5px] font-medium text-emerald-700"
+                                                    >
+                                                        Paling cepat: <strong
+                                                            >{availablePickupSlots[0]}</strong
+                                                        >
                                                     </span>
                                                 {/if}
                                             </div>
 
                                             {#if availablePickupSlots.length > 0}
-                                                <div class="grid grid-cols-4 sm:grid-cols-6 gap-1.5 max-h-48 overflow-y-auto p-1.5 bg-white/80 rounded-xl border border-emerald-100">
+                                                <div
+                                                    class="grid grid-cols-4 sm:grid-cols-6 gap-1.5 max-h-48 overflow-y-auto p-1.5 bg-white/80 rounded-xl border border-emerald-100"
+                                                >
                                                     {#each availablePickupSlots as slot}
                                                         <button
                                                             type="button"
-                                                            onclick={() => (pickupTime = slot)}
-                                                            class="py-2 px-1 rounded-lg text-xs font-mono font-bold text-center transition border cursor-pointer {pickupTime === slot
+                                                            onclick={() =>
+                                                                (pickupTime =
+                                                                    slot)}
+                                                            class="py-2 px-1 rounded-lg text-xs font-mono font-bold text-center transition border cursor-pointer {pickupTime ===
+                                                            slot
                                                                 ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs ring-2 ring-emerald-200'
                                                                 : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50'}"
                                                         >
@@ -2054,20 +2252,43 @@
                                                     {/each}
                                                 </div>
                                             {:else}
-                                                <div class="p-3 bg-rose-50 rounded-xl border border-rose-100 text-xs text-rose-600 flex items-center gap-1.5">
-                                                    <i class="ti ti-alert-circle text-sm shrink-0"></i>
-                                                    <span>Tidak ada jam tersisa untuk hari ini (melewati jam operasional toko). Silakan pilih tanggal berikutnya.</span>
+                                                <div
+                                                    class="p-3 bg-rose-50 rounded-xl border border-rose-100 text-xs text-rose-600 flex items-center gap-1.5"
+                                                >
+                                                    <i
+                                                        class="ti ti-alert-circle text-sm shrink-0"
+                                                    ></i>
+                                                    <span
+                                                        >Tidak ada jam tersisa
+                                                        untuk hari ini (melewati
+                                                        jam operasional toko).
+                                                        Silakan pilih tanggal
+                                                        berikutnya.</span
+                                                    >
                                                 </div>
                                             {/if}
                                         </div>
 
                                         <!-- Selected Schedule Banner -->
                                         {#if selectedPickupSummary}
-                                            <div class="p-2.5 bg-white rounded-xl border border-emerald-200 flex items-center gap-2 text-xs text-slate-800">
-                                                <i class="ti ti-clock text-emerald-600 text-base shrink-0"></i>
+                                            <div
+                                                class="p-2.5 bg-white rounded-xl border border-emerald-200 flex items-center gap-2 text-xs text-slate-800"
+                                            >
+                                                <i
+                                                    class="ti ti-clock text-emerald-600 text-base shrink-0"
+                                                ></i>
                                                 <div class="min-w-0">
-                                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">Jadwal Pengambilan Dipilih</p>
-                                                    <p class="text-xs font-extrabold text-emerald-800 truncate">{selectedPickupSummary}</p>
+                                                    <p
+                                                        class="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5"
+                                                    >
+                                                        Jadwal Pengambilan
+                                                        Dipilih
+                                                    </p>
+                                                    <p
+                                                        class="text-xs font-extrabold text-emerald-800 truncate"
+                                                    >
+                                                        {selectedPickupSummary}
+                                                    </p>
                                                 </div>
                                             </div>
                                         {/if}
@@ -2080,7 +2301,10 @@
                                             class="ti ti-info-circle text-sm shrink-0"
                                         ></i>
                                         <span
-                                            >Pesanan Anda akan disiapkan di toko. Anda dapat mengambilnya sesuai jadwal di atas setelah status pembayaran selesai.</span
+                                            >Pesanan Anda akan disiapkan di
+                                            toko. Anda dapat mengambilnya sesuai
+                                            jadwal di atas setelah status
+                                            pembayaran selesai.</span
                                         >
                                     </div>
                                 </div>
@@ -2178,7 +2402,9 @@
                                         >
                                             <input
                                                 type="checkbox"
-                                                bind:checked={guestSameAsCustomer}
+                                                bind:checked={
+                                                    guestSameAsCustomer
+                                                }
                                                 class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
                                             />
                                             <span
@@ -2206,7 +2432,9 @@
                                                     </label>
                                                     <input
                                                         type="text"
-                                                        bind:value={guestReceiverName}
+                                                        bind:value={
+                                                            guestReceiverName
+                                                        }
                                                         placeholder="Nama penerima paket"
                                                         class="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-300"
                                                     />
@@ -2222,7 +2450,9 @@
                                                     </label>
                                                     <input
                                                         type="tel"
-                                                        bind:value={guestReceiverPhone}
+                                                        bind:value={
+                                                            guestReceiverPhone
+                                                        }
                                                         placeholder="Nomor HP aktif penerima"
                                                         class="w-full px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-slate-300"
                                                     />
@@ -2237,7 +2467,8 @@
                                             >
                                                 Alamat Lengkap (Jalan, No.
                                                 Rumah, RT/RW, Patokan) <span
-                                                    class="text-rose-500">*</span
+                                                    class="text-rose-500"
+                                                    >*</span
                                                 >
                                             </label>
                                             <textarea
@@ -2250,16 +2481,49 @@
                                         </div>
 
                                         <!-- Search Destination / Area -->
-                                        <div class="destination-search-container relative">
-                                            <div class="flex items-center justify-between mb-1.5">
+                                        <div
+                                            class="destination-search-container relative"
+                                        >
+                                            <div
+                                                class="flex items-center justify-between mb-1.5"
+                                            >
                                                 <label
                                                     class="block text-xs font-bold text-slate-700"
                                                 >
-                                                    Cari Kota / Kecamatan / Kode Pos Tujuan <span class="text-rose-500">*</span>
+                                                    Cari Kota / Kecamatan / Kode
+                                                    Pos Tujuan <span
+                                                        class="text-rose-500"
+                                                        >*</span
+                                                    >
                                                 </label>
-                                                <span class="text-[10.5px] font-medium text-slate-400">
-                                                    Ketik min. 3 karakter
-                                                </span>
+                                                <div
+                                                    class="flex items-center gap-2"
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        onclick={detectGuestGps}
+                                                        disabled={isDetectingGuestGps}
+                                                        class="text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                                    >
+                                                        <i
+                                                            class="ti {isDetectingGuestGps
+                                                                ? 'ti-loader-2 animate-spin'
+                                                                : 'ti-current-location'}"
+                                                        ></i>
+                                                        <span
+                                                            >{isDetectingGuestGps
+                                                                ? 'Mendeteksi...'
+                                                                : 'Pin Lokasi GPS'}</span
+                                                        >
+                                                    </button>
+                                                    {#if guestLat && guestLng}
+                                                        <span
+                                                            class="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200"
+                                                        >
+                                                            ✓ GPS Aktif
+                                                        </span>
+                                                    {/if}
+                                                </div>
                                             </div>
                                             <div class="relative">
                                                 <i
@@ -2269,7 +2533,10 @@
                                                     type="text"
                                                     value={destinationQuery}
                                                     onfocus={() => {
-                                                        if (destinationResults.length > 0) {
+                                                        if (
+                                                            destinationResults.length >
+                                                            0
+                                                        ) {
                                                             showDestinationDropdown = true;
                                                         }
                                                     }}
@@ -2308,14 +2575,26 @@
                                                     <div
                                                         class="absolute left-0 right-0 top-full mt-2 z-50 bg-white rounded-2xl shadow-2xl shadow-slate-900/15 border border-slate-200/90 overflow-hidden ring-1 ring-black/5"
                                                     >
-                                                        <div class="px-3.5 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
-                                                            <span class="flex items-center gap-1.5 text-slate-700">
-                                                                <i class="ti ti-map-pin text-blue-600"></i>
+                                                        <div
+                                                            class="px-3.5 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500"
+                                                        >
+                                                            <span
+                                                                class="flex items-center gap-1.5 text-slate-700"
+                                                            >
+                                                                <i
+                                                                    class="ti ti-map-pin text-blue-600"
+                                                                ></i>
                                                                 Hasil Pencarian ({destinationResults.length})
                                                             </span>
-                                                            <span class="text-[10px] text-slate-400 font-medium">Klik untuk memilih</span>
+                                                            <span
+                                                                class="text-[10px] text-slate-400 font-medium"
+                                                                >Klik untuk
+                                                                memilih</span
+                                                            >
                                                         </div>
-                                                        <div class="max-h-60 overflow-y-auto divide-y divide-slate-100 overscroll-contain">
+                                                        <div
+                                                            class="max-h-60 overflow-y-auto divide-y divide-slate-100 overscroll-contain"
+                                                        >
                                                             {#each destinationResults as item}
                                                                 <button
                                                                     type="button"
@@ -2328,10 +2607,17 @@
                                                                     <div
                                                                         class="flex items-start gap-2.5 min-w-0"
                                                                     >
-                                                                        <div class="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-blue-100 group-hover:text-blue-600 transition">
-                                                                            <i class="ti ti-map-pin text-xs"></i>
+                                                                        <div
+                                                                            class="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-blue-100 group-hover:text-blue-600 transition"
+                                                                        >
+                                                                            <i
+                                                                                class="ti ti-map-pin text-xs"
+
+                                                                            ></i>
                                                                         </div>
-                                                                        <div class="min-w-0 flex-1">
+                                                                        <div
+                                                                            class="min-w-0 flex-1"
+                                                                        >
                                                                             <p
                                                                                 class="text-xs font-bold text-slate-800 group-hover:text-blue-700 transition truncate"
                                                                             >
@@ -2341,13 +2627,18 @@
                                                                             <p
                                                                                 class="text-[11px] text-slate-500 truncate mt-0.5 flex items-center gap-1.5 flex-wrap"
                                                                             >
-                                                                                <span>{item.district_name
-                                                                                    ? `${item.district_name}, `
-                                                                                    : ''}{item.city_name ||
-                                                                                    ''}</span>
+                                                                                <span
+                                                                                    >{item.district_name
+                                                                                        ? `${item.district_name}, `
+                                                                                        : ''}{item.city_name ||
+                                                                                        ''}</span
+                                                                                >
                                                                                 {#if item.postal_code || item.zip_code}
-                                                                                    <span class="inline-block px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[10px] font-semibold border border-slate-200/60">
-                                                                                        {item.postal_code || item.zip_code}
+                                                                                    <span
+                                                                                        class="inline-block px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[10px] font-semibold border border-slate-200/60"
+                                                                                    >
+                                                                                        {item.postal_code ||
+                                                                                            item.zip_code}
                                                                                     </span>
                                                                                 {/if}
                                                                             </p>
@@ -2356,7 +2647,9 @@
                                                                     <span
                                                                         class="text-xs font-bold text-emerald-700 bg-emerald-50 group-hover:bg-emerald-600 group-hover:text-white px-2.5 py-1 rounded-lg shrink-0 transition flex items-center gap-1 border border-emerald-200 group-hover:border-transparent"
                                                                     >
-                                                                        Pilih <i class="ti ti-check text-[10px]"></i>
+                                                                        Pilih <i
+                                                                            class="ti ti-check text-[10px]"
+                                                                        ></i>
                                                                     </span>
                                                                 </button>
                                                             {/each}
@@ -2373,17 +2666,27 @@
                                                     <div
                                                         class="flex items-center gap-2.5 min-w-0"
                                                     >
-                                                        <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                                                            <i class="ti ti-map-pin-check text-base"></i>
+                                                        <div
+                                                            class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs"
+                                                        >
+                                                            <i
+                                                                class="ti ti-map-pin-check text-base"
+                                                            ></i>
                                                         </div>
                                                         <div class="min-w-0">
-                                                            <div class="flex items-center gap-1.5">
+                                                            <div
+                                                                class="flex items-center gap-1.5"
+                                                            >
                                                                 <span
                                                                     class="text-[10px] uppercase font-black text-emerald-800 tracking-wider"
                                                                 >
-                                                                    Lokasi Pengiriman Terpilih
+                                                                    Lokasi
+                                                                    Pengiriman
+                                                                    Terpilih
                                                                 </span>
-                                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                                <span
+                                                                    class="w-1.5 h-1.5 rounded-full bg-emerald-500"
+                                                                ></span>
                                                             </div>
                                                             <p
                                                                 class="text-xs font-bold text-slate-800 truncate mt-0.5"
@@ -2392,7 +2695,10 @@
                                                                     ? `${guestDistrictName}, `
                                                                     : ''}{guestRegencyName}
                                                                 {#if guestPostalCode}
-                                                                    <span class="font-mono text-emerald-700 font-bold">({guestPostalCode})</span>
+                                                                    <span
+                                                                        class="font-mono text-emerald-700 font-bold"
+                                                                        >({guestPostalCode})</span
+                                                                    >
                                                                 {/if}
                                                             </p>
                                                         </div>
@@ -2402,7 +2708,9 @@
                                                         onclick={clearDestination}
                                                         class="px-3 py-1.5 text-xs font-bold text-rose-600 hover:text-white hover:bg-rose-600 rounded-xl transition border border-rose-200 bg-white shadow-2xs shrink-0 flex items-center gap-1 cursor-pointer"
                                                     >
-                                                        <i class="ti ti-edit text-xs"></i>
+                                                        <i
+                                                            class="ti ti-edit text-xs"
+                                                        ></i>
                                                         Ubah
                                                     </button>
                                                 </div>
@@ -2440,7 +2748,9 @@
                                                         </label>
                                                         <input
                                                             type="text"
-                                                            bind:value={guestProvinceName}
+                                                            bind:value={
+                                                                guestProvinceName
+                                                            }
                                                             placeholder="Contoh: Jawa Timur"
                                                             class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-slate-200 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-300"
                                                         />
@@ -2456,7 +2766,9 @@
                                                         </label>
                                                         <input
                                                             type="text"
-                                                            bind:value={guestRegencyName}
+                                                            bind:value={
+                                                                guestRegencyName
+                                                            }
                                                             placeholder="Contoh: Kota Surabaya"
                                                             class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-slate-200 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-300"
                                                         />
@@ -2469,7 +2781,9 @@
                                                         </label>
                                                         <input
                                                             type="text"
-                                                            bind:value={guestDistrictName}
+                                                            bind:value={
+                                                                guestDistrictName
+                                                            }
                                                             placeholder="Contoh: Wonokromo"
                                                             class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-slate-200 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-300"
                                                         />
@@ -2485,7 +2799,9 @@
                                                         </label>
                                                         <input
                                                             type="text"
-                                                            bind:value={guestPostalCode}
+                                                            bind:value={
+                                                                guestPostalCode
+                                                            }
                                                             placeholder="Contoh: 60245"
                                                             class="w-full px-2.5 py-1.5 bg-white rounded-lg border border-slate-200 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-slate-300"
                                                         />
@@ -2499,205 +2815,16 @@
                         </div>
                     {/if}
 
-                    <!-- Product List -->
-                    <div
-                        class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
-                    >
-                        <div class="px-4 pt-4 pb-2">
-                            <div class="flex items-center gap-2">
-                                <i
-                                    class="ti ti-package text-lg"
-                                    style="color:{primary}"
-                                ></i>
-                                <span class="font-bold text-slate-800 text-sm"
-                                    >Produk Dipesan ({cartItems.length} item)</span
-                                >
-                            </div>
-                        </div>
-                        <div class="divide-y divide-slate-100">
-                            {#each cartItems as item}
-                                {@const product = item.product}
-                                {@const variant =
-                                    item.productVariant ?? item.product_variant}
-                                {@const imgUrl = getCartItemImage(item)}
-                                <div class="px-4 py-3.5">
-                                    <div class="flex gap-3">
-                                        <img
-                                            src={imgUrl}
-                                            alt={product?.name}
-                                            class="w-14 h-14 object-cover rounded-lg shrink-0 border border-slate-100"
-                                            onerror={(e: any) => {
-                                                e.target.src =
-                                                    '/noimage/image.png';
-                                            }}
-                                        />
-                                        <div class="flex-1 min-w-0">
-                                            <div
-                                                class="flex items-center gap-1.5 flex-wrap"
-                                            >
-                                                <p
-                                                    class="text-sm font-semibold text-slate-800 leading-tight truncate"
-                                                >
-                                                    {product?.name}
-                                                </p>
-                                                {#if product?.is_digital}
-                                                    <span
-                                                        class="text-[9px] font-black px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100 shrink-0 uppercase tracking-wider"
-                                                    >
-                                                        Digital
-                                                    </span>
-                                                {/if}
-                                            </div>
-                                            {#if variant}
-                                                <p
-                                                    class="text-xs text-slate-500 mt-0.5"
-                                                >
-                                                    {variant.options
-                                                        ?.map(
-                                                            (o: any) => o.name,
-                                                        )
-                                                        .join(' / ')}
-                                                </p>
-                                            {/if}
-                                            <div
-                                                class="flex items-center justify-between mt-1.5"
-                                            >
-                                                <span
-                                                    class="text-xs text-slate-500"
-                                                    >x{item.quantity}</span
-                                                >
-                                                <span
-                                                    class="text-sm font-bold"
-                                                    style="color:{primary}"
-                                                    >{fmt(
-                                                        item.unit_price ??
-                                                            item.computed_price ??
-                                                            item.price ??
-                                                            item.product
-                                                                ?.product_price
-                                                                ?.price ??
-                                                            item.product
-                                                                ?.productPrice
-                                                                ?.price ??
-                                                            0,
-                                                    )}</span
-                                                >
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="mt-2"
-                                        style="padding-left: 4.25rem;"
-                                    >
-                                        <input
-                                            type="text"
-                                            bind:value={itemNotes[item.id]}
-                                            placeholder="Catatan untuk item ini (opsional)..."
-                                            class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-300 font-medium"
-                                        />
-                                    </div>
-                                </div>
-                            {/each}
-                        </div>
-                        <div
-                            class="px-4 py-3 border-t border-slate-100 flex justify-between"
-                        >
-                            <span class="text-sm text-slate-600"
-                                >Subtotal Produk</span
-                            >
-                            <span class="text-sm font-bold text-slate-800"
-                                >{fmt(subtotal)}</span
-                            >
-                        </div>
-
-                        <!-- Bundling Gift Section -->
-                        {#if eligibleBundlingPromos.length > 0}
-                            <div
-                                class="px-4 pb-4 pt-2 border-t border-slate-100"
-                            >
-                                <div class="flex items-center gap-2 mb-3">
-                                    <span
-                                        class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs shrink-0"
-                                    >
-                                        <i class="ti ti-gift-filled"></i>
-                                    </span>
-                                    <h3
-                                        class="font-bold text-sm text-slate-800 uppercase tracking-wider"
-                                    >
-                                        Hadiah &amp; Bundling Gratis
-                                    </h3>
-                                </div>
-                                <div class="space-y-2">
-                                    {#each eligibleBundlingPromos as promo}
-                                        {@const bundle = promo.settings.bundle}
-                                        {@const buyNames = bundle.buy_items
-                                            .map(
-                                                (bi: any) =>
-                                                    bi.product_name ||
-                                                    'Produk Syarat',
-                                            )
-                                            .join(' + ')}
-                                        {#each bundle.get_items as gift}
-                                            <div
-                                                class="flex gap-3 p-3 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100"
-                                            >
-                                                <img
-                                                    src={formatImagePath(
-                                                        gift.product_image,
-                                                    )}
-                                                    alt={gift.product_name}
-                                                    class="w-14 h-14 rounded-lg object-cover border border-slate-100 shrink-0"
-                                                    onerror={(e: any) => {
-                                                        e.target.src =
-                                                            '/noimage/image.png';
-                                                    }}
-                                                />
-                                                <div class="flex-1 min-w-0">
-                                                    <div
-                                                        class="flex items-center gap-1.5 flex-wrap mb-0.5"
-                                                    >
-                                                        <span
-                                                            class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500 text-white"
-                                                            >HADIAH</span
-                                                        >
-                                                        <span
-                                                            class="text-[10px] font-bold text-slate-500"
-                                                            >x{gift.qty ?? 1} pcs</span
-                                                        >
-                                                    </div>
-                                                    <p
-                                                        class="text-sm font-semibold text-slate-800 leading-tight"
-                                                    >
-                                                        {gift.product_name}
-                                                    </p>
-                                                    <p
-                                                        class="text-xs text-slate-500 mt-0.5"
-                                                    >
-                                                        Bundling: {buyNames}
-                                                    </p>
-                                                    <div
-                                                        class="flex items-center gap-2 mt-1"
-                                                    >
-                                                        <span
-                                                            class="text-base line-through text-red-600 font-bold"
-                                                            >{fmt(
-                                                                gift.product_price ??
-                                                                    0,
-                                                            )}</span
-                                                        >
-                                                        <span
-                                                            class="text-xs font-black text-emerald-600"
-                                                            >GRATIS</span
-                                                        >
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        {/each}
-                                    {/each}
-                                </div>
-                            </div>
-                        {/if}
-                    </div>
+                    <ProductListSection
+                        {primary}
+                        {cartItems}
+                        {subtotal}
+                        {eligibleBundlingPromos}
+                        bind:itemNotes
+                        {fmt}
+                        {getCartItemImage}
+                        {formatImagePath}
+                    />
 
                     {#if !isDigitalOnly}
                         <!-- Shipping Section -->
@@ -2769,9 +2896,85 @@
                                     {/if}
                                 </div> -->
 
+                                    <!-- FoodPick Direct Fulfillment Selector -->
+                                    {#if isFoodPickMode}
+                                        <div class="mb-4">
+                                            <p
+                                                class="text-xs font-semibold text-slate-500 mb-2"
+                                            >
+                                                Pilihan Pemenuhan Makanan
+                                            </p>
+                                            <div
+                                                class="grid grid-cols-2 gap-2.5"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onclick={() => {
+                                                        selectedCourier =
+                                                            'store_courier';
+                                                        shippingError = '';
+                                                        fetchShipping();
+                                                    }}
+                                                    class="flex flex-col items-center justify-center gap-1.5 p-3.5 rounded-2xl border text-center transition-all cursor-pointer {selectedCourier ===
+                                                    'store_courier'
+                                                        ? 'border-transparent text-white shadow-sm ring-2 ring-offset-2'
+                                                        : 'border-slate-200 bg-slate-50/70 text-slate-700 hover:bg-slate-100 hover:border-slate-300'}"
+                                                    style={selectedCourier ===
+                                                    'store_courier'
+                                                        ? `background-color:${primary}; --tw-ring-color:${primary};`
+                                                        : ''}
+                                                >
+                                                    <i
+                                                        class="ti ti-moped text-xl"
+                                                    ></i>
+                                                    <span
+                                                        class="text-xs font-bold leading-tight"
+                                                        >Diantar Kurir Resto</span
+                                                    >
+                                                    <span
+                                                        class="text-[10.5px] opacity-80 font-medium"
+                                                        >Diantar ke alamat Anda</span
+                                                    >
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onclick={() => {
+                                                        selectedCourier =
+                                                            'self_pickup';
+                                                        shippingError = '';
+                                                        fetchShipping();
+                                                    }}
+                                                    class="flex flex-col items-center justify-center gap-1.5 p-3.5 rounded-2xl border text-center transition-all cursor-pointer {selectedCourier ===
+                                                    'self_pickup'
+                                                        ? 'border-transparent text-white shadow-sm ring-2 ring-offset-2'
+                                                        : 'border-slate-200 bg-slate-50/70 text-slate-700 hover:bg-slate-100 hover:border-slate-300'}"
+                                                    style={selectedCourier ===
+                                                    'self_pickup'
+                                                        ? `background-color:${primary}; --tw-ring-color:${primary};`
+                                                        : ''}
+                                                >
+                                                    <i
+                                                        class="ti ti-shopping-bag text-xl"
+                                                    ></i>
+                                                    <span
+                                                        class="text-xs font-bold leading-tight"
+                                                        >Ambil di Resto</span
+                                                    >
+                                                    <span
+                                                        class="text-[10.5px] opacity-80 font-medium"
+                                                        >Takeaway / Dine-In</span
+                                                    >
+                                                </button>
+                                            </div>
+                                        </div>
+                                    {/if}
+
                                     <!-- Courier selection -->
                                     <div
-                                        class="mb-3 relative courier-select-container"
+                                        class="mb-3 relative courier-select-container {isFoodPickMode
+                                            ? 'hidden'
+                                            : ''}"
                                     >
                                         <div
                                             class="flex items-center justify-between mb-2"
@@ -2878,7 +3081,7 @@
                                                 >
                                                     {#each visibleCouriers.filter( (c) => (courierLabels[c] ?? c)
                                                                 .toLowerCase()
-                                                                .includes(searchCourierQuery.toLowerCase()), ) as courier}
+                                                                .includes(searchCourierQuery.toLowerCase()) ) as courier}
                                                         <button
                                                             onclick={() => {
                                                                 selectedCourier =
@@ -3096,1642 +3299,132 @@
                         </div>
                     {/if}
 
-                    <!-- Voucher Section -->
-                    <div
-                        class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden p-5 space-y-3"
-                    >
-                        <div class="flex items-center gap-2">
-                            <i
-                                class="ti ti-ticket text-xl"
-                                style="color: {primary};"
-                            ></i>
-                            <h3
-                                class="font-outfit font-black text-xs uppercase tracking-wider text-slate-400"
-                            >
-                                Voucher & Promo
-                            </h3>
-                        </div>
+                    <VoucherSection
+                        {primary}
+                        {visibleVouchers}
+                        {activeAppliedVouchers}
+                        {shippingDiscount}
+                        {discountAmount}
+                        {voucherError}
+                        {fmt}
+                        {withOpacity}
+                        onOpen={() => (voucherModalOpen = true)}
+                        {deselectVoucher}
+                    />
 
-                        <!-- Inner Coupon Button (Image 1 Style for modal triggers) -->
-                        <button
-                            onclick={() => (voucherModalOpen = true)}
-                            style="color: {primary}; border-color: {primary}30; background-color: {primary}08;"
-                            class="w-full flex items-center justify-between px-3 py-2.5 border rounded-xl text-left text-xs font-bold transition group cursor-pointer"
-                        >
-                            <span class="flex items-center gap-2">
-                                <i class="ti ti-gift text-sm"></i>
-                                {visibleVouchers.length > 0
-                                    ? 'Pilih promo yang tersedia'
-                                    : 'Tidak ada promo tersedia'}
-                            </span>
-                            <i
-                                class="ti ti-chevron-right text-xs transition group-hover:translate-x-0.5"
-                            ></i>
-                        </button>
-
-                        {#if activeAppliedVouchers.length > 0}
-                            <div
-                                class="space-y-1.5 pt-1.5 border-t border-slate-50"
-                            >
-                                <p
-                                    class="text-[9px] font-black text-slate-400 uppercase tracking-widest px-0.5"
-                                >
-                                    Promo yang digunakan:
-                                </p>
-                                <div class="flex flex-col gap-1.5">
-                                    {#each activeAppliedVouchers as voucher}
-                                        {@const isShipping =
-                                            voucher.type ===
-                                            'voucher_gratis_ongkir'}
-                                        <div
-                                            class="flex items-center justify-between px-2.5 py-1.5 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all"
-                                            style="background: {withOpacity(
-                                                isShipping ? primary : primary,
-                                                0.06,
-                                            )}; border-color: {withOpacity(
-                                                isShipping ? primary : primary,
-                                                0.25,
-                                            )};"
-                                        >
-                                            <div
-                                                class="flex items-center gap-1.5 min-w-0"
-                                            >
-                                                <i
-                                                    class="ti {isShipping
-                                                        ? 'ti-truck'
-                                                        : 'ti-ticket'} text-xs shrink-0"
-                                                    style="color: {isShipping
-                                                        ? primary
-                                                        : primary};"
-                                                ></i>
-                                                <span
-                                                    class="shrink-0 font-black"
-                                                    style="color: {isShipping
-                                                        ? primary
-                                                        : primary};"
-                                                >
-                                                    {voucher.code}
-                                                </span>
-                                                <span
-                                                    class="text-[8.5px] text-slate-600 normal-case font-bold truncate"
-                                                >
-                                                    • {voucher.name} (
-                                                    {#if isShipping}
-                                                        S/d {fmt(
-                                                            voucher.discount_value,
-                                                        )}
-                                                        {#if shippingDiscount > 0}
-                                                            - Hemat {fmt(
-                                                                shippingDiscount,
-                                                            )}
-                                                        {/if}
-                                                    {:else}
-                                                        {voucher.discount_type ===
-                                                        'percentage'
-                                                            ? Number(
-                                                                  voucher.discount_value,
-                                                              ) + '%'
-                                                            : fmt(
-                                                                  voucher.discount_value,
-                                                              )}
-                                                        {#if discountAmount > 0}
-                                                            - Hemat {fmt(
-                                                                discountAmount,
-                                                            )}
-                                                        {/if}
-                                                    {/if}
-                                                    )
-                                                </span>
-                                            </div>
-                                            <button
-                                                onclick={() =>
-                                                    deselectVoucher(voucher)}
-                                                class="text-slate-400 hover:text-slate-655 transition p-0.5 border-0 bg-transparent cursor-pointer flex items-center justify-center shrink-0 rounded-full hover:bg-slate-200/40 w-4 h-4 ml-1"
-                                                title="Lepas Voucher"
-                                            >
-                                                <i class="ti ti-x text-xs"></i>
-                                            </button>
-                                        </div>
-                                    {/each}
-                                </div>
-                            </div>
-                        {/if}
-
-                        {#if voucherError}
-                            <p
-                                class="text-[10.5px] text-red-500 font-bold mt-1"
-                            >
-                                {voucherError}
-                            </p>
-                        {/if}
-                    </div>
-
-                    <!-- Poin Saya Loyalty Section -->
-                    {#if coinsEnabled && !isGuest}
-                        <div
-                            class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden p-5 space-y-4"
-                        >
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2">
-                                    <div
-                                        class="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500 shrink-0"
-                                    >
-                                        <i class="ti ti-coins text-xl"></i>
-                                    </div>
-                                    <div>
-                                        <h3
-                                            class="font-outfit font-black text-xs uppercase tracking-wider text-slate-400"
-                                        >
-                                            Poin Toko
-                                        </h3>
-                                        <p
-                                            class="text-[11px] font-bold text-slate-700 mt-0.5"
-                                        >
-                                            {formatNumber(userCoinsBalance)} Poin
-                                            <span
-                                                class="text-slate-400 font-normal"
-                                                >(Senilai Rp {formatNumber(
-                                                    userCoinsValue,
-                                                )})</span
-                                            >
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {#if isCoinsMinPurchaseMet && userCoinsBalance > 0 && maxCoinsRedeemAllowed > 0}
-                                    <!-- Premium Custom Toggle -->
-                                    <label
-                                        class="relative inline-flex items-center cursor-pointer select-none"
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            bind:checked={useCoins}
-                                            class="sr-only peer"
-                                        />
-                                        <div
-                                            class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"
-                                        ></div>
-                                    </label>
-                                {/if}
-                            </div>
-
-                            {#if !isCoinsMinPurchaseMet}
-                                <!-- Warning alert: min purchase not met -->
-                                <div
-                                    class="bg-amber-50/70 border border-amber-100 rounded-2xl p-3 flex gap-2.5 items-start"
-                                >
-                                    <i
-                                        class="ti ti-info-circle text-amber-500 text-sm mt-0.5 shrink-0"
-                                    ></i>
-                                    <div class="min-w-0">
-                                        <p
-                                            class="text-[10px] font-bold text-amber-800 leading-normal"
-                                        >
-                                            Poin Belum Dapat Digunakan
-                                        </p>
-                                        <p
-                                            class="text-[9px] text-amber-600 mt-0.5 leading-normal"
-                                        >
-                                            Minimal belanja untuk menggunakan
-                                            Poin adalah <span class="font-black"
-                                                >Rp {formatNumber(
-                                                    coinMinPurchaseRedeem,
-                                                )}</span
-                                            >
-                                            (Subtotal Anda: Rp {formatNumber(
-                                                subtotal,
-                                            )}).
-                                        </p>
-                                    </div>
-                                </div>
-                            {:else if userCoinsBalance <= 0}
-                                <div
-                                    class="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex gap-2.5 items-start"
-                                >
-                                    <i
-                                        class="ti ti-info-circle text-slate-400 text-sm mt-0.5 shrink-0"
-                                    ></i>
-                                    <div class="min-w-0">
-                                        <p
-                                            class="text-[10px] font-bold text-slate-500 leading-normal"
-                                        >
-                                            Saldo Poin Kosong
-                                        </p>
-                                        <p
-                                            class="text-[9px] text-slate-400 mt-0.5 leading-normal"
-                                        >
-                                            Belanja sekarang untuk mengumpulkan
-                                            Poin!
-                                        </p>
-                                    </div>
-                                </div>
-                            {:else if maxCoinsRedeemAllowed <= 0}
-                                <div
-                                    class="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex gap-2.5 items-start"
-                                >
-                                    <i
-                                        class="ti ti-info-circle text-slate-400 text-sm mt-0.5 shrink-0"
-                                    ></i>
-                                    <div class="min-w-0">
-                                        <p
-                                            class="text-[10px] font-bold text-slate-500 leading-normal"
-                                        >
-                                            Poin Tidak Bisa Digunakan
-                                        </p>
-                                        <p
-                                            class="text-[9px] text-slate-400 mt-0.5 leading-normal"
-                                        >
-                                            Batas maksimum diskon voucher /
-                                            promo telah melampaui aturan
-                                            penggunaan Poin.
-                                        </p>
-                                    </div>
-                                </div>
-                            {:else}
-                                <!-- Main Info Block -->
-                                <div
-                                    class="bg-slate-50 rounded-2xl p-3.5 space-y-2 border border-slate-100/50"
-                                >
-                                    <div
-                                        class="flex items-center justify-between text-[10px] font-bold text-slate-600"
-                                    >
-                                        <span>Gunakan Poin:</span>
-                                        <span
-                                            class={useCoins
-                                                ? 'text-emerald-600 font-black'
-                                                : 'text-slate-500 font-black'}
-                                        >
-                                            {useCoins
-                                                ? `${formatNumber(maxCoinsRedeemAllowed)} Poin`
-                                                : 'Tidak digunakan'}
-                                        </span>
-                                    </div>
-                                    <div
-                                        class="flex items-center justify-between text-[10px] font-bold text-slate-600"
-                                    >
-                                        <span>Potongan Belanja:</span>
-                                        <span
-                                            class={useCoins
-                                                ? 'text-emerald-600 font-black'
-                                                : 'text-slate-500 font-black'}
-                                        >
-                                            {useCoins
-                                                ? `-Rp ${formatNumber(coinDiscountAmount)}`
-                                                : 'Rp 0'}
-                                        </span>
-                                    </div>
-
-                                    <!-- Rules details small print -->
-                                    <div
-                                        class="pt-2 border-t border-slate-100 text-[8.5px] text-slate-400 leading-normal space-y-0.5 font-sans"
-                                    >
-                                        <p>
-                                            • Nilai Tukar: 1 Poin = Rp {formatNumber(
-                                                coinConversionRate,
-                                            )}
-                                        </p>
-                                        {#if coinMaxRedeemPercentage < 100}
-                                            <p>
-                                                • Maksimal diskon Poin: {coinMaxRedeemPercentage}%
-                                                dari subtotal belanja (Rp {formatNumber(
-                                                    (subtotal *
-                                                        coinMaxRedeemPercentage) /
-                                                        100,
-                                                )})
-                                            </p>
-                                        {/if}
-                                        {#if coinMaxRedeemPerTxn < 5000000}
-                                            <p>
-                                                • Batas maksimal penggunaan Poin
-                                                per transaksi: Rp {formatNumber(
-                                                    coinMaxRedeemPerTxn,
-                                                )}
-                                            </p>
-                                        {/if}
-                                    </div>
-                                </div>
-                            {/if}
-
-                            {#if prospectiveCoinsEarned > 0}
-                                <!-- Earn info badge -->
-                                <div
-                                    class="bg-emerald-50/60 border border-emerald-100/50 rounded-2xl p-3 flex gap-2.5 items-center"
-                                >
-                                    <div
-                                        class="w-6 h-6 rounded-lg bg-emerald-500 flex items-center justify-center text-white shrink-0"
-                                    >
-                                        <i class="ti ti-gift text-xs"></i>
-                                    </div>
-                                    <div class="min-w-0">
-                                        <p
-                                            class="text-[9px] text-emerald-800 leading-tight"
-                                        >
-                                            {#if appliedVoucher && appliedVoucher.is_points_voucher}
-                                                Dapatkan <span
-                                                    class="font-black text-emerald-600"
-                                                    >{formatNumber(
-                                                        prospectiveCoinsEarned,
-                                                    )} Poin</span
-                                                > dari Voucher Belanja setelah pesanan Anda selesai!
-                                            {:else}
-                                                Dapatkan <span
-                                                    class="font-black text-emerald-600"
-                                                    >{formatNumber(
-                                                        prospectiveCoinsEarned,
-                                                    )} Poin</span
-                                                > setelah pesanan Anda selesai!
-                                            {/if}
-                                        </p>
-                                    </div>
-                                </div>
-                            {:else if useCoins && coinDiscountAmount > 0}
-                                <!-- Info badge: no coins earned when using coins -->
-                                <div
-                                    class="bg-amber-50/60 border border-amber-100/50 rounded-2xl p-3 flex gap-2.5 items-center"
-                                >
-                                    <div
-                                        class="w-6 h-6 rounded-lg bg-amber-500 flex items-center justify-center text-white shrink-0"
-                                    >
-                                        <i class="ti ti-info-circle text-xs"
-                                        ></i>
-                                    </div>
-                                    <div class="min-w-0">
-                                        <p
-                                            class="text-[9px] text-amber-800 leading-tight"
-                                        >
-                                            Anda menggunakan Poin pada transaksi
-                                            ini, sehingga <span
-                                                class="font-black text-amber-600"
-                                                >tidak akan mendapatkan Poin
-                                                tambahan</span
-                                            >.
-                                        </p>
-                                    </div>
-                                </div>
-                            {/if}
-                        </div>
-                    {/if}
-
-                    <!-- Notes -->
-                    <div
-                        class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
-                    >
-                        <div class="px-4 pt-4 pb-4">
-                            <div class="flex items-center gap-2 mb-3">
-                                <i
-                                    class="ti ti-notes text-lg"
-                                    style="color:{primary}"
-                                ></i>
-                                <span class="font-bold text-slate-800 text-sm"
-                                    >Catatan Pesanan</span
-                                >
-                            </div>
-                            <textarea
-                                bind:value={orderNotes}
-                                rows="2"
-                                placeholder="Tambahkan catatan untuk penjual (opsional)"
-                                class="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent resize-none"
-                                style="--tw-ring-color:{primary}30"
-                            ></textarea>
-                        </div>
-                    </div>
+                    <LoyaltyPointsSection
+                        bind:useCoins
+                        {coinsEnabled}
+                        {isGuest}
+                        {userCoinsBalance}
+                        {userCoinsValue}
+                        {isCoinsMinPurchaseMet}
+                        {maxCoinsRedeemAllowed}
+                        {coinMinPurchaseRedeem}
+                        {subtotal}
+                        {coinDiscountAmount}
+                        {coinConversionRate}
+                        {coinMaxRedeemPercentage}
+                        {coinMaxRedeemPerTxn}
+                        {prospectiveCoinsEarned}
+                        {appliedVoucher}
+                        {formatNumber}
+                    />
+                    <OrderNotesSection {primary} bind:orderNotes />
                 </div>
 
                 <!-- Right Column: Payment Method + Summary (desktop only) -->
                 <div class="space-y-4">
-                    <!-- Payment Method -->
-                    <div
-                        class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden"
-                    >
-                        <div class="px-4 pt-4 pb-2">
-                            <div class="flex items-center gap-2 mb-3">
-                                <i
-                                    class="ti ti-credit-card text-lg"
-                                    style="color:{primary}"
-                                ></i>
-                                <span class="font-bold text-slate-800 text-sm"
-                                    >Metode Pembayaran</span
-                                >
-                            </div>
-                            <div class="space-y-2">
-                                {#each paymentMethods.filter((pm: any) => {
-                                    // Hide the raw Midtrans gateway entry if Core API methods are available
-                                    if (midtransEnabledMethods.length > 0 && pm.name?.toLowerCase().includes('midtrans')) return false;
-                                    return true;
-                                }) as pm}
-                                    <button
-                                        onclick={() =>
-                                            (selectedPaymentMethodId = pm.id)}
-                                        class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 text-left transition {selectedPaymentMethodId ===
-                                        pm.id
-                                            ? 'border-transparent'
-                                            : 'border-slate-200 hover:border-slate-300'}"
-                                        style={selectedPaymentMethodId === pm.id
-                                            ? `border-color:${primary}; background:${primary}10`
-                                            : ''}
-                                    >
-                                        <div
-                                            class="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0"
-                                            style="background:{primary}"
-                                        >
-                                            <i
-                                                class="ti {pm.type === 'manual'
-                                                    ? 'ti-building-bank'
-                                                    : (pm.name?.toLowerCase().includes('qris') ? 'ti-qrcode' : 'ti-credit-card')} text-sm"
-                                            ></i>
-                                        </div>
-                                        <div class="flex-1 min-w-0">
-                                            <p
-                                                class="text-sm font-bold text-slate-800 truncate"
-                                            >
-                                                {pm.name}
-                                            </p>
-                                            {#if pm.type === 'manual' && pm.bank_name}
-                                                <p
-                                                    class="text-xs text-slate-500"
-                                                >
-                                                    {pm.bank_name} · {pm.account_number}
-                                                </p>
-                                            {:else if pm.type === 'gateway'}
-                                                <p
-                                                    class="text-xs text-slate-500"
-                                                >
-                                                    Pembayaran Otomatis
-                                                    Terverifikasi
-                                                </p>
-                                            {/if}
-                                        </div>
-                                        {#if selectedPaymentMethodId === pm.id}
-                                            <i
-                                                class="ti ti-circle-check text-lg shrink-0"
-                                                style="color:{primary}"
-                                            ></i>
-                                        {:else}
-                                            <div
-                                                class="w-5 h-5 rounded-full border-2 border-slate-300 shrink-0"
-                                            ></div>
-                                        {/if}
-                                    </button>
-                                {/each}
+                    <PaymentMethodsSection
+                        {primary}
+                        {paymentMethods}
+                        {midtransEnabledMethods}
+                        {selectedPaymentMethod}
+                        {midtransMethodColors}
+                        {midtransMethodIcons}
+                        bind:selectedPaymentMethodId
+                        bind:selectedMidtransMethodKey
+                    />
 
-                                <!-- Midtrans Core API methods grouped by category -->
-                                {#if midtransEnabledMethods.length > 0}
-                                    {@const bankMethods = midtransEnabledMethods.filter(m => m.type === 'bank_transfer' || m.type === 'echannel')}
-                                    {@const ewalletMethods = midtransEnabledMethods.filter(m => m.type === 'qris' || m.type === 'gopay' || m.type === 'shopeepay')}
-                                    {@const cstoreMethods = midtransEnabledMethods.filter(m => m.type === 'cstore')}
-                                    {@const cardMethods = midtransEnabledMethods.filter(m => m.type === 'credit_card')}
-
-                                    <div class="space-y-4 pt-1">
-                                        <!-- Bank Transfer Group -->
-                                        {#if bankMethods.length > 0}
-                                            <div>
-                                                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-1">Transfer Bank (Virtual Account)</p>
-                                                <div class="grid grid-cols-2 gap-1.5">
-                                                    {#each bankMethods as m}
-                                                        {@const isSelected = selectedMidtransMethodKey === m.key}
-                                                        <button
-                                                            type="button"
-                                                            onclick={() => { selectedMidtransMethodKey = m.key; }}
-                                                            class="flex items-center gap-2 px-2.5 py-2.5 rounded-xl border-2 text-left transition {isSelected ? 'border-transparent' : 'border-slate-200 hover:border-slate-300'}"
-                                                            style={isSelected ? `border-color:${midtransMethodColors[m.key] ?? primary}; background:${midtransMethodColors[m.key] ?? primary}15` : ''}
-                                                        >
-                                                            <div
-                                                                class="w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0 text-xs"
-                                                                style="background:{midtransMethodColors[m.key] ?? primary}"
-                                                            >
-                                                                <i class="ti {midtransMethodIcons[m.key] ?? 'ti-building-bank'} text-xs"></i>
-                                                            </div>
-                                                            <div class="flex-1 min-w-0">
-                                                                <span class="text-xs font-semibold text-slate-800 leading-tight block truncate">{m.label}</span>
-                                                            </div>
-                                                            {#if isSelected}
-                                                                <i class="ti ti-circle-check text-sm shrink-0 ml-auto" style="color:{midtransMethodColors[m.key] ?? primary}"></i>
-                                                            {/if}
-                                                        </button>
-                                                    {/each}
-                                                </div>
-                                            </div>
-                                        {/if}
-
-                                        <!-- E-Wallet Group -->
-                                        {#if ewalletMethods.length > 0}
-                                            <div>
-                                                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-1">E-Wallet & QRIS</p>
-                                                <div class="grid grid-cols-2 gap-1.5">
-                                                    {#each ewalletMethods as m}
-                                                        {@const isSelected = selectedMidtransMethodKey === m.key}
-                                                        <button
-                                                            type="button"
-                                                            onclick={() => { selectedMidtransMethodKey = m.key; }}
-                                                            class="flex items-center gap-2 px-2.5 py-2.5 rounded-xl border-2 text-left transition {isSelected ? 'border-transparent' : 'border-slate-200 hover:border-slate-300'}"
-                                                            style={isSelected ? `border-color:${midtransMethodColors[m.key] ?? primary}; background:${midtransMethodColors[m.key] ?? primary}15` : ''}
-                                                        >
-                                                            <div
-                                                                class="w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0 text-xs"
-                                                                style="background:{midtransMethodColors[m.key] ?? primary}"
-                                                            >
-                                                                <i class="ti {midtransMethodIcons[m.key] ?? 'ti-wallet'} text-xs"></i>
-                                                            </div>
-                                                            <div class="flex-1 min-w-0">
-                                                                <span class="text-xs font-semibold text-slate-800 leading-tight block truncate">{m.label}</span>
-                                                            </div>
-                                                            {#if isSelected}
-                                                                <i class="ti ti-circle-check text-sm shrink-0 ml-auto" style="color:{midtransMethodColors[m.key] ?? primary}"></i>
-                                                            {/if}
-                                                        </button>
-                                                    {/each}
-                                                </div>
-                                            </div>
-                                        {/if}
-
-                                        <!-- Convenience Store Group -->
-                                        {#if cstoreMethods.length > 0}
-                                            <div>
-                                                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-1">Gerai Retail / Minimarket</p>
-                                                <div class="grid grid-cols-2 gap-1.5">
-                                                    {#each cstoreMethods as m}
-                                                        {@const isSelected = selectedMidtransMethodKey === m.key}
-                                                        <button
-                                                            type="button"
-                                                            onclick={() => { selectedMidtransMethodKey = m.key; }}
-                                                            class="flex items-center gap-2 px-2.5 py-2.5 rounded-xl border-2 text-left transition {isSelected ? 'border-transparent' : 'border-slate-200 hover:border-slate-300'}"
-                                                            style={isSelected ? `border-color:${midtransMethodColors[m.key] ?? primary}; background:${midtransMethodColors[m.key] ?? primary}15` : ''}
-                                                        >
-                                                            <div
-                                                                class="w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0 text-xs"
-                                                                style="background:{midtransMethodColors[m.key] ?? primary}"
-                                                            >
-                                                                <i class="ti {midtransMethodIcons[m.key] ?? 'ti-building-store'} text-xs"></i>
-                                                            </div>
-                                                            <div class="flex-1 min-w-0">
-                                                                <span class="text-xs font-semibold text-slate-800 leading-tight block truncate">{m.label}</span>
-                                                                {#if m.key === 'alfamart'}
-                                                                    <span class="text-[9px] text-slate-400 font-medium block">Alfamidi, Dan+Dan</span>
-                                                                {:else if m.key === 'indomaret'}
-                                                                    <span class="text-[9px] text-slate-400 font-medium block">Gerai Indomaret</span>
-                                                                {/if}
-                                                            </div>
-                                                            {#if isSelected}
-                                                                <i class="ti ti-circle-check text-sm shrink-0 ml-auto" style="color:{midtransMethodColors[m.key] ?? primary}"></i>
-                                                            {/if}
-                                                        </button>
-                                                    {/each}
-                                                </div>
-                                            </div>
-                                        {/if}
-
-                                        <!-- Credit Card Group -->
-                                        {#if cardMethods.length > 0}
-                                            <div>
-                                                <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-1">Kartu Kredit / Debit</p>
-                                                <div class="grid grid-cols-2 gap-1.5">
-                                                    {#each cardMethods as m}
-                                                        {@const isSelected = selectedMidtransMethodKey === m.key}
-                                                        <button
-                                                            type="button"
-                                                            onclick={() => { selectedMidtransMethodKey = m.key; }}
-                                                            class="flex items-center gap-2 px-2.5 py-2.5 rounded-xl border-2 text-left transition {isSelected ? 'border-transparent' : 'border-slate-200 hover:border-slate-300'}"
-                                                            style={isSelected ? `border-color:${midtransMethodColors[m.key] ?? primary}; background:${midtransMethodColors[m.key] ?? primary}15` : ''}
-                                                        >
-                                                            <div
-                                                                class="w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0 text-xs"
-                                                                style="background:{midtransMethodColors[m.key] ?? primary}"
-                                                            >
-                                                                <i class="ti {midtransMethodIcons[m.key] ?? 'ti-credit-card'} text-xs"></i>
-                                                            </div>
-                                                            <div class="flex-1 min-w-0">
-                                                                <span class="text-xs font-semibold text-slate-800 leading-tight block truncate">{m.label}</span>
-                                                                <span class="text-[9px] text-slate-400 font-medium block">Visa, Mastercard, JCB</span>
-                                                            </div>
-                                                            {#if isSelected}
-                                                                <i class="ti ti-circle-check text-sm shrink-0 ml-auto" style="color:{midtransMethodColors[m.key] ?? primary}"></i>
-                                                            {/if}
-                                                        </button>
-                                                    {/each}
-                                                </div>
-                                            </div>
-                                        {/if}
-                                    </div>
-                                {/if}
-                            </div>
-
-                            <!-- Manual payment info -->
-                            {#if selectedPaymentMethod?.type === 'manual'}
-                                <div
-                                    class="mt-3 bg-blue-50 border border-blue-200 rounded-xl p-3"
-                                >
-                                    <p
-                                        class="text-xs font-bold text-blue-800 mb-1"
-                                    >
-                                        Info Transfer
-                                    </p>
-                                    <p class="text-xs text-blue-700">
-                                        Bank: {selectedPaymentMethod.bank_name}
-                                    </p>
-                                    <p class="text-xs text-blue-700">
-                                        No. Rekening: <span class="font-bold"
-                                            >{selectedPaymentMethod.account_number}</span
-                                        >
-                                    </p>
-                                    <p class="text-xs text-blue-700">
-                                        Atas Nama: {selectedPaymentMethod.account_name}
-                                    </p>
-                                    <p class="text-xs text-blue-600 mt-1">
-                                        Upload bukti bayar setelah pesanan
-                                        dibuat.
-                                    </p>
-                                </div>
-                            {/if}
-
-                            <!-- Midtrans Core API info -->
-                            {#if selectedMidtransMethodKey}
-                                {@const selMethod = midtransEnabledMethods.find((m: any) => m.key === selectedMidtransMethodKey)}
-                                <div class="mt-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-                                    <p class="text-xs font-bold text-emerald-800 mb-1 flex items-center gap-1">
-                                        <i class="ti ti-shield-check"></i>
-                                        {selMethod?.label ?? 'Midtrans'}
-                                    </p>
-                                    <p class="text-xs text-emerald-700">
-                                        Instruksi pembayaran (nomor VA / QR code) akan tampil di halaman transaksi setelah order dibuat.
-                                    </p>
-                                </div>
-                            {/if}
-                        </div>
-                        <div class="pb-4"></div>
-                    </div>
-
-                    <!-- Order Summary (desktop sticky) -->
-                    <div
-                        class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden lg:sticky lg:top-20"
-                    >
-                        <div class="px-4 pt-4 pb-4">
-                            <div class="flex items-center gap-2 mb-3">
-                                <i
-                                    class="ti ti-receipt text-lg"
-                                    style="color:{primary}"
-                                ></i>
-                                <span class="font-bold text-slate-800 text-sm"
-                                    >Ringkasan Pesanan</span
-                                >
-                            </div>
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between">
-                                    <span class="text-slate-600"
-                                        >Subtotal Produk</span
-                                    >
-                                    <span class="font-semibold text-slate-800"
-                                        >{fmt(subtotal)}</span
-                                    >
-                                </div>
-                                {#if discountAmount > 0}
-                                    <div
-                                        class="flex justify-between text-green-600"
-                                    >
-                                        <span>Diskon Voucher</span>
-                                        <span class="font-semibold"
-                                            >-{fmt(discountAmount)}</span
-                                        >
-                                    </div>
-                                {/if}
-                                {#if coinDiscountAmount > 0}
-                                    <div
-                                        class="flex justify-between text-emerald-600"
-                                    >
-                                        <span>Potongan Poin Saya</span>
-                                        <span class="font-semibold"
-                                            >-{fmt(coinDiscountAmount)}</span
-                                        >
-                                    </div>
-                                {/if}
-                                {#if !isDigitalOnly}
-                                    <div class="flex justify-between">
-                                        <div class="flex items-center gap-1 group relative">
-                                            <span class="text-slate-600">Ongkos Kirim</span>
-                                            <i class="ti ti-info-circle text-[10px] text-slate-400 cursor-help"></i>
-                                            <div class="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50 w-48 bg-slate-850 text-white text-[10px] rounded-lg p-2 shadow-lg leading-relaxed font-normal normal-case">
-                                                Biaya pengiriman barang berdasarkan lokasi dan kurir pilihan Anda.
-                                            </div>
-                                        </div>
-                                        <span
-                                            class="font-semibold text-slate-800"
-                                            >{selectedShipping
-                                                ? fmt(shippingFee)
-                                                : '-'}</span
-                                        >
-                                    </div>
-                                    {#if shippingDiscount > 0}
-                                        <div
-                                            class="flex justify-between text-green-600"
-                                        >
-                                            <span>Gratis Ongkir</span>
-                                            <span class="font-semibold"
-                                                >-{fmt(shippingDiscount)}</span
-                                            >
-                                        </div>
-                                    {/if}
-                                {/if}
-                                {#if adminFee > 0}
-                                    <div class="flex justify-between">
-                                        <div class="flex items-center gap-1 group relative">
-                                            <span class="text-slate-600">Biaya Admin</span>
-                                            <i class="ti ti-info-circle text-[10px] text-slate-400 cursor-help"></i>
-                                            <div class="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50 w-48 bg-slate-850 text-white text-[10px] rounded-lg p-2 shadow-lg leading-relaxed font-normal normal-case">
-                                                Biaya administrasi metode pembayaran yang Anda pilih.
-                                            </div>
-                                        </div>
-                                        <span
-                                            class="font-semibold text-slate-800"
-                                            >{fmt(adminFee)}</span
-                                        >
-                                    </div>
-                                {/if}
-                                {#if applicationFee > 0}
-                                    <div class="flex justify-between">
-                                        <div class="flex items-center gap-1 group relative">
-                                            <span class="text-slate-600">Biaya Aplikasi</span>
-                                            <i class="ti ti-info-circle text-[10px] text-slate-400 cursor-help"></i>
-                                            <div class="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50 w-48 bg-slate-850 text-white text-[10px] rounded-lg p-2 shadow-lg leading-relaxed font-normal normal-case">
-                                                Biaya layanan platform untuk pemeliharaan sistem.
-                                            </div>
-                                        </div>
-                                        <span
-                                            class="font-semibold text-slate-800"
-                                            >{fmt(applicationFee)}</span
-                                        >
-                                    </div>
-                                {/if}
-                                {#each activeAdditionalCosts as cost (cost.id)}
-                                    {#if Number(cost.value) > 0}
-                                        <div class="flex justify-between">
-                                            <div class="flex items-center gap-1 group relative">
-                                                <span class="text-slate-600">{cost.name}</span>
-                                                <i class="ti ti-info-circle text-[10px] text-slate-400 cursor-help"></i>
-                                                <div class="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50 w-48 bg-slate-850 text-white text-[10px] rounded-lg p-2 shadow-lg leading-relaxed font-normal normal-case">
-                                                    Biaya operasional tambahan: {cost.name}.
-                                                </div>
-                                            </div>
-                                            <span class="font-semibold text-slate-800">{fmt(Number(cost.value))}</span>
-                                        </div>
-                                    {/if}
-                                {/each}
-                                <div
-                                    class="border-t border-slate-100 pt-2 flex justify-between"
-                                >
-                                    <span class="font-bold text-slate-800"
-                                        >Total</span
-                                    >
-                                    <span
-                                        class="font-black text-lg"
-                                        style="color:{primary}"
-                                        >{fmt(grandTotal)}</span
-                                    >
-                                </div>
-                            </div>
-
-                            <!-- Checkout locked (via .env CHECKOUT_LOCKED) -->
-                            {#if isCheckoutLocked}
-                                <div
-                                    class="bg-red-50/80 border border-red-200/60 rounded-xl p-3 flex gap-3 items-start mt-4 mb-2 text-left"
-                                >
-                                    <div
-                                        class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5"
-                                    >
-                                        <i
-                                            class="ti ti-lock text-red-600 text-lg"
-                                        ></i>
-                                    </div>
-                                    <div class="min-w-0">
-                                        <h4
-                                            class="font-bold text-red-800 text-[11px] uppercase tracking-tight"
-                                        >
-                                            Checkout Tidak Tersedia
-                                        </h4>
-                                        <p
-                                            class="text-[9px] text-red-700 font-semibold mt-1 leading-snug"
-                                        >
-                                            {checkoutLockedMessage}
-                                        </p>
-                                    </div>
-                                </div>
-                            {:else if !isStoreOpen}
-                                <div
-                                    class="bg-amber-50/80 border border-amber-200/60 rounded-xl p-3 flex gap-3 items-start mt-4 mb-2 text-left"
-                                >
-                                    <div
-                                        class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5"
-                                    >
-                                        <i
-                                            class="ti ti-clock-pause text-amber-600 text-lg"
-                                        ></i>
-                                    </div>
-                                    <div class="min-w-0">
-                                        <h4
-                                            class="font-bold text-amber-800 text-[11px] uppercase tracking-tight"
-                                        >
-                                            Toko Sedang Tutup
-                                        </h4>
-                                        <p
-                                            class="text-[9px] text-amber-700 font-semibold mt-1 leading-snug"
-                                        >
-                                            Mohon maaf, proses pesanan
-                                            dinonaktifkan sementara.
-                                        </p>
-                                    </div>
-                                </div>
-                            {/if}
-                            <button
-                                onclick={submitCheckout}
-                                disabled={isSubmitting ||
-                                    isCheckoutLocked ||
-                                    (!isDigitalOnly &&
-                                        selectedCourier !== 'self_pickup' &&
-                                        (!isGuest
-                                            ? !selectedAddressId
-                                            : !isGuestAddressFilled)) ||
-                                    (isGuest && !isGuestCustomerValid) ||
-                                    !selectedPaymentMethodId ||
-                                    (!isDigitalOnly &&
-                                        selectedCourier !== 'self_pickup' &&
-                                        !selectedShipping) ||
-                                    !isStoreOpen}
-                                class="hidden lg:flex w-full mt-4 items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                style="background:linear-gradient(to right, {primary}, {primary})"
-                            >
-                                {#if isSubmitting}
-                                    <i class="ti ti-loader-2 animate-spin"></i>
-                                    Memproses...
-                                {:else}
-                                    <i class="ti ti-shopping-cart-check"></i>
-                                    Buat Pesanan
-                                {/if}
-                            </button>
-                        </div>
-                    </div>
+                    <OrderSummarySection
+                        {primary}
+                        {subtotal}
+                        {discountAmount}
+                        {coinDiscountAmount}
+                        {isDigitalOnly}
+                        {selectedShipping}
+                        {shippingFee}
+                        {shippingDiscount}
+                        {adminFee}
+                        {applicationFee}
+                        {activeAdditionalCosts}
+                        {grandTotal}
+                        {isCheckoutLocked}
+                        {checkoutLockedMessage}
+                        {isStoreOpen}
+                        {isSubmitting}
+                        {isCheckoutDisabled}
+                        {fmt}
+                        {submitCheckout}
+                    />
                 </div>
             </div>
         </div>
 
-        <!-- Mobile Fixed Bottom Bar -->
-        <div
-            class="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white border-t border-slate-200 px-4 py-3 safe-area-bottom"
-        >
-            <div class="flex items-center justify-between gap-4">
-                <div>
-                    <p class="text-xs text-slate-500">Total Pembayaran</p>
-                    <p class="text-lg font-black" style="color:{primary}">
-                        {fmt(grandTotal)}
-                    </p>
-                </div>
-                <button
-                    onclick={submitCheckout}
-                    disabled={isSubmitting ||
-                        isCheckoutLocked ||
-                        (!isDigitalOnly &&
-                            selectedCourier !== 'self_pickup' &&
-                            (!isGuest
-                                ? !selectedAddressId
-                                : !isGuestAddressFilled)) ||
-                        (isGuest && !isGuestCustomerValid) ||
-                        !selectedPaymentMethodId ||
-                        (!isDigitalOnly &&
-                            selectedCourier !== 'self_pickup' &&
-                            !selectedShipping) ||
-                        !isStoreOpen}
-                    class="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    style="background:linear-gradient(to right, {primary}, {primary})"
-                >
-                    {#if isSubmitting}
-                        <i class="ti ti-loader-2 animate-spin"></i>
-                        Memproses...
-                    {:else}
-                        <i class="ti ti-shopping-cart-check"></i>
-                        Buat Pesanan
-                    {/if}
-                </button>
-            </div>
-        </div>
+        <MobileCheckoutBar
+            {primary}
+            {grandTotal}
+            {isSubmitting}
+            {isCheckoutDisabled}
+            {fmt}
+            {submitCheckout}
+        />
     </div>
 
-    <!-- Address Modal -->
     {#if showAddressModal}
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <div
-            class="fixed inset-0 z-50 flex items-end lg:items-center justify-center"
-            onclick={() => (showAddressModal = false)}
-        >
-            <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <div
-                class="relative z-10 bg-white w-full lg:max-w-lg rounded-t-3xl lg:rounded-2xl max-h-[80vh] overflow-y-auto"
-                onclick={(e: any) => e.stopPropagation()}
-            >
-                <div
-                    class="sticky top-0 bg-white px-4 pt-4 pb-3 border-b border-slate-100 flex items-center justify-between"
-                >
-                    <h3 class="font-bold text-slate-800">Pilih Alamat</h3>
-                    <button
-                        aria-label="Tutup"
-                        onclick={() => (showAddressModal = false)}
-                        class="p-1 rounded-full hover:bg-slate-100"
-                    >
-                        <i class="ti ti-x text-slate-600"></i>
-                    </button>
-                </div>
-                <div class="p-4 space-y-3">
-                    {#each addresses as addr}
-                        <button
-                            onclick={() => {
-                                selectedAddressId = addr.id;
-                                showAddressModal = false;
-                                selectedShipping = null;
-                                shippingOptions = [];
-                            }}
-                            class="w-full text-left p-3 rounded-xl border-2 transition {selectedAddressId ===
-                            addr.id
-                                ? 'border-transparent'
-                                : 'border-slate-200 hover:border-slate-300'}"
-                            style={selectedAddressId === addr.id
-                                ? `border-color:${primary}; background:${primary}10`
-                                : ''}
-                        >
-                            <div class="flex items-center gap-2 mb-1 flex-wrap">
-                                <span class="font-bold text-sm text-slate-800"
-                                    >{addr.receiver_name}</span
-                                >
-                                <span class="text-xs text-slate-500"
-                                    >{addr.phone_number}</span
-                                >
-                                {#if addr.is_primary}
-                                    <span
-                                        class="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white"
-                                        style="background:{primary}">Utama</span
-                                    >
-                                {/if}
-                                <span
-                                    class="text-[10px] text-slate-400 border border-slate-200 px-1.5 py-0.5 rounded-full"
-                                    >{addr.label}</span
-                                >
-                            </div>
-                            <p class="text-xs text-slate-600 leading-relaxed">
-                                {addr.full_address}
-                            </p>
-                            {#if addr.regency_name}
-                                <p class="text-xs text-slate-500">
-                                    {addr.district_name}, {addr.regency_name}, {addr.province_name}
-                                    {addr.postal_code}
-                                </p>
-                            {/if}
-                        </button>
-                    {/each}
-                    <Link
-                        href="/profile/addresses?from=checkout"
-                        class="flex items-center gap-2 text-sm font-semibold px-3 py-2.5 rounded-xl border-2 border-dashed border-slate-200 hover:border-slate-300 text-slate-500 hover:text-slate-700 transition"
-                    >
-                        <i class="ti ti-plus text-lg"></i>
-                        Tambah Alamat Baru
-                    </Link>
-                </div>
-            </div>
-        </div>
+        <AddressModal
+            {addresses}
+            {selectedAddressId}
+            {primary}
+            onClose={() => (showAddressModal = false)}
+            onSelect={(addressId) => {
+                selectedAddressId = addressId;
+                showAddressModal = false;
+                selectedShipping = null;
+                shippingOptions = [];
+            }}
+        />
     {/if}
+    <VoucherModal
+        bind:voucherModalOpen
+        bind:manualPromoCode
+        {primary}
+        {voucherLoading}
+        {visibleVouchers}
+        {shippingVouchers}
+        {discountVouchers}
+        {subtotal}
+        {appliedVoucher}
+        {voucherInputCode}
+        {expandedTerms}
+        {userIsNew}
+        {applyVoucher}
+        {openScanModal}
+        {withOpacity}
+        {fmt}
+        {toggleTerms}
+        {deselectVoucher}
+        {selectVoucher}
+        {formatNumber}
+    />
 
-    <!-- ═══════════════════════════════════════════════════
-     VOUCHER SELECTION MODAL (Premium Ticket Style)
-    ═══════════════════════════════════════════════════ -->
-    {#if voucherModalOpen}
-        <div
-            class="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-0 lg:p-4"
-            transition:fade={{ duration: 150 }}
-        >
-            <!-- Backdrop -->
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <div
-                class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
-                onclick={() => (voucherModalOpen = false)}
-            ></div>
-
-            <!-- Modal Box -->
-            <div
-                class="relative bg-white rounded-t-3xl lg:rounded-3xl shadow-2xl w-full lg:max-w-md overflow-hidden z-10 animate-in slide-in-from-bottom lg:zoom-in-95 duration-200 flex flex-col max-h-[85vh] lg:max-h-[80vh]"
-            >
-                <!-- Header -->
-                <div
-                    class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 shrink-0"
-                >
-                    <div class="flex items-center gap-2.5">
-                        <div
-                            class="w-7 h-7 rounded-lg text-white flex items-center justify-center text-xs shadow-sm font-black"
-                            style="background-color: {primary};"
-                        >
-                            <i class="ti ti-ticket text-sm"></i>
-                        </div>
-                        <div>
-                            <h3
-                                class="text-[11px] font-black text-slate-800 tracking-tight uppercase"
-                            >
-                                Voucher & Promo Toko
-                            </h3>
-                            <p
-                                class="text-[8px] text-slate-400 font-bold uppercase leading-none"
-                            >
-                                Pilih promo terbaik untuk belanjamu
-                            </p>
-                        </div>
-                    </div>
-                    <button
-                        aria-label="Tutup"
-                        onclick={() => (voucherModalOpen = false)}
-                        class="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-650 transition cursor-pointer border-0 bg-transparent rounded-full hover:bg-slate-100/80"
-                    >
-                        <i class="ti ti-x text-sm"></i>
-                    </button>
-                </div>
-
-                <!-- Body -->
-                <div
-                    class="p-3.5 overflow-y-auto space-y-3 flex-grow bg-slate-50/50"
-                >
-                    <!-- Manual Voucher Code Input Search Block -->
-                    <div
-                        class="bg-white border border-slate-200 rounded-xl p-2 flex gap-2 items-center shadow-3xs mb-1.5"
-                    >
-                        <div class="relative flex-grow">
-                            <i
-                                class="ti ti-ticket absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"
-                            ></i>
-                            <input
-                                type="text"
-                                bind:value={manualPromoCode}
-                                placeholder="Masukkan kode voucher..."
-                                class="w-full pl-8 pr-9 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-glow)] focus:border-[var(--primary)] text-[10.5px] font-semibold text-slate-700 h-8 uppercase"
-                                style="--primary-glow: {primary}30; --primary: {primary};"
-                                onkeydown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        applyVoucher();
-                                    }
-                                }}
-                            />
-                            <button
-                                type="button"
-                                onclick={openScanModal}
-                                class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition duration-150 border-0 bg-transparent cursor-pointer p-1"
-                                title="Scan QR Code Voucher"
-                            >
-                                <i class="ti ti-scan text-sm"></i>
-                            </button>
-                        </div>
-                        <button
-                            onclick={applyVoucher}
-                            disabled={voucherLoading || !manualPromoCode.trim()}
-                            style="background-color: {primary};"
-                            class="px-3.5 py-1.5 hover:opacity-90 text-white text-[10.5px] font-black rounded-lg uppercase tracking-wider transition duration-200 h-8 cursor-pointer border-0 shrink-0 disabled:opacity-50"
-                        >
-                            {voucherLoading ? '...' : 'Pakai'}
-                        </button>
-                    </div>
-
-                    {#if visibleVouchers.length === 0}
-                        <div
-                            class="flex flex-col items-center justify-center py-10 px-4 text-center"
-                        >
-                            <div
-                                class="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mb-2.5"
-                            >
-                                <i class="ti ti-ticket-off text-xl"></i>
-                            </div>
-                            <p class="text-xs font-bold text-slate-500">
-                                Tidak Ada Voucher Tersedia
-                            </p>
-                            <p
-                                class="text-[9px] text-slate-400 mt-1 max-w-xs leading-normal"
-                            >
-                                Saat ini tidak ada voucher gratis ongkir atau
-                                belanja yang sedang aktif di toko.
-                            </p>
-                        </div>
-                    {:else}
-                        <!-- Section 1: Gratis Ongkir -->
-                        {#if shippingVouchers.length > 0}
-                            <div class="space-y-1.5">
-                                <h4
-                                    class="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1 px-1"
-                                >
-                                    <i
-                                        class="ti ti-truck text-xs"
-                                        style="color: {primary};"
-                                    ></i> Voucher Gratis Ongkir
-                                </h4>
-                                <div class="space-y-1.5">
-                                    {#each shippingVouchers as voucher (voucher.id)}
-                                        {@const minMet =
-                                            subtotal >=
-                                            Number(voucher.min_purchase ?? 0)}
-                                        {@const isSelected =
-                                            appliedVoucher &&
-                                            ((Array.isArray(
-                                                appliedVoucher.promotions,
-                                            ) &&
-                                                appliedVoucher.promotions.some(
-                                                    (p) => p.id === voucher.id,
-                                                )) ||
-                                                (appliedVoucher.promotion &&
-                                                    appliedVoucher.promotion
-                                                        .id === voucher.id) ||
-                                                voucherInputCode
-                                                    .split(',')
-                                                    .map((c) =>
-                                                        c.trim().toUpperCase(),
-                                                    )
-                                                    .includes(
-                                                        voucher.code.toUpperCase(),
-                                                    ))}
-
-                                        <div
-                                            class="bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-3xs hover:shadow-2xs transition duration-200"
-                                            class:opacity-60={!minMet}
-                                        >
-                                            <div
-                                                class="relative flex items-stretch"
-                                            >
-                                                <!-- Left side color ribbon -->
-                                                <div
-                                                    class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
-                                                    style="background: linear-gradient(135deg, {primary}, {withOpacity(
-                                                        primary,
-                                                        0.85,
-                                                    )});"
-                                                >
-                                                    <i
-                                                        class="ti ti-truck text-base mb-0.5 shrink-0"
-                                                    ></i>
-                                                    <span
-                                                        class="text-[7.5px] font-black uppercase tracking-wider leading-none"
-                                                    >
-                                                        Free Ongkir
-                                                    </span>
-                                                </div>
-
-                                                <!-- Dashed Ticket Divider line -->
-                                                <div
-                                                    class="absolute left-16 top-0 bottom-0 border-l border-dashed border-slate-200 z-10"
-                                                ></div>
-                                                <!-- Ticket Top & Bottom cutouts -->
-                                                <div
-                                                    class="absolute left-[58px] -top-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
-                                                ></div>
-                                                <div
-                                                    class="absolute left-[58px] -bottom-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
-                                                ></div>
-
-                                                <!-- Right side content -->
-                                                <div
-                                                    class="flex-grow py-2 pl-3.5 pr-2.5 flex flex-col justify-between min-w-0"
-                                                >
-                                                    <div class="min-w-0">
-                                                        <div
-                                                            class="flex items-center gap-1 mb-0.5 flex-wrap"
-                                                        >
-                                                            <span
-                                                                class="text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider leading-none shrink-0"
-                                                                style="color: {primary}; border-color: {withOpacity(
-                                                                    primary,
-                                                                    0.35,
-                                                                )}; background: {withOpacity(
-                                                                    primary,
-                                                                    0.06,
-                                                                )};"
-                                                            >
-                                                                {voucher.code}
-                                                            </span>
-                                                            {#if isSelected}
-                                                                <span
-                                                                    class="text-white text-[7.5px] font-black px-1 py-0.5 rounded leading-none shrink-0"
-                                                                    style="background-color: {primary};"
-                                                                    >TERPASANG</span
-                                                                >
-                                                            {/if}
-                                                        </div>
-                                                        <h4
-                                                            class="font-extrabold text-[10px] text-slate-800 line-clamp-1 leading-snug"
-                                                        >
-                                                            {voucher.name}
-                                                        </h4>
-                                                        <p
-                                                            class="text-[8.5px] text-slate-450 font-bold mt-0.5 leading-none"
-                                                        >
-                                                            Gratis Ongkir s/d {fmt(
-                                                                voucher.max_discount ??
-                                                                    0,
-                                                            )}
-                                                        </p>
-                                                    </div>
-
-                                                    <div
-                                                        class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
-                                                    >
-                                                        <div
-                                                            class="flex items-center gap-1.5 shrink-0"
-                                                        >
-                                                            <span
-                                                                class="text-[8px] bg-slate-100/80 text-slate-500 font-extrabold px-1.5 py-0.5 rounded leading-none"
-                                                            >
-                                                                Min. {fmt(
-                                                                    voucher.min_purchase,
-                                                                )}
-                                                            </span>
-                                                            {#if voucher.settings?.terms}
-                                                                <button
-                                                                    type="button"
-                                                                    onclick={() =>
-                                                                        toggleTerms(
-                                                                            voucher.id,
-                                                                        )}
-                                                                    class="text-[8px] text-slate-400 hover:text-slate-650 font-extrabold underline cursor-pointer border-0 bg-transparent flex items-center gap-0.5 shrink-0"
-                                                                >
-                                                                    S&K <i
-                                                                        class="ti {expandedTerms[
-                                                                            voucher
-                                                                                .id
-                                                                        ]
-                                                                            ? 'ti-chevron-up'
-                                                                            : 'ti-chevron-down'} text-[8px]"
-                                                                    ></i>
-                                                                </button>
-                                                            {/if}
-                                                        </div>
-
-                                                        {#if minMet}
-                                                            <button
-                                                                onclick={() => {
-                                                                    if (
-                                                                        isSelected
-                                                                    ) {
-                                                                        deselectVoucher(
-                                                                            voucher,
-                                                                        );
-                                                                    } else {
-                                                                        selectVoucher(
-                                                                            voucher,
-                                                                        );
-                                                                    }
-                                                                }}
-                                                                class="px-2.5 py-1 rounded-md text-[8.5px] font-black transition cursor-pointer border-0 active:scale-95 leading-none shrink-0 text-white"
-                                                                style="background: {isSelected
-                                                                    ? '#cbd5e1'
-                                                                    : primary}; color: {isSelected
-                                                                    ? '#475569'
-                                                                    : 'white'};"
-                                                            >
-                                                                {isSelected
-                                                                    ? 'Lepas'
-                                                                    : 'Pakai'}
-                                                            </button>
-                                                        {:else}
-                                                            <span
-                                                                class="text-[8px] text-rose-500 font-extrabold leading-none shrink-0"
-                                                            >
-                                                                Kurang {fmt(
-                                                                    Number(
-                                                                        voucher.min_purchase,
-                                                                    ) -
-                                                                        subtotal,
-                                                                )}
-                                                            </span>
-                                                        {/if}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {#if expandedTerms[voucher.id] && voucher.settings?.terms}
-                                                <div
-                                                    class="px-3.5 py-2 bg-slate-50 border-t border-slate-100 text-[8.5px] text-slate-500 font-bold whitespace-pre-line leading-relaxed"
-                                                >
-                                                    {voucher.settings.terms}
-                                                </div>
-                                            {/if}
-                                        </div>
-                                    {/each}
-                                </div>
-                            </div>
-                        {/if}
-
-                        <!-- Section 2: Voucher Belanja -->
-                        {#if discountVouchers.length > 0}
-                            <div
-                                class="space-y-1.5 {shippingVouchers.length > 0
-                                    ? 'mt-3.5'
-                                    : ''}"
-                            >
-                                <h4
-                                    class="text-[9px] font-black text-slate-450 uppercase tracking-widest flex items-center gap-1 px-1"
-                                >
-                                    <i
-                                        class="ti ti-ticket text-xs"
-                                        style="color: {primary};"
-                                    ></i> Voucher Belanja
-                                </h4>
-                                <div class="space-y-1.5">
-                                    {#each discountVouchers as voucher (voucher.id)}
-                                        {@const minMet =
-                                            subtotal >=
-                                            Number(voucher.min_purchase ?? 0)}
-                                        {@const isSelected =
-                                            appliedVoucher &&
-                                            ((Array.isArray(
-                                                appliedVoucher.promotions,
-                                            ) &&
-                                                appliedVoucher.promotions.some(
-                                                    (p) => p.id === voucher.id,
-                                                )) ||
-                                                (appliedVoucher.promotion &&
-                                                    appliedVoucher.promotion
-                                                        .id === voucher.id) ||
-                                                voucherInputCode
-                                                    .split(',')
-                                                    .map((c) =>
-                                                        c.trim().toUpperCase(),
-                                                    )
-                                                    .includes(
-                                                        voucher.code.toUpperCase(),
-                                                    ))}
-
-                                        <div
-                                            class="bg-white border border-slate-200/80 rounded-xl overflow-hidden shadow-3xs hover:shadow-2xs transition duration-200"
-                                            class:opacity-60={!minMet}
-                                        >
-                                            <div
-                                                class="relative flex items-stretch"
-                                            >
-                                                <!-- Left side color ribbon -->
-                                                <div
-                                                    class="w-16 shrink-0 flex flex-col items-center justify-center p-2 text-white text-center select-none"
-                                                    style="background: linear-gradient(135deg, {primary}, {withOpacity(
-                                                        primary,
-                                                        0.85,
-                                                    )});"
-                                                >
-                                                    <i
-                                                        class="ti ti-ticket text-base mb-0.5 shrink-0"
-                                                    ></i>
-                                                    <span
-                                                        class="text-[7.5px] font-black uppercase tracking-wider leading-none"
-                                                    >
-                                                        {#if voucher.settings?.is_points_voucher}Poin{:else}Diskon{/if}
-                                                    </span>
-                                                </div>
-
-                                                <!-- Dashed Ticket Divider line -->
-                                                <div
-                                                    class="absolute left-16 top-0 bottom-0 border-l border-dashed border-slate-200 z-10"
-                                                ></div>
-                                                <!-- Ticket Top & Bottom cutouts -->
-                                                <div
-                                                    class="absolute left-[58px] -top-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
-                                                ></div>
-                                                <div
-                                                    class="absolute left-[58px] -bottom-1.5 w-3 h-3 rounded-full bg-slate-50 border border-slate-200 z-10"
-                                                ></div>
-
-                                                <!-- Right side content -->
-                                                <div
-                                                    class="flex-grow py-2 pl-3.5 pr-2.5 flex flex-col justify-between min-w-0"
-                                                >
-                                                    <div class="min-w-0">
-                                                        <div
-                                                            class="flex items-center gap-1 mb-0.5 flex-wrap"
-                                                        >
-                                                            <span
-                                                                class="text-[8px] font-black px-1.5 py-0.5 rounded border uppercase tracking-wider leading-none shrink-0"
-                                                                style="color: {primary}; border-color: {withOpacity(
-                                                                    primary,
-                                                                    0.35,
-                                                                )}; background: {withOpacity(
-                                                                    primary,
-                                                                    0.06,
-                                                                )};"
-                                                            >
-                                                                {voucher.code}
-                                                            </span>
-                                                            {#if isSelected}
-                                                                <span
-                                                                    class="text-white text-[7.5px] font-black px-1 py-0.5 rounded leading-none shrink-0"
-                                                                    style="background-color: {primary};"
-                                                                    >TERPASANG</span
-                                                                >
-                                                            {/if}
-                                                        </div>
-                                                        <h4
-                                                            class="font-extrabold text-[10px] text-slate-800 line-clamp-1 leading-snug"
-                                                        >
-                                                            {voucher.name}
-                                                        </h4>
-                                                        <p
-                                                            class="text-[8.5px] text-slate-450 font-bold mt-0.5 leading-none"
-                                                        >
-                                                            {#if voucher.settings?.is_points_voucher}
-                                                                Konversi Poin: +{formatNumber(userIsNew ? (voucher.settings?.points_new_user || 0) : (voucher.settings?.points_existing_user || 0))} Poin
-                                                            {:else}
-                                                                Potongan {#if voucher.discount_type === 'percentage'}{Number(
-                                                                        voucher.discount_value,
-                                                                    )}%{:else}{fmt(
-                                                                        voucher.discount_value,
-                                                                    )}{/if}
-                                                                {#if voucher.max_discount}s/d
-                                                                    {fmt(
-                                                                        voucher.max_discount,
-                                                                    )}{/if}
-                                                            {/if}
-                                                        </p>
-                                                    </div>
-
-                                                    <div
-                                                        class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-50 gap-1.5 shrink-0"
-                                                    >
-                                                        <div
-                                                            class="flex items-center gap-1.5 shrink-0"
-                                                        >
-                                                            <span
-                                                                class="text-[8px] bg-slate-100/80 text-slate-500 font-extrabold px-1.5 py-0.5 rounded leading-none"
-                                                            >
-                                                                Min. {fmt(
-                                                                    voucher.min_purchase,
-                                                                )}
-                                                            </span>
-                                                            {#if voucher.settings?.terms}
-                                                                <button
-                                                                    type="button"
-                                                                    onclick={() =>
-                                                                        toggleTerms(
-                                                                            voucher.id,
-                                                                        )}
-                                                                    class="text-[8px] text-slate-450 hover:text-slate-650 font-extrabold underline cursor-pointer border-0 bg-transparent flex items-center gap-0.5 shrink-0"
-                                                                >
-                                                                    S&K <i
-                                                                        class="ti {expandedTerms[
-                                                                            voucher
-                                                                                .id
-                                                                        ]
-                                                                            ? 'ti-chevron-up'
-                                                                            : 'ti-chevron-down'} text-[8px]"
-                                                                    ></i>
-                                                                </button>
-                                                            {/if}
-                                                        </div>
-
-                                                        {#if minMet}
-                                                            <button
-                                                                onclick={() => {
-                                                                    if (
-                                                                        isSelected
-                                                                    ) {
-                                                                        deselectVoucher(
-                                                                            voucher,
-                                                                        );
-                                                                    } else {
-                                                                        selectVoucher(
-                                                                            voucher,
-                                                                        );
-                                                                    }
-                                                                }}
-                                                                class="px-2.5 py-1 rounded-md text-[8.5px] font-black transition cursor-pointer border-0 active:scale-95 leading-none shrink-0 text-white"
-                                                                style="background: {isSelected
-                                                                    ? '#cbd5e1'
-                                                                    : primary}; color: {isSelected
-                                                                    ? '#475569'
-                                                                    : 'white'};"
-                                                            >
-                                                                {isSelected
-                                                                    ? 'Lepas'
-                                                                    : 'Pakai'}
-                                                            </button>
-                                                        {:else}
-                                                            <span
-                                                                class="text-[8px] text-rose-500 font-extrabold leading-none shrink-0"
-                                                            >
-                                                                Kurang {fmt(
-                                                                    Number(
-                                                                        voucher.min_purchase,
-                                                                    ) -
-                                                                        subtotal,
-                                                                )}
-                                                            </span>
-                                                        {/if}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {#if expandedTerms[voucher.id] && voucher.settings?.terms}
-                                                <div
-                                                    class="px-3.5 py-2 bg-slate-50 border-t border-slate-100 text-[8.5px] text-slate-500 font-bold whitespace-pre-line leading-relaxed"
-                                                >
-                                                    {voucher.settings.terms}
-                                                </div>
-                                            {/if}
-                                        </div>
-                                    {/each}
-                                </div>
-                            </div>
-                        {/if}
-                    {/if}
-                </div>
-            </div>
-        </div>
-    {/if}
-
-    <!-- ═══════════════════════════════════════════════════
-     QR / BARCODE SCANNER MODAL FOR VOUCHER
-    ═══════════════════════════════════════════════════ -->
     {#if showScanModal}
-        <div
-            class="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden"
-            onclick={closeScanModal}
-            onkeypress={closeScanModal}
-            role="button"
-            tabindex="-1"
-        >
-            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"></div>
-            <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <div
-                class="relative z-10 bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 w-full max-w-sm flex flex-col max-h-[90vh]"
-                onclick={(e: any) => e.stopPropagation()}
-                onkeypress={(e: any) => e.stopPropagation()}
-                role="document"
-            >
-                <!-- Header -->
-                <div class="flex items-center justify-between pb-4 border-b border-slate-100">
-                    <div class="flex items-center gap-2">
-                        <i class="ti ti-scan text-lg" style="color: {primary}"></i>
-                        <h3 class="font-outfit font-black text-slate-800 text-sm uppercase tracking-wider">
-                            Pindai QR Voucher
-                        </h3>
-                    </div>
-                    <button
-                        onclick={closeScanModal}
-                        class="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition shrink-0 border-0 cursor-pointer"
-                        aria-label="Tutup"
-                    >
-                        <i class="ti ti-x text-xs text-slate-500"></i>
-                    </button>
-                </div>
-
-                <!-- Body -->
-                <div class="py-6 space-y-4 flex-1 flex flex-col items-center">
-                    <div class="relative w-full aspect-square bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-inner flex items-center justify-center">
-                        <div id="checkout-scanner-reader" class="w-full h-full object-cover"></div>
-
-                        {#if !isScanning}
-                            <div class="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-slate-950/80">
-                                <i class="ti ti-camera-off text-2xl text-slate-650 mb-2"></i>
-                                <p class="text-[10px] text-slate-400 font-medium">Kamera tidak aktif</p>
-                                <button
-                                    onclick={startScanning}
-                                    class="mt-3 px-4 py-2 text-white rounded-xl text-xs font-bold transition hover:opacity-90 active:scale-95 border-0 cursor-pointer"
-                                    style="background: {primary}"
-                                >
-                                    Aktifkan Kamera
-                                </button>
-                            </div>
-                        {/if}
-
-                        {#if isScanning}
-                            <!-- Laser scan line animation -->
-                            <div class="absolute left-0 right-0 h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-laser pointer-events-none z-10"></div>
-                            <!-- Crosshair border indicators -->
-                            <div class="absolute inset-8 border border-white/20 pointer-events-none rounded-xl"></div>
-                        {/if}
-                    </div>
-
-                    {#if scanError}
-                        <p class="text-xs text-red-500 font-bold text-center leading-tight bg-red-50 p-2.5 rounded-xl border border-red-100 w-full">
-                            {scanError}
-                        </p>
-                    {/if}
-                    
-                    <p class="text-[9.5px] text-slate-400 text-center leading-relaxed">
-                        Arahkan kamera ke kode QR Voucher cetak Anda. Kode akan otomatis terpindai dan dimasukkan ke form voucher.
-                    </p>
-                </div>
-            </div>
-        </div>
+        <ScannerModal
+            {primary}
+            {scanError}
+            {isScanning}
+            {startScanning}
+            {closeScanModal}
+        />
     {/if}
 </StorefrontLayout>
-
-<style>
-    .safe-area-bottom {
-        padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
-    }
-    @keyframes laser {
-        0%,
-        100% {
-            top: 5%;
-        }
-        50% {
-            top: 95%;
-        }
-    }
-    .animate-laser {
-        animation: laser 2s infinite linear;
-    }
-</style>

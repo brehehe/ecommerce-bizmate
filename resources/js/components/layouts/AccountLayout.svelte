@@ -14,13 +14,25 @@
     const secondary = $derived(page.props.theme?.secondary_color || '#0c4cb4');
     const user = $derived(page.props.auth?.user);
     const isAdmin = $derived(
-        user?.roles?.some(
-            (r: any) => r.name === 'Super Admin' || r.name === 'Admin',
-        ) || (!user?.is_seller && user?.roles?.length === 0),
+        Boolean(
+            user?.roles?.some(
+                (r: any) => r.name === 'Super Admin' || r.name === 'Admin',
+            ) ||
+                user?.is_admin ||
+                user?.email === 'admin@bizmate.com' ||
+                user?.email === 'superadmin@bizmate.com',
+        ),
     );
     const isSellerEnabled = $derived(
         (page.props as any).app_config?.is_seller_enabled ??
             (page.props as any).settings?.is_seller_enabled ??
+            false,
+    );
+    const isFoodPick = $derived(
+        Boolean((page.props as any).is_foodpick) ||
+            Boolean((page.props as any).app_config?.is_foodpick) ||
+            Boolean((page.props as any).settings?.is_foodpick) ||
+            Boolean((page.props as any).isFoodPick) ||
             false,
     );
 
@@ -60,8 +72,7 @@
                                         />
                                     {:else}
                                         <div
-                                            class="w-full h-full text-white font-bold text-xs flex items-center justify-center uppercase"
-                                            style="background: linear-gradient(135deg, {primary}, {secondary});"
+                                            class="w-full h-full bg-slate-900 text-white font-black text-xs flex items-center justify-center uppercase tracking-wider"
                                         >
                                             {user
                                                 ? user.name.substring(0, 2)
@@ -257,16 +268,18 @@
                                 <hr class="border-slate-100 my-2" />
                             {/if}
 
-                            <!-- Pesan Chat -->
-                            <Link
-                                href="/chats"
-                                class="px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition"
-                            >
-                                <i
-                                    class="ti ti-message-dots text-base text-emerald-600"
-                                ></i>
-                                <span>Pesan Chat</span>
-                            </Link>
+                            <!-- Pesan Chat (Disembunyikan di Mode FoodPick) -->
+                            {#if !isFoodPick}
+                                <Link
+                                    href="/chats"
+                                    class="px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition"
+                                >
+                                    <i
+                                        class="ti ti-message-dots text-base text-emerald-600"
+                                    ></i>
+                                    <span>Pesan Chat</span>
+                                </Link>
+                            {/if}
 
                             <!-- Tentang Kami -->
                             <Link
@@ -294,45 +307,54 @@
                                 {/if}
                             </Link>
 
-                            <!-- Toko Saya / Mulai Jual Barang Banner Menu -->
-                            {#if isSellerEnabled}
+                            <!-- Resto / Toko / Admin Portal Menu -->
+                            {#if isAdmin}
                                 <hr class="border-slate-100 my-2" />
-                                {#if user?.is_seller}
-                                    <a
-                                        href="/admin/dashboard"
-                                        class="px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-bold text-amber-800 bg-amber-50/80 hover:bg-amber-100 border border-amber-200/60 transition"
+                                <a
+                                    href="/admin/dashboard"
+                                    class="px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-bold text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200/80 transition"
+                                >
+                                    <i
+                                        class="ti ti-layout-dashboard text-base text-slate-700"
+                                    ></i>
+                                    <span class="truncate">Portal Admin</span>
+                                </a>
+                            {:else if user?.is_seller}
+                                <hr class="border-slate-100 my-2" />
+                                <a
+                                    href={isFoodPick ? '/admin/resto-profile' : '/admin/dashboard'}
+                                    class="px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/60 transition"
+                                >
+                                    <i
+                                        class="ti {isFoodPick ? 'ti-tools-kitchen-2' : 'ti-building-store'} text-base text-amber-600"
+                                    ></i>
+                                    <span class="truncate"
+                                        >{user.store_name ||
+                                            (isFoodPick ? 'Resto Saya' : 'Toko Saya')}</span
                                     >
-                                        <i
-                                            class="ti ti-building-store text-base text-amber-600"
-                                        ></i>
-                                        <span class="truncate"
-                                            >{user.store_name ||
-                                                'Toko Saya'}</span
-                                        >
-                                    </a>
-
-                                    {#if isAdmin}
-                                        <a
-                                            href="/admin/ads"
-                                            class="px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-bold text-blue-800 bg-blue-50/80 hover:bg-blue-100 border border-blue-200/60 transition"
-                                        >
-                                            <i
-                                                class="ti ti-speakerphone text-base text-blue-600"
-                                            ></i>
-                                            <span class="truncate">Iklan & Promosi</span>
-                                        </a>
-                                    {/if}
-                                {:else}
-                                    <Link
-                                        href="/profile?open_seller=1"
-                                        class="w-full text-left px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-bold text-orange-800 bg-orange-50/80 hover:bg-orange-100 border border-orange-200/60 transition cursor-pointer"
-                                    >
-                                        <i
-                                            class="ti ti-building-store text-base text-orange-600"
-                                        ></i>
-                                        <span>Mulai Jual Barang</span>
-                                    </Link>
-                                {/if}
+                                </a>
+                            {:else if isFoodPick}
+                                <hr class="border-slate-100 my-2" />
+                                <a
+                                    href="/resto/register"
+                                    class="w-full text-left px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/60 transition cursor-pointer"
+                                >
+                                    <i
+                                        class="ti ti-chef-hat text-base text-amber-600"
+                                    ></i>
+                                    <span>Daftar Mitra Resto</span>
+                                </a>
+                            {:else if isSellerEnabled}
+                                <hr class="border-slate-100 my-2" />
+                                <Link
+                                    href="/profile?open_seller=1"
+                                    class="w-full text-left px-3 py-2 rounded-xl flex items-center gap-2.5 text-xs font-bold text-orange-800 bg-orange-50 hover:bg-orange-100 border border-orange-200/60 transition cursor-pointer"
+                                >
+                                    <i
+                                        class="ti ti-building-store text-base text-orange-600"
+                                    ></i>
+                                    <span>Mulai Jual Barang</span>
+                                </Link>
                             {/if}
                         </div>
                     </div>

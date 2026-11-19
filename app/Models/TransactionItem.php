@@ -30,6 +30,7 @@ class TransactionItem extends Model
         'applied_promotion_id',
         'promo_quantity_used',
         'note',
+        'selected_modifiers',
     ];
 
     protected $casts = [
@@ -39,6 +40,7 @@ class TransactionItem extends Model
         'harga_akhir' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'is_gift_item' => 'boolean',
+        'selected_modifiers' => 'array',
     ];
 
     public function transaction(): BelongsTo

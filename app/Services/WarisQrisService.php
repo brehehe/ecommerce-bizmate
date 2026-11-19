@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PaymentMethod;
+use App\Models\RestoProfile;
 use App\Models\Setting;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Http;
@@ -132,18 +133,26 @@ class WarisQrisService
         ?string $qrisCode = null,
         string $format = 'data_uri'
     ): array {
-        $apiKey = self::getApiKey();
+        $restoProfile = null;
+        if (! empty($transaction->resto_id)) {
+            $restoProfile = RestoProfile::where('user_id', $transaction->resto_id)->first();
+        }
+        $restoWaris = $restoProfile?->payment_methods['waris'] ?? [];
+
+        $apiKey = ! empty($restoWaris['api_key']) ? (string) $restoWaris['api_key'] : self::getApiKey();
+        $baseUrl = ! empty($restoWaris['api_url']) ? rtrim((string) $restoWaris['api_url'], '/') : self::getBaseUrl();
+        $qrisCode = $qrisCode ?: (! empty($restoWaris['qris_code']) ? (string) $restoWaris['qris_code'] : self::getDefaultQrisCode());
 
         if (empty($apiKey)) {
             Log::warning('WarisQrisService: API key is not configured.');
 
             return [
                 'success' => false,
-                'error' => 'API Key QRIS belum dikonfigurasi pada sistem.',
+                'error' => 'API Key QRIS belum dikonfigurasi pada sistem atau resto.',
             ];
         }
 
-        $url = self::getBaseUrl().'/qris/generate';
+        $url = $baseUrl.'/qris/generate';
         $amount = (int) round((float) $transaction->grand_total);
         $referenceId = (string) $transaction->transaction_number;
         $qrisCode = $qrisCode ?: self::getDefaultQrisCode();
@@ -388,9 +397,9 @@ class WarisQrisService
     /**
      * Verify incoming webhook HMAC-SHA256 signature.
      */
-    public static function verifyWebhookSignature(string $payload, ?string $signatureHeader): bool
+    public static function verifyWebhookSignature(string $payload, ?string $signatureHeader, ?string $customSecret = null): bool
     {
-        $secret = self::getWebhookSecret();
+        $secret = ! empty($customSecret) ? $customSecret : self::getWebhookSecret();
 
         // If secret is not set in config/db, reject for security
         if (empty($secret) || empty($signatureHeader)) {

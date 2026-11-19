@@ -18,6 +18,13 @@
     const storeLogo = $derived(
         (page.props as any).settings?.store_logo || null,
     );
+    const isFoodPick = $derived(
+        Boolean((page.props as any).is_foodpick) ||
+            Boolean((page.props as any).isFoodPick) ||
+            Boolean((page.props as any).app_config?.is_foodpick) ||
+            Boolean((page.props as any).settings?.is_foodpick) ||
+            false,
+    );
 
     const form = useForm({
         email: '',
@@ -199,20 +206,22 @@
 
             <!-- Badge -->
             <div
-                class="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs font-black mb-6 tracking-wide"
+                class="inline-flex items-center gap-2 px-3 py-1.5 {isFoodPick ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-blue-50 text-blue-700'} rounded-full text-xs font-black mb-6 tracking-wide"
             >
-                <i class="ti ti-truck-delivery text-sm"></i>
-                KURIR TOKO
+                <i class="ti {isFoodPick ? 'ti-moped text-amber-600' : 'ti-truck-delivery text-blue-600'} text-sm"></i>
+                {isFoodPick ? 'KURIR RESTO' : 'KURIR TOKO'}
             </div>
 
             <h2
                 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-2"
                 style="font-family: 'Outfit', sans-serif;"
             >
-                Selamat Datang, Kurir!
+                {isFoodPick ? 'Selamat Datang, Kurir Resto!' : 'Selamat Datang, Kurir!'}
             </h2>
             <p class="text-sm text-slate-500 font-medium mb-10">
-                Masuk menggunakan akun kurir toko Anda.
+                {isFoodPick
+                    ? 'Masuk menggunakan akun kurir resto untuk mengantar pesanan makanan siap saji.'
+                    : 'Masuk menggunakan akun kurir toko Anda.'}
             </p>
 
             <form

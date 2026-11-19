@@ -37,6 +37,7 @@ class ProductController extends Controller
 
         $product->load([
             'seller.customerAddresses',
+            'seller.restoProfile',
             'originAddress',
             'category',
             'categories',
@@ -50,6 +51,7 @@ class ProductController extends Controller
             'variants.options',
             'tierPrices',
             'variants.tierPrices',
+            'menuModifiers.items' => fn ($q) => $q->where('is_available', true)->orderBy('created_at'),
         ]);
 
         if ($product->isListingExpired()) {

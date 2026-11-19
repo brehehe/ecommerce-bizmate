@@ -8,6 +8,7 @@ use App\Models\User;
 use Database\Seeders\CourierSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -127,4 +128,82 @@ test('courier seeder seeds only specific couriers', function () {
     foreach ($couriers as $courier) {
         expect($courier->is_active)->toBeTrue();
     }
+});
+
+test('admin can create resto courier and courier can log in at /kurir/login', function () {
+    $response = $this->actingAs($this->user)->post(route('admin.master-data.resto-couriers.store'), [
+        'name' => 'Budi Kurir',
+        'email' => 'budikurir@test.com',
+        'phone_number' => '08123456789',
+        'password' => 'secret123',
+    ]);
+
+    $response->assertRedirect();
+    $this->assertDatabaseHas('users', [
+        'name' => 'Budi Kurir',
+        'email' => 'budikurir@test.com',
+        'phone_number' => '08123456789',
+    ]);
+
+    $courier = User::where('email', 'budikurir@test.com')->first();
+    expect($courier->hasRole('Kurir Toko'))->toBeTrue();
+
+    // Log out admin then courier logs in at /kurir/login
+    auth()->logout();
+    $loginResponse = $this->post('/kurir/login', [
+        'email' => 'budikurir@test.com',
+        'password' => 'secret123',
+    ]);
+    $loginResponse->assertRedirect(route('kurir.dashboard'));
+    $this->assertAuthenticatedAs($courier);
+});
+
+test('admin can reset resto courier password', function () {
+    $courier = User::factory()->create([
+        'email' => 'driver@test.com',
+        'password' => 'oldpassword',
+    ]);
+    if (! Role::where('name', 'Kurir Toko')->where('guard_name', 'web')->exists()) {
+        Role::create(['name' => 'Kurir Toko', 'guard_name' => 'web']);
+    }
+    $courier->assignRole('Kurir Toko');
+
+    $response = $this->actingAs($this->user)->post(route('admin.master-data.resto-couriers.reset-password', $courier), [
+        'password' => 'newpassword123',
+        'password_confirmation' => 'newpassword123',
+    ]);
+
+    $response->assertRedirect();
+
+    // Log out admin then courier logs in with new password
+    auth()->logout();
+    $loginResponse = $this->post('/kurir/login', [
+        'email' => 'driver@test.com',
+        'password' => 'newpassword123',
+    ]);
+    $loginResponse->assertRedirect(route('kurir.dashboard'));
+    $this->assertAuthenticatedAs($courier);
+});
+
+test('seller only sees couriers belonging to their own resto in master data', function () {
+    $sellerA = User::factory()->create(['is_seller' => true]);
+    $sellerB = User::factory()->create(['is_seller' => true]);
+
+    if (! Role::where('name', 'Kurir Toko')->where('guard_name', 'web')->exists()) {
+        Role::create(['name' => 'Kurir Toko', 'guard_name' => 'web']);
+    }
+
+    $courierA = User::factory()->create(['name' => 'Kurir A', 'resto_id' => $sellerA->id]);
+    $courierA->assignRole('Kurir Toko');
+
+    $courierB = User::factory()->create(['name' => 'Kurir B', 'resto_id' => $sellerB->id]);
+    $courierB->assignRole('Kurir Toko');
+
+    $response = $this->actingAs($sellerA)->get(route('admin.master-data.couriers'));
+    $response->assertOk();
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('Admin/MasterData/Couriers')
+        ->has('restoCouriers', 1)
+        ->where('restoCouriers.0.name', 'Kurir A')
+    );
 });

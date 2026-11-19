@@ -162,6 +162,15 @@ return [
     'enable_3d_models' => filter_var(env('ENABLE_3D_MODELS', true), FILTER_VALIDATE_BOOLEAN),
     'enable_product_variants' => filter_var(env('ENABLE_PRODUCT_VARIANTS', true), FILTER_VALIDATE_BOOLEAN),
     'is_seller' => filter_var(env('IS_SELLER', false), FILTER_VALIDATE_BOOLEAN),
+    'is_listing_off' => filter_var(env('IS_LISTING_OFF', true), FILTER_VALIDATE_BOOLEAN),
+    'is_foodpick' => filter_var(env('IS_FOODPICK', false), FILTER_VALIDATE_BOOLEAN),
+    'foodpick' => [
+        'allow_store_courier' => filter_var(env('FOODPICK_ALLOW_STORE_COURIER', true), FILTER_VALIDATE_BOOLEAN),
+        'allow_self_pickup' => filter_var(env('FOODPICK_ALLOW_SELF_PICKUP', true), FILTER_VALIDATE_BOOLEAN),
+        'hide_expedition' => filter_var(env('FOODPICK_HIDE_EXPEDITION', true), FILTER_VALIDATE_BOOLEAN),
+        'default_prep_minutes' => (int) env('FOODPICK_DEFAULT_PREP_MINUTES', 20),
+        'slot_interval_minutes' => (int) env('FOODPICK_SLOT_INTERVAL_MINUTES', 15),
+    ],
 
     'rajaongkir' => [
         'url' => env('RAJAONGKIR_URL', 'https://rajaongkir.komerce.id/api/v1/'),

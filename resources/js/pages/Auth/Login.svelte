@@ -444,15 +444,26 @@
                     </button>
                 </div>
 
-                <div class="pt-2 text-center text-sm text-slate-600 font-medium">
-                    Belum memiliki akun?
-                    <Link
-                        href="/register"
-                        class="font-bold hover:underline transition-opacity hover:opacity-80 ml-1"
-                        style="color: {primaryColor};"
-                    >
-                        Daftar Sekarang
-                    </Link>
+                <div class="pt-2 text-center text-sm text-slate-600 font-medium space-y-2">
+                    <div>
+                        Belum memiliki akun?
+                        <Link
+                            href="/register"
+                            class="font-bold hover:underline transition-opacity hover:opacity-80 ml-1"
+                            style="color: {primaryColor};"
+                        >
+                            Daftar Sekarang
+                        </Link>
+                    </div>
+                    <div class="pt-2 border-t border-slate-100 text-xs text-slate-500">
+                        Ingin bergabung sebagai mitra dapur kuliner?
+                        <Link
+                            href="/register-resto"
+                            class="font-bold text-orange-600 hover:underline ml-1"
+                        >
+                            🍳 Daftar Mitra Resto
+                        </Link>
+                    </div>
                 </div>
             </form>
         </div>

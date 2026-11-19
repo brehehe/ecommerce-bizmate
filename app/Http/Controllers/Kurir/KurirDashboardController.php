@@ -26,8 +26,13 @@ class KurirDashboardController extends Controller
             'customerAddress',
             'items.product:id,name',
             'items.product.images:id,product_id,path,is_main',
+            'restoProfile:id,user_id,resto_name,address,latitude,longitude,logo_path',
+            'paymentMethod:id,name,type',
         ])
-            ->where('shipping_courier', 'store_courier')
+            ->where(function ($q) {
+                $q->where('shipping_courier', 'store_courier')
+                    ->orWhere('fulfillment_type', 'store_courier');
+            })
             ->latest();
 
         if ($tab === 'my_tasks') {
@@ -35,11 +40,7 @@ class KurirDashboardController extends Controller
                 ->whereNotIn('status', ['selesai', 'batal']);
         } elseif ($tab === 'available') {
             $query->whereNull('courier_user_id')
-                ->whereIn('status', ['diproses', 'dikemas'])
-                ->whereNotNull('booking_code')
-                ->whereNotNull('tracking_number')
-                ->where('booking_code', '!=', '')
-                ->where('tracking_number', '!=', '');
+                ->whereIn('status', ['diproses', 'dimasak', 'dikemas', 'siap_diambil']);
         } elseif ($tab === 'history') {
             $query->where('courier_user_id', $courierId)
                 ->whereIn('status', ['selesai', 'batal']);
@@ -78,7 +79,7 @@ class KurirDashboardController extends Controller
     public function show(Transaction $transaction): Response|RedirectResponse
     {
         // Couriers can only view store_courier transactions
-        if ($transaction->shipping_courier !== 'store_courier') {
+        if ($transaction->shipping_courier !== 'store_courier' && $transaction->fulfillment_type !== 'store_courier') {
             return redirect()->route('kurir.dashboard');
         }
 
@@ -89,6 +90,8 @@ class KurirDashboardController extends Controller
             'items.product.images:id,product_id,path,is_main',
             'statusHistories',
             'courierUser',
+            'restoProfile:id,user_id,resto_name,address,latitude,longitude,logo_path',
+            'paymentMethod:id,name,type',
         ]);
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
@@ -112,7 +115,10 @@ class KurirDashboardController extends Controller
                 ->orWhere('booking_code', $number)
                 ->orWhere('tracking_number', $number);
         })
-            ->where('shipping_courier', 'store_courier')
+            ->where(function ($q) {
+                $q->where('shipping_courier', 'store_courier')
+                    ->orWhere('fulfillment_type', 'store_courier');
+            })
             ->first();
 
         if (! $transaction) {

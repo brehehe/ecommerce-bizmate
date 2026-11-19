@@ -25,6 +25,10 @@ class KurirDeliveryController extends Controller
      */
     public function updateStatus(Request $request, Transaction $transaction): RedirectResponse
     {
+        if ($request->isMethod('get')) {
+            return redirect()->route('kurir.dashboard');
+        }
+
         $request->validate([
             'action' => 'required|in:pickup,delivering,arrived',
             'delivery_photos' => 'nullable|array',
@@ -32,7 +36,7 @@ class KurirDeliveryController extends Controller
         ]);
 
         // Guard: only store_courier transactions
-        if ($transaction->shipping_courier !== 'store_courier') {
+        if ($transaction->shipping_courier !== 'store_courier' && $transaction->fulfillment_type !== 'store_courier') {
             return back()->with('error', 'Transaksi ini bukan kurir toko.');
         }
 
@@ -54,7 +58,12 @@ class KurirDeliveryController extends Controller
             'arrived' => $this->doArrived($transaction, $request),
         };
 
-        return back()->with('success', $this->successMessage($action));
+        $previousUrl = url()->previous();
+        if ($previousUrl && ! str_contains($previousUrl, 'update-status')) {
+            return redirect()->to($previousUrl)->with('success', $this->successMessage($action));
+        }
+
+        return redirect()->route('kurir.dashboard')->with('success', $this->successMessage($action));
     }
 
     /**
@@ -96,6 +105,19 @@ class KurirDeliveryController extends Controller
                 $photos[] = ImageHelper::compressAndStore($file, 'delivery_photos', 'public');
             }
             $updateData['delivery_photos'] = $photos;
+        }
+
+        $isCod = str_contains(strtolower($transaction->paymentMethod?->name ?? ''), 'cod')
+            || str_contains(strtolower($transaction->paymentMethod?->name ?? ''), 'bayar di tempat');
+
+        if ($isCod) {
+            $updateData['payment_status'] = 'paid';
+            if ($transaction->payment) {
+                $transaction->payment->update([
+                    'status' => 'confirmed',
+                    'confirmed_at' => now(),
+                ]);
+            }
         }
 
         $transaction->update($updateData);

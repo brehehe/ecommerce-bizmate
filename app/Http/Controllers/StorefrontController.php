@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\AppliesProductPricing;
 use App\Models\MembershipLevel;
 use App\Models\Product;
+use App\Models\RestoProfile;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\ProductService;
@@ -120,8 +121,20 @@ class StorefrontController extends Controller
         }
 
         if (! $seller) {
+            $resto = RestoProfile::whereRaw('LOWER(slug) = ?', [Str::lower($slug)])->first();
+            if ($resto && $resto->user) {
+                $seller = $resto->user;
+            }
+        }
+
+        if (! $seller) {
             abort(404);
         }
+
+        $seller->loadMissing(['restoProfile' => function ($q) {
+            $q->withAvg(['reviews' => fn ($rq) => $rq->where('is_public', true)], 'rating')
+                ->withCount(['reviews' => fn ($rq) => $rq->where('is_public', true)]);
+        }]);
 
         $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
         $storeLogo = Setting::where('key', 'store_logo')->value('value');
@@ -131,7 +144,11 @@ class StorefrontController extends Controller
         $query = trim($request->input('q', ''));
         $sort = $request->input('sort', 'latest');
 
-        $productsQuery = Product::with(ProductService::defaultEagerLoads())
+        $eagerLoads = array_merge(ProductService::defaultEagerLoads(), [
+            'menuModifiers.items' => fn ($q) => $q->where('is_available', true)->orderBy('created_at'),
+        ]);
+
+        $productsQuery = Product::with($eagerLoads)
             ->withAvg('reviews as avg_rating', 'rating')
             ->withCount('reviews as review_count')
             ->activeAndNotExpired()
@@ -207,6 +224,7 @@ class StorefrontController extends Controller
             ],
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
+            'isFoodPick' => (bool) config('app.is_foodpick', false),
         ]);
     }
 

@@ -44,6 +44,7 @@ class ProductService
             'variants.productPrice:id,product_id,product_variant_id,price',
             'variants.productStock:id,product_id,product_variant_id,stock',
             'variants.options:id,name',
+            'menuModifiers.items',
         ];
     }
 

@@ -1,5 +1,6 @@
 <script lang="ts">
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
+    import OrderItemModifiers from '@/components/Storefront/OrderItemModifiers.svelte';
     import { page, Link, router } from '@inertiajs/svelte';
     import { fade } from 'svelte/transition';
     import { showToast } from '@/utils/toast';
@@ -972,7 +973,7 @@
                     >
                         <!-- Product items inside the store block -->
                         <div class="space-y-4 pt-1 px-3 md:px-0">
-                            {#each cartItems as item, idx (item.id)}
+                            {#each cartItems as item, idx (item.id || `${item.product_id}_${item.product_variant_id ?? '0'}_${idx}`)}
                                 {@const img = getProductImage(item)}
                                 {@const varLabel = getVariantLabel(item)}
                                 {@const isChecked = selectedIds.includes(
@@ -1188,6 +1189,9 @@
                                                     </span>
                                                 {/if}
                                             </div>
+
+                                            <!-- Toppings & Notes -->
+                                            <OrderItemModifiers {item} compact={true} class="my-1.5" />
 
                                             <!-- Bottom row: Price (left) — Stepper + Trash (right) -->
                                             <div

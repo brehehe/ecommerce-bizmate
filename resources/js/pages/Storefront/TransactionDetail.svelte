@@ -1,6 +1,7 @@
 <script lang="ts">
     import AccountLayout from '@/components/layouts/AccountLayout.svelte';
     import StorefrontLayout from '@/components/layouts/StorefrontLayout.svelte';
+    import OrderItemModifiers from '@/components/Storefront/OrderItemModifiers.svelte';
     import { track as trackShipment } from '@/routes/transactions/komerce';
     import { page, router, Link } from '@inertiajs/svelte';
     import { showToast } from '@/utils/toast';
@@ -3077,50 +3078,39 @@
                                             </div>
                                         </div>
                                     </div>
-                                    {#if item.note}
-                                        {#if item.product?.is_digital}
+                                    {#if item.product?.is_digital && item.note}
+                                        <div
+                                            class="mt-2.5 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs font-semibold text-blue-700 flex flex-col gap-1 text-left"
+                                        >
                                             <div
-                                                class="mt-2.5 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs font-semibold text-blue-700 flex flex-col gap-1 text-left"
-                                            >
-                                                <div
-                                                    class="flex items-center gap-1.5"
-                                                >
-                                                    <i
-                                                        class="ti ti-key text-sm shrink-0"
-                                                    ></i>
-                                                    <span
-                                                        >Akses / Catatan Produk
-                                                        Digital:</span
-                                                    >
-                                                </div>
-                                                {#if item.note.startsWith('http://') || item.note.startsWith('https://')}
-                                                    <a
-                                                        href={item.note}
-                                                        target="_blank"
-                                                        class="underline break-all text-blue-800 hover:text-blue-900 font-bold mt-0.5"
-                                                    >
-                                                        {item.note}
-                                                    </a>
-                                                {:else}
-                                                    <div
-                                                        class="mt-1 bg-white border border-blue-200/60 rounded-lg p-2 font-mono font-bold select-all tracking-wider text-[11px] text-blue-900 break-all"
-                                                    >
-                                                        {item.note}
-                                                    </div>
-                                                {/if}
-                                            </div>
-                                        {:else}
-                                            <div
-                                                class="mt-2.5 p-2 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-medium text-slate-500 flex gap-1.5 items-start"
+                                                class="flex items-center gap-1.5"
                                             >
                                                 <i
-                                                    class="ti ti-notes text-xs mt-0.5 shrink-0"
+                                                    class="ti ti-key text-sm shrink-0"
                                                 ></i>
-                                                <span class="break-words"
-                                                    >Catatan: "{item.note}"</span
+                                                <span
+                                                    >Akses / Catatan Produk
+                                                    Digital:</span
                                                 >
                                             </div>
-                                        {/if}
+                                            {#if item.note.startsWith('http://') || item.note.startsWith('https://')}
+                                                <a
+                                                    href={item.note}
+                                                    target="_blank"
+                                                    class="underline break-all text-blue-800 hover:text-blue-900 font-bold mt-0.5"
+                                                >
+                                                    {item.note}
+                                                </a>
+                                            {:else}
+                                                <div
+                                                    class="mt-1 bg-white border border-blue-200/60 rounded-lg p-2 font-mono font-bold select-all tracking-wider text-[11px] text-blue-900 break-all"
+                                                >
+                                                    {item.note}
+                                                </div>
+                                            {/if}
+                                        </div>
+                                    {:else}
+                                        <OrderItemModifiers {item} class="mt-2" />
                                     {/if}
 
                                     <!-- Beri Ulasan button for completed orders -->

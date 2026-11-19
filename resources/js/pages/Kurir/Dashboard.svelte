@@ -18,6 +18,13 @@
         (page.props as any).theme?.secondary_color ?? '#fa7315',
     );
     const currentUser = $derived((page.props as any).auth?.user ?? null);
+    const isFoodPick = $derived(
+        Boolean((page.props as any).is_foodpick) ||
+            Boolean((page.props as any).isFoodPick) ||
+            Boolean((page.props as any).app_config?.is_foodpick) ||
+            Boolean((page.props as any).settings?.is_foodpick) ||
+            false,
+    );
 
     const shownFlashIds = new Set();
     $effect(() => {
@@ -408,6 +415,19 @@
                             </span>
                         </div>
 
+                        <!-- Resto Pickup Info (FoodPick) -->
+                        {#if trx.resto_profile}
+                            <div class="flex items-center gap-2 mb-3 p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/70 text-xs">
+                                <i class="ti ti-tools-kitchen text-amber-600 text-sm shrink-0"></i>
+                                <div class="min-w-0">
+                                    <p class="font-bold text-amber-950 truncate">Dapur Resto: {trx.resto_profile.resto_name}</p>
+                                    {#if trx.resto_profile.address}
+                                        <p class="text-[11px] text-amber-800 line-clamp-1">{trx.resto_profile.address}</p>
+                                    {/if}
+                                </div>
+                            </div>
+                        {/if}
+
                         <!-- Customer info -->
                         <div class="flex items-center gap-2 mb-3">
                             <div
@@ -428,6 +448,11 @@
                                         '-'}
                                 </p>
                             </div>
+                            {#if (trx.payment_method?.name || '').toLowerCase().includes('cod')}
+                                <span class="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                                    <i class="ti ti-cash"></i> COD
+                                </span>
+                            {/if}
                         </div>
 
                         <!-- Address snippet -->

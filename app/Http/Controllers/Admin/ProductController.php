@@ -2570,7 +2570,7 @@ class ProductController extends Controller
             'daily_rate' => (float) ($settings['product_listing_daily_rate'] ?? 1000),
             'max_custom_days' => (int) ($settings['product_listing_max_custom_days'] ?? 365),
             'custom_daily_rate' => (float) ($settings['product_listing_custom_daily_rate'] ?? 1000),
-            'fee_enabled' => (bool) (isset($settings['product_listing_fee_enabled']) ? (bool) $settings['product_listing_fee_enabled'] : true),
+            'fee_enabled' => Product::isListingFeeEnabled(),
             'packages' => $processedPackages,
             'first_upload_free' => $firstUploadFree,
             'date_promo_enabled' => $datePromoEnabled,

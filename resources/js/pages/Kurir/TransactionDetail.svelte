@@ -1,5 +1,6 @@
 <script lang="ts">
     import { page, router, Link } from '@inertiajs/svelte';
+    import OrderItemModifiers from '@/components/Storefront/OrderItemModifiers.svelte';
     import { showToast } from '@/utils/toast';
 
     let {
@@ -703,6 +704,54 @@
                         >
                     </a>
                 {/if}
+                {#if transaction.resto_profile}
+                    <div class="p-3.5 bg-amber-50/80 border border-amber-200/70 rounded-xl">
+                        <div class="flex items-start gap-2.5">
+                            <i class="ti ti-tools-kitchen text-amber-600 text-base mt-0.5 shrink-0"></i>
+                            <div class="min-w-0 flex-1">
+                                <span class="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                                    Dapur Resto (Titik Ambil / Pickup)
+                                </span>
+                                <p class="text-sm font-bold text-amber-950 mt-1">
+                                    {transaction.resto_profile.resto_name}
+                                </p>
+                                {#if transaction.resto_profile.address}
+                                    <p class="text-xs text-amber-900/80 mt-0.5 leading-relaxed">
+                                        {transaction.resto_profile.address}
+                                    </p>
+                                {/if}
+                                {#if transaction.resto_profile.latitude && transaction.resto_profile.longitude}
+                                    <a
+                                        href="https://www.google.com/maps?q={transaction.resto_profile.latitude},{transaction.resto_profile.longitude}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 hover:text-amber-950 transition"
+                                    >
+                                        <i class="ti ti-map-pin text-sm"></i>
+                                        Rute Maps ke Dapur Resto
+                                        <i class="ti ti-external-link text-[10px]"></i>
+                                    </a>
+                                {/if}
+                            </div>
+                        </div>
+                    </div>
+                {/if}
+
+                {#if (transaction.payment_method?.name || '').toLowerCase().includes('cod')}
+                    <div class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <i class="ti ti-cash text-emerald-600 text-xl"></i>
+                            <div>
+                                <p class="text-xs font-bold text-emerald-950">Tagihan Tunai (COD)</p>
+                                <p class="text-[11px] text-emerald-700">Tagih uang tunai saat makanan diserahkan ke pelanggan</p>
+                            </div>
+                        </div>
+                        <span class="text-sm font-black text-emerald-800">
+                            Rp {new Intl.NumberFormat('id-ID').format(transaction.grand_total)}
+                        </span>
+                    </div>
+                {/if}
+
                 {#if transaction.customer_address}
                     <div class="p-3 bg-slate-50 rounded-xl">
                         <div class="flex items-start gap-2">
@@ -778,6 +827,7 @@
                                     {item.product_variant_name}
                                 </p>
                             {/if}
+                            <OrderItemModifiers {item} compact={true} class="mt-1" />
                         </div>
                         <div class="text-right shrink-0">
                             <p class="text-xs text-slate-500">

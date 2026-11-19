@@ -57,19 +57,29 @@ class Product extends Model
         return (bool) config('app.is_seller', false);
     }
 
-    public function scopeNotExpired($query)
+    public static function isFoodPickEnabled(): bool
     {
-        // Rule: If IS_SELLER is false in .env / settings, listing_expires_at does NOT apply to ANY product (all are unlimited)!
-        if (! self::isSellerModeEnabled()) {
-            return $query;
+        return (bool) config('app.is_foodpick', false);
+    }
+
+    public static function isListingFeeEnabled(): bool
+    {
+        if (config('app.is_listing_off', true)) {
+            return false;
         }
 
-        $feeEnabled = filter_var(
-            Setting::where('key', 'product_listing_fee_enabled')->value('value') ?? true,
-            FILTER_VALIDATE_BOOLEAN
-        );
+        $val = Setting::where('key', 'product_listing_fee_enabled')->value('value');
+        if ($val === null) {
+            return false;
+        }
 
-        if (! $feeEnabled) {
+        return filter_var($val, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    public function scopeNotExpired($query)
+    {
+        // Rule: If IS_SELLER is false or listing fee is disabled, listing_expires_at does NOT apply to ANY product (all are unlimited)!
+        if (! self::isSellerModeEnabled() || ! self::isListingFeeEnabled()) {
             return $query;
         }
 
@@ -107,17 +117,8 @@ class Product extends Model
 
     public function isListingExpired(): bool
     {
-        // Rule: If IS_SELLER is false, listing_expires_at does NOT apply!
-        if (! self::isSellerModeEnabled()) {
-            return false;
-        }
-
-        $feeEnabled = filter_var(
-            Setting::where('key', 'product_listing_fee_enabled')->value('value') ?? true,
-            FILTER_VALIDATE_BOOLEAN
-        );
-
-        if (! $feeEnabled) {
+        // Rule: If IS_SELLER is false or listing fee is disabled, listing_expires_at does NOT apply!
+        if (! self::isSellerModeEnabled() || ! self::isListingFeeEnabled()) {
             return false;
         }
 
@@ -284,5 +285,15 @@ class Product extends Model
     public function activeAd()
     {
         return $this->hasOne(ProductAd::class)->active();
+    }
+
+    public function restoProfile(): BelongsTo
+    {
+        return $this->belongsTo(RestoProfile::class, 'user_id', 'user_id');
+    }
+
+    public function menuModifiers()
+    {
+        return $this->hasMany(MenuModifier::class);
     }
 }

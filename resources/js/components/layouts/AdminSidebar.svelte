@@ -37,6 +37,15 @@
             (page.props as any).settings?.logistic_enabled ??
             true,
     );
+    const isFoodPick = $derived(
+        Boolean(
+            (page.props as any).is_foodpick ??
+                (page.props as any).isFoodPick ??
+                (page.props as any).app_config?.is_foodpick ??
+                (page.props as any).settings?.is_foodpick ??
+                false,
+        ),
+    );
 
     $effect(() => {
         if (user && (window as any).Echo) {
@@ -277,18 +286,44 @@
             'ti-layout-dashboard',
             'Dashboard',
         )}
-        {@render NavItemBadge(
-            '/admin/chats',
-            'ti-message-dots',
-            'Chat',
-            adminChatUnreadCount,
-        )}
+        {#if !isFoodPick}
+            {@render NavItemBadge(
+                '/admin/chats',
+                'ti-message-dots',
+                'Chat',
+                adminChatUnreadCount,
+            )}
+        {/if}
         {@render NavItemBadge(
             '/admin/transactions',
             'ti-receipt',
             'Transaksi',
             totalNewTransactions,
         )}
+        {#if isFoodPick}
+            {@render NavItem(
+                '/admin/kitchen',
+                'ti-tools-kitchen-2',
+                'Dapur / KDS',
+            )}
+            {@render NavItem(
+                '/admin/courier-dispatch',
+                'ti-moped',
+                'Kurir Pengantaran',
+            )}
+            {#if !isSeller}
+                {@render NavItem(
+                    '/admin/restos',
+                    'ti-building-store',
+                    'Mitra Resto',
+                )}
+            {/if}
+            {@render NavItem(
+                '/admin/resto-profile',
+                'ti-settings',
+                'Profil Resto',
+            )}
+        {/if}
         {#if !isSellerEnabled && !isSeller}
             {@render NavItem(
                 '/admin/refunds',
@@ -356,9 +391,11 @@
                     transition:slide={{ duration: 150 }}
                 >
                     {@render SubNavItem('/admin/categories', 'Kategori')}
-                    {@render SubNavItem('/admin/master-data/brands', 'Brand')}
+                    {#if !isFoodPick}
+                        {@render SubNavItem('/admin/master-data/brands', 'Brand')}
+                    {/if}
                     {@render SubNavItem('/admin/products', 'Produk')}
-                    {#if isSellerEnabled}
+                    {#if isSellerEnabled && !isFoodPick}
                         {@render SubNavItem(
                             '/admin/listing-payments',
                             'Riwayat Listing',
@@ -432,6 +469,10 @@
                         'Laba Rugi',
                     )}
                     {@render SubNavItem('/admin/reports/stocks', 'Stok')}
+                    {@render SubNavItem(
+                        '/admin/reports/store-ratings',
+                        isFoodPick ? 'Rating Resto' : 'Rating Toko',
+                    )}
                     {#if !isSellerEnabled && !isSeller}
                         {@render SubNavItem('/admin/reports/reviews', 'Ulasan')}
                     {/if}
@@ -521,11 +562,11 @@
                             'Pelanggan',
                         )}
                     {/if}
+                    {@render SubNavItem(
+                        '/admin/master-data/couriers',
+                        isFoodPick ? 'Kurir Resto' : 'Kurir',
+                    )}
                     {#if !isSeller}
-                        {@render SubNavItem(
-                            '/admin/master-data/couriers',
-                            'Kurir',
-                        )}
                         {#if isLogisticEnabled}
                             {@render SubNavItem(
                                 '/admin/master-data/logistic-api',

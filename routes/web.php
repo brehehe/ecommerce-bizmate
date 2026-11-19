@@ -6,15 +6,20 @@ use App\Http\Controllers\Admin\AppConfigController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChatController as AdminChatController;
 use App\Http\Controllers\Admin\CmsController;
+use App\Http\Controllers\Admin\CourierDispatchController;
+use App\Http\Controllers\Admin\KitchenController;
 use App\Http\Controllers\Admin\KomerceShipmentController;
 use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\MembershipController;
+use App\Http\Controllers\Admin\MenuModifierController;
 use App\Http\Controllers\Admin\ProductAdController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductImageSearchController;
 use App\Http\Controllers\Admin\PromotionController;
 use App\Http\Controllers\Admin\RefundController as AdminRefundController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\RestoApprovalController;
+use App\Http\Controllers\Admin\RestoProfileController;
 use App\Http\Controllers\Admin\ReturnController as AdminReturnController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\TransactionController as AdminTransactionController;
@@ -27,6 +32,7 @@ use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PadelGigsAuthController;
 use App\Http\Controllers\Auth\RegisterController;
+use App\Http\Controllers\Auth\RestoRegisterController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\CheckoutController;
@@ -69,6 +75,8 @@ Route::post('/api/ads/track-impressions', [ProductAdTrackingController::class, '
 // Order Tracking (Cek Pesanan)
 Route::get('/cek-pesanan', [OrderTrackingController::class, 'index'])->name('order.track');
 Route::post('/cek-pesanan/{transaction}/upload-proof', [OrderTrackingController::class, 'uploadProof'])->name('order.track.upload-proof');
+Route::post('/cek-pesanan/{transaction}/review', [OrderTrackingController::class, 'rateStore'])->name('order.track.rate');
+Route::get('/transactions/{transaction}/print-thermal', [StorefrontTransactionController::class, 'printThermalReceipt'])->name('transactions.print-thermal-customer');
 
 // Cart (Accessible to both guests & authenticated users)
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
@@ -112,6 +120,11 @@ Route::middleware('guest')->group(function () {
     Route::get('/auth/padelgigs', [PadelGigsAuthController::class, 'redirect'])->name('auth.padelgigs');
     Route::get('/auth/padelgigs/callback', [PadelGigsAuthController::class, 'callback'])->name('auth.padelgigs.callback');
 });
+
+// Resto Merchant Registration (supports both guest and authenticated customers upgrading)
+Route::get('/register-resto', [RestoRegisterController::class, 'show'])->name('register.resto');
+Route::post('/register-resto', [RestoRegisterController::class, 'register'])->name('register.resto.post');
+Route::get('/mitra/daftar', fn () => redirect()->route('register.resto'))->name('mitra.register');
 
 // Forgot & Reset Password
 Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
@@ -208,6 +221,36 @@ Route::middleware('auth')->group(function () {
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+    // Kitchen Display System (KDS) for Resto Dapur
+    Route::get('/kitchen', [KitchenController::class, 'index'])->name('kitchen.index');
+    Route::match(['get', 'post', 'put', 'patch'], '/kitchen/{transaction}/update-status', [KitchenController::class, 'updateStatus'])->name('kitchen.update-status');
+    Route::get('/kitchen/{transaction}/print', [KitchenController::class, 'printReceipt'])->name('kitchen.print');
+
+    // Resto Profile Management
+    Route::get('/resto-profile', [RestoProfileController::class, 'index'])->name('resto-profile.index');
+    Route::match(['put', 'patch', 'post'], '/resto-profile', [RestoProfileController::class, 'update'])->name('resto-profile.update');
+    Route::post('/resto-profile/toggle-open', [RestoProfileController::class, 'toggleOpen'])->name('resto-profile.toggle-open');
+
+    // Resto Partners & Approvals (FoodPick Platform Admin)
+    Route::get('/restos', [RestoApprovalController::class, 'index'])->name('restos.index');
+    Route::post('/restos/{restoProfile}/approve', [RestoApprovalController::class, 'approve'])->name('restos.approve');
+    Route::post('/restos/{restoProfile}/reject', [RestoApprovalController::class, 'reject'])->name('restos.reject');
+    Route::post('/restos/{restoProfile}/suspend', [RestoApprovalController::class, 'suspend'])->name('restos.suspend');
+    Route::post('/restos/{restoProfile}/toggle-open', [RestoApprovalController::class, 'toggleOpen'])->name('restos.toggle-open');
+    Route::get('/resto-approvals', fn () => redirect()->route('admin.restos.index'))->name('resto-approvals');
+
+    // Resto Courier Dispatch
+    Route::get('/courier-dispatch', [CourierDispatchController::class, 'index'])->name('courier-dispatch.index');
+    Route::match(['get', 'post'], '/courier-dispatch/{transaction}/status', [CourierDispatchController::class, 'updateStatus'])->name('courier-dispatch.update-status');
+    Route::post('/courier-dispatch/couriers', [CourierDispatchController::class, 'storeCourier'])->name('courier-dispatch.store-courier');
+    Route::post('/courier-dispatch/{transaction}/assign', [CourierDispatchController::class, 'assignCourier'])->name('courier-dispatch.assign-courier');
+
+    // Menu Modifiers & Add-ons
+    Route::get('/products/{product}/modifiers', [MenuModifierController::class, 'index'])->name('products.modifiers.index');
+    Route::post('/products/{product}/modifiers', [MenuModifierController::class, 'store'])->name('products.modifiers.store');
+    Route::put('/products/{product}/modifiers/{modifier}', [MenuModifierController::class, 'update'])->name('products.modifiers.update');
+    Route::delete('/products/{product}/modifiers/{modifier}', [MenuModifierController::class, 'destroy'])->name('products.modifiers.destroy');
 
     // Tech Stack PDF
     Route::get('/techstack-pdf', function () {
@@ -340,6 +383,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::delete('/master-data/couriers/{courier}', [MasterDataController::class, 'destroyCourier'])->name('master-data.couriers.destroy');
     Route::post('/master-data/couriers/{courier}/toggle-active', [MasterDataController::class, 'toggleActiveCourier'])->name('master-data.couriers.toggle-active');
 
+    // Resto Couriers Management
+    Route::post('/master-data/resto-couriers', [MasterDataController::class, 'storeRestoCourier'])->name('master-data.resto-couriers.store');
+    Route::put('/master-data/resto-couriers/{user}', [MasterDataController::class, 'updateRestoCourier'])->name('master-data.resto-couriers.update');
+    Route::post('/master-data/resto-couriers/{user}/reset-password', [MasterDataController::class, 'resetRestoCourierPassword'])->name('master-data.resto-couriers.reset-password');
+    Route::post('/master-data/resto-couriers/{user}/toggle-active', [MasterDataController::class, 'toggleActiveRestoCourier'])->name('master-data.resto-couriers.toggle-active');
+    Route::delete('/master-data/resto-couriers/{user}', [MasterDataController::class, 'destroyRestoCourier'])->name('master-data.resto-couriers.destroy');
+
     Route::get('/master-data/brands', [MasterDataController::class, 'brands'])->name('master-data.brands');
     Route::post('/master-data/brands', [MasterDataController::class, 'storeBrand'])->name('master-data.brands.store');
     Route::post('/master-data/brands/bulk-delete', [MasterDataController::class, 'bulkDeleteBrands'])->name('master-data.brands.bulk-delete');
@@ -399,7 +449,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::post('/transactions', [AdminTransactionController::class, 'store'])->name('transactions.store');
     Route::get('/transactions/find-by-number/{number}', [AdminTransactionController::class, 'findByNumber'])->name('transactions.find-by-number');
     Route::get('/transactions/{transaction}', [AdminTransactionController::class, 'show'])->name('transactions.show');
-    Route::post('/transactions/{transaction}/status', [AdminTransactionController::class, 'updateStatus'])->name('transactions.update-status');
+    Route::match(['get', 'post'], '/transactions/{transaction}/status', [AdminTransactionController::class, 'updateStatus'])->name('transactions.update-status');
     Route::post('/transactions/{transaction}/confirm-payment', [AdminTransactionController::class, 'confirmPayment'])->name('transactions.confirm-payment');
     Route::post('/transactions/{transaction}/reject-payment', [AdminTransactionController::class, 'rejectPayment'])->name('transactions.reject-payment');
     Route::post('/transactions/{transaction}/change-payment-method', [AdminTransactionController::class, 'changePaymentMethod'])->name('transactions.change-payment-method');
@@ -422,6 +472,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
     Route::get('/transactions/{transaction}/print-invoice', [AdminTransactionController::class, 'printInvoice'])->name('transactions.print-invoice');
     Route::get('/transactions/{transaction}/print-shipping-label', [AdminTransactionController::class, 'printShippingLabel'])->name('transactions.print-shipping-label');
     Route::get('/transactions/{transaction}/print-surat-jalan', [AdminTransactionController::class, 'printSuratJalan'])->name('transactions.print-surat-jalan');
+    Route::get('/transactions/{transaction}/print-thermal', [AdminTransactionController::class, 'printThermalReceipt'])->name('transactions.print-thermal');
 
     // Stock Movements
     Route::get('/stock-movements', [AdminTransactionController::class, 'stockMovements'])->name('stock-movements.index');
@@ -460,12 +511,26 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'not_customer'])->gr
         Route::get('/pareto', [ReportController::class, 'pareto'])->name('pareto');
         Route::get('/couriers', [ReportController::class, 'couriers'])->name('couriers');
         Route::get('/reviews', [ReportController::class, 'reviews'])->name('reviews');
+        Route::get('/store-ratings', [ReportController::class, 'storeRatings'])->name('store-ratings');
         Route::get('/abandoned-carts', [ReportController::class, 'abandonedCarts'])->name('abandoned-carts');
         Route::get('/vouchers', [ReportController::class, 'vouchers'])->name('vouchers');
     });
 });
 
 Route::redirect('/admin', '/admin/dashboard');
+Route::get('/resto', function () {
+    if (auth()->check()) {
+        $user = auth()->user();
+        if ($user->hasRole(['Super Admin', 'Admin', 'Seller'])) {
+            return redirect()->route('admin.resto-profile.index');
+        }
+    }
+
+    return redirect()->route('register.resto');
+})->name('resto.index');
+Route::get('/resto/kds', fn () => redirect()->route('admin.kitchen.index'))->middleware(['auth', 'not_customer'])->name('resto.kds');
+Route::get('/resto/profile', fn () => redirect()->route('admin.resto-profile.index'))->middleware(['auth', 'not_customer'])->name('resto.profile');
+Route::get('/resto/courier', fn () => redirect()->route('admin.courier-dispatch.index'))->middleware(['auth', 'not_customer'])->name('resto.courier');
 
 // Kurir Toko Portal
 Route::prefix('kurir')->name('kurir.')->group(function () {
@@ -479,7 +544,7 @@ Route::prefix('kurir')->name('kurir.')->group(function () {
         Route::get('/dashboard', [KurirDashboardController::class, 'index'])->name('dashboard');
         Route::get('/transactions/{transaction}', [KurirDashboardController::class, 'show'])->name('transactions.show');
         Route::get('/scan/{number}', [KurirDashboardController::class, 'scan'])->name('scan');
-        Route::post('/transactions/{transaction}/update-status', [KurirDeliveryController::class, 'updateStatus'])->name('transactions.update-status');
+        Route::match(['get', 'post'], '/transactions/{transaction}/update-status', [KurirDeliveryController::class, 'updateStatus'])->name('transactions.update-status');
     });
 });
 

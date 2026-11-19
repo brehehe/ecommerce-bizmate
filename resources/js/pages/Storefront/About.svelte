@@ -10,6 +10,13 @@
     const secondary = $derived(
         (page.props as any).theme?.secondary_color ?? '#0c4cb4',
     );
+    const isFoodPick = $derived(
+        Boolean((page.props as any).is_foodpick) ||
+            Boolean((page.props as any).app_config?.is_foodpick) ||
+            Boolean((page.props as any).settings?.is_foodpick) ||
+            Boolean((page.props as any).isFoodPick) ||
+            false,
+    );
 
     function goBack() {
         if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -53,25 +60,21 @@
 
         <!-- Banner / Intro Hero Box -->
         <div
-            class="relative rounded-2xl overflow-hidden shadow-2xs border border-slate-100"
+            class="relative rounded-2xl overflow-hidden shadow-2xs border border-slate-200/80 bg-slate-900"
         >
             <div
-                class="h-36 sm:h-44 relative flex items-center justify-center p-6 text-center text-white"
-                style="background: linear-gradient(135deg, {primary}, {secondary});"
+                class="h-36 sm:h-44 relative flex items-center justify-center p-6 text-center text-white bg-slate-900"
             >
-                <div
-                    class="absolute inset-0 bg-black/10 backdrop-blur-xs"
-                ></div>
                 <div class="relative z-10 space-y-2">
                     {#if storeLogo}
                         <img
                             src={storeLogo}
                             alt={storeName}
-                            class="h-12 sm:h-14 mx-auto object-contain rounded-xl bg-white/20 p-1.5 backdrop-blur-md shadow-md"
+                            class="h-12 sm:h-14 mx-auto object-contain rounded-xl bg-white/10 p-1.5 backdrop-blur-md shadow-sm"
                         />
                     {:else}
                         <div
-                            class="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl font-black mx-auto uppercase tracking-wider shadow-md"
+                            class="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center text-2xl font-black mx-auto uppercase tracking-wider shadow-sm"
                         >
                             {storeName ? storeName.substring(0, 2) : 'BM'}
                         </div>
@@ -82,10 +85,16 @@
                         {storeName}
                     </h2>
                     <p
-                        class="text-xs text-white/90 font-medium max-w-md mx-auto line-clamp-2"
+                        class="text-xs text-slate-300 font-medium max-w-md mx-auto line-clamp-2 leading-relaxed"
                     >
-                        Platform e-commerce belanja online aman, tepercaya, dan
-                        hemat untuk semua kebutuhan Anda.
+                        {#if isFoodPick}
+                            Platform layanan kuliner, pesan antar, dan katering
+                            praktis terpercaya dengan hidangan lezat langsung
+                            dari dapur resto pilihan.
+                        {:else}
+                            Platform e-commerce belanja online aman, tepercaya,
+                            dan hemat untuk semua kebutuhan Anda.
+                        {/if}
                     </p>
                 </div>
             </div>

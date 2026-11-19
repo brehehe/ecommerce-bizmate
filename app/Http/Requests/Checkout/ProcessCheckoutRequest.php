@@ -12,6 +12,27 @@ class ProcessCheckoutRequest extends FormRequest
         return $this->user() !== null || (bool) config('app.is_checkout_without_login', false);
     }
 
+    protected function prepareForValidation(): void
+    {
+        $merge = [];
+        $fields = [
+            'province_id', 'regency_id', 'district_id', 'village_id',
+            'biteship_area_id', 'rajaongkir_destination_id', 'postal_code',
+            'customer_address_id', 'resto_id', 'courier_id',
+        ];
+
+        foreach ($fields as $field) {
+            if ($this->has($field) && $this->input($field) !== null && ! is_array($this->input($field))) {
+                $val = trim((string) $this->input($field));
+                $merge[$field] = $val !== '' ? $val : null;
+            }
+        }
+
+        if ($merge) {
+            $this->merge($merge);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -37,6 +58,12 @@ class ProcessCheckoutRequest extends FormRequest
             'pickup_date' => 'nullable|string',
             'pickup_time' => 'nullable|string',
             'pickup_at' => 'nullable|string',
+            'resto_id' => 'nullable|string',
+            'fulfillment_type' => 'nullable|string|in:self_pickup,store_courier,dine_in',
+            'pickup_type' => 'nullable|string|in:takeaway,dine_in,delivery',
+            'table_number' => 'nullable|string|max:50',
+            'scheduled_date' => 'nullable|string|max:50',
+            'scheduled_time_slot' => 'nullable|string|max:50',
         ];
 
         if ($isGuest) {

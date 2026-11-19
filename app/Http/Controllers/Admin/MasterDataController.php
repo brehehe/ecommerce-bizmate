@@ -14,6 +14,7 @@ use App\Models\ChatSticker;
 use App\Models\CoinHistory;
 use App\Models\Courier;
 use App\Models\PaymentMethod;
+use App\Models\RestoProfile;
 use App\Models\Setting;
 use App\Models\SocialMedia;
 use App\Models\Transaction;
@@ -531,10 +532,14 @@ class MasterDataController extends Controller
     }
 
     /**
-     * Display a listing of couriers.
+     * Display a listing of couriers and resto couriers.
      */
     public function couriers(Request $request)
     {
+        $user = $request->user();
+        $isSeller = $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
+
+        // 1. Ekspedisi & 3rd-party Couriers
         $query = Courier::query();
 
         if ($request->filled('search')) {
@@ -548,6 +553,38 @@ class MasterDataController extends Controller
         $perPage = $request->get('perPage', 10);
         $couriers = $query->orderBy('order')->paginate($perPage)->withQueryString();
 
+        // 2. Armada / Akun Kurir Resto (Kurir Toko)
+        $hasCourierRole = Role::where('name', 'Kurir Toko')->where('guard_name', 'web')->exists();
+        $restoCourierQuery = $hasCourierRole ? User::role('Kurir Toko') : User::whereRaw('1=0');
+
+        $restoCourierQuery->with([
+            'assignedRestoProfile:id,user_id,resto_name,address',
+            'assignedRestoOwner:id,name,store_name,email',
+        ]);
+
+        if ($isSeller) {
+            $restoCourierQuery->where(function ($q) use ($user) {
+                $q->where('resto_id', $user->id)
+                    ->orWhereNull('resto_id');
+            });
+        } elseif ($request->filled('resto_id')) {
+            $restoCourierQuery->where('resto_id', $request->input('resto_id'));
+        }
+
+        if ($request->filled('courier_search')) {
+            $cs = $request->input('courier_search');
+            $restoCourierQuery->where(function ($q) use ($cs) {
+                $q->where('name', 'ilike', "%{$cs}%")
+                    ->orWhere('email', 'ilike', "%{$cs}%")
+                    ->orWhere('phone_number', 'ilike', "%{$cs}%");
+            });
+        }
+
+        $restoCouriers = $restoCourierQuery->orderBy('name')->get();
+
+        // 3. Restos list for assignment and filtering
+        $restos = RestoProfile::select('id', 'user_id', 'resto_name')->orderBy('resto_name')->get();
+
         $settingsKeys = [
             'store_courier_enabled',
             'store_courier_type',
@@ -559,14 +596,164 @@ class MasterDataController extends Controller
         ];
         $settings = Setting::whereIn('key', $settingsKeys)->pluck('value', 'key')->toArray();
 
+        // Default tab: armada for resto/sellers, ekspedisi otherwise
+        $defaultTab = ($isSeller || config('app.is_foodpick', false)) ? 'armada' : 'armada';
+
         return Inertia::render('Admin/MasterData/Couriers', [
             'couriers' => $couriers,
+            'restoCouriers' => $restoCouriers,
+            'restos' => $restos,
             'settings' => $settings,
+            'isSeller' => $isSeller,
+            'currentRestoId' => $isSeller ? $user->id : $request->input('resto_id'),
             'filters' => [
                 'search' => $request->search,
+                'courier_search' => $request->courier_search,
+                'resto_id' => $request->resto_id,
                 'perPage' => $perPage,
+                'tab' => $request->input('tab', $defaultTab),
             ],
         ]);
+    }
+
+    /**
+     * Store a newly created resto courier account.
+     */
+    public function storeRestoCourier(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        $isSeller = $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'phone_number' => 'required|string|max:30',
+            'password' => 'required|string|min:6',
+            'resto_id' => 'nullable|string',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        if (! Role::where('name', 'Kurir Toko')->where('guard_name', 'web')->exists()) {
+            Role::create(['name' => 'Kurir Toko', 'guard_name' => 'web']);
+        }
+
+        $restoId = $isSeller ? $user->id : ($validated['resto_id'] ?? null);
+
+        $courier = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone_number' => $validated['phone_number'],
+            'password' => $validated['password'],
+            'resto_id' => $restoId,
+            'is_active' => $request->boolean('is_active', true),
+        ]);
+
+        $courier->assignRole('Kurir Toko');
+
+        return back()->with('success', "Akun kurir {$courier->name} berhasil didaftarkan! Kurir dapat login di portal /kurir/login menggunakan email: {$courier->email}.");
+    }
+
+    /**
+     * Update an existing resto courier account.
+     */
+    public function updateRestoCourier(Request $request, User $user): RedirectResponse
+    {
+        $currentUser = $request->user();
+        $isSeller = $currentUser->is_seller && ! $currentUser->hasAnyRole(['Super Admin', 'Admin']);
+
+        if ($isSeller && $user->resto_id && $user->resto_id !== $currentUser->id) {
+            abort(403, 'Anda tidak memiliki hak untuk mengedit kurir resto lain.');
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'phone_number' => 'required|string|max:30',
+            'password' => 'nullable|string|min:6',
+            'resto_id' => 'nullable|string',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $updateData = [
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone_number' => $validated['phone_number'],
+            'is_active' => $request->boolean('is_active', $user->is_active),
+        ];
+
+        if (! empty($validated['password'])) {
+            $updateData['password'] = $validated['password'];
+        }
+
+        if (! $isSeller && array_key_exists('resto_id', $validated)) {
+            $updateData['resto_id'] = $validated['resto_id'] ?: null;
+        }
+
+        $user->update($updateData);
+
+        return back()->with('success', "Data kurir {$user->name} berhasil diperbarui.");
+    }
+
+    /**
+     * Reset password for a resto courier account.
+     */
+    public function resetRestoCourierPassword(Request $request, User $user): RedirectResponse
+    {
+        $currentUser = $request->user();
+        $isSeller = $currentUser->is_seller && ! $currentUser->hasAnyRole(['Super Admin', 'Admin']);
+
+        if ($isSeller && $user->resto_id && $user->resto_id !== $currentUser->id) {
+            abort(403, 'Anda tidak memiliki hak untuk mereset kata sandi kurir resto lain.');
+        }
+
+        $request->validate([
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+
+        $user->update([
+            'password' => $request->password,
+        ]);
+
+        return back()->with('success', "Kata sandi untuk kurir {$user->name} berhasil diubah! Kurir dapat login di /kurir/login menggunakan kata sandi baru.");
+    }
+
+    /**
+     * Toggle active status of a resto courier.
+     */
+    public function toggleActiveRestoCourier(Request $request, User $user): RedirectResponse
+    {
+        $currentUser = $request->user();
+        $isSeller = $currentUser->is_seller && ! $currentUser->hasAnyRole(['Super Admin', 'Admin']);
+
+        if ($isSeller && $user->resto_id && $user->resto_id !== $currentUser->id) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $user->update([
+            'is_active' => ! $user->is_active,
+        ]);
+
+        $statusLabel = $user->is_active ? 'diaktifkan' : 'dinonaktifkan';
+
+        return back()->with('success', "Akun kurir {$user->name} berhasil {$statusLabel}.");
+    }
+
+    /**
+     * Delete a resto courier account.
+     */
+    public function destroyRestoCourier(Request $request, User $user): RedirectResponse
+    {
+        $currentUser = $request->user();
+        $isSeller = $currentUser->is_seller && ! $currentUser->hasAnyRole(['Super Admin', 'Admin']);
+
+        if ($isSeller && $user->resto_id && $user->resto_id !== $currentUser->id) {
+            abort(403, 'Akses ditolak.');
+        }
+
+        $name = $user->name;
+        $user->delete();
+
+        return back()->with('success', "Akun kurir {$name} berhasil dihapus.");
     }
 
     /**

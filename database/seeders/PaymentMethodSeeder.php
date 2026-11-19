@@ -12,7 +12,52 @@ class PaymentMethodSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Midtrans Gateway
+        // 1. COD / Bayar di Tempat
+        PaymentMethod::updateOrCreate(
+            ['name' => 'Bayar di Tempat (COD / Kasir Resto)'],
+            [
+                'type' => 'manual',
+                'bank_name' => 'COD',
+                'admin_fee' => 0,
+                'is_active' => true,
+                'settings' => [
+                    'code' => 'cod',
+                    'description' => 'Bayar tunai langsung saat makanan diambil di resto atau diantar kurir.',
+                ],
+            ]
+        );
+
+        // 2. Transfer Bank Resto
+        PaymentMethod::updateOrCreate(
+            ['name' => 'Transfer Bank Resto'],
+            [
+                'type' => 'manual',
+                'bank_name' => 'BCA',
+                'account_number' => '1234567890',
+                'account_name' => 'Dapur Resto',
+                'admin_fee' => 0,
+                'is_active' => true,
+                'settings' => [
+                    'description' => 'Transfer manual langsung ke rekening resto dan kirim bukti bayar.',
+                ],
+            ]
+        );
+
+        // 3. QRIS Resto
+        PaymentMethod::updateOrCreate(
+            ['name' => 'QRIS Resto'],
+            [
+                'type' => 'manual',
+                'bank_name' => 'QRIS',
+                'admin_fee' => 0,
+                'is_active' => true,
+                'settings' => [
+                    'description' => 'Scan QRIS resto menggunakan GoPay, OVO, ShopeePay, DANA, atau Mobile Banking.',
+                ],
+            ]
+        );
+
+        // 4. Midtrans Gateway
         PaymentMethod::updateOrCreate(
             ['name' => 'Midtrans'],
             [

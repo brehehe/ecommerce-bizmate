@@ -508,16 +508,27 @@
                     </button>
                 </div>
 
-                <!-- Link to Login -->
-                <div class="pt-2 text-center text-sm text-slate-600 font-medium">
-                    Sudah memiliki akun?
-                    <Link
-                        href="/login"
-                        class="font-bold hover:underline transition-opacity hover:opacity-80 ml-1"
-                        style="color: {primaryColor};"
-                    >
-                        Masuk di Sini
-                    </Link>
+                <!-- Link to Login & Mitra Resto -->
+                <div class="pt-2 text-center text-sm text-slate-600 font-medium space-y-2">
+                    <div>
+                        Sudah memiliki akun?
+                        <Link
+                            href="/login"
+                            class="font-bold hover:underline transition-opacity hover:opacity-80 ml-1"
+                            style="color: {primaryColor};"
+                        >
+                            Masuk di Sini
+                        </Link>
+                    </div>
+                    <div class="pt-2 border-t border-slate-100 text-xs text-slate-500">
+                        Punya usaha kuliner atau dapur sendiri?
+                        <Link
+                            href="/register-resto"
+                            class="font-bold text-orange-600 hover:underline ml-1"
+                        >
+                            🍳 Daftar Sebagai Mitra Resto
+                        </Link>
+                    </div>
                 </div>
             </form>
         </div>

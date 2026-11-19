@@ -68,13 +68,17 @@ class CartController extends Controller
                 ])->find($raw['product_id']);
 
                 if ($product) {
+                    $guestItemId = (string) ($raw['id'] ?? ('guest-'.uniqid()));
                     $item = new CartItem([
-                        'id' => $raw['id'],
+                        'id' => $guestItemId,
                         'product_id' => $product->id,
                         'product_variant_id' => $raw['product_variant_id'] ?? null,
                         'quantity' => $raw['quantity'],
                         'is_checked' => $raw['is_checked'] ?? true,
+                        'note' => $raw['note'] ?? null,
+                        'selected_modifiers' => $raw['selected_modifiers'] ?? null,
                     ]);
+                    $item->id = $guestItemId;
                     $item->setRelation('product', $product);
                     if (! empty($raw['product_variant_id'])) {
                         $variant = $product->variants->firstWhere('id', $raw['product_variant_id']);
@@ -112,13 +116,18 @@ class CartController extends Controller
             $tiers = $variant ? $variant->tierPrices : $product->tierPrices;
 
             $appliedTier = null;
-            $effectivePrice = $basePrice;
+            $modifierExtra = 0.0;
+            if (! empty($item->selected_modifiers) && is_iterable($item->selected_modifiers)) {
+                $modifierExtra = (float) collect($item->selected_modifiers)->sum('additional_price');
+            }
+
+            $effectivePrice = $basePrice + $modifierExtra;
 
             if ($tiers && $tiers->isNotEmpty()) {
                 $matchingTiers = $tiers->filter(fn ($t) => $item->quantity >= $t->min_qty)->sortByDesc('min_qty');
                 if ($matchingTiers->isNotEmpty()) {
                     $appliedTier = $matchingTiers->first();
-                    $tierPriceVal = (float) $appliedTier->price;
+                    $tierPriceVal = (float) $appliedTier->price + $modifierExtra;
                     if ($tierPriceVal < $effectivePrice) {
                         $effectivePrice = $tierPriceVal;
                     }
@@ -168,7 +177,9 @@ class CartController extends Controller
             $request->input('product_id'),
             $request->input('product_variant_id'),
             (int) $request->input('quantity', 1),
-            $buyNow
+            $buyNow,
+            $request->input('note'),
+            $request->input('selected_modifiers')
         );
 
         if (! $result['success']) {
@@ -177,6 +188,10 @@ class CartController extends Controller
 
         if ($result['buy_now']) {
             return redirect()->route('checkout.index');
+        }
+
+        if ($result['cart_was_reset'] ?? false) {
+            return redirect()->back()->with('success', 'Nampan belanja otomatis di-reset. Menu dari resto baru berhasil ditambahkan!');
         }
 
         return redirect()->back()->with('success', 'Produk berhasil ditambahkan ke keranjang!');

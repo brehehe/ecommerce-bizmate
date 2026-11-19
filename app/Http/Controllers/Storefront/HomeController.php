@@ -9,10 +9,12 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductReview;
 use App\Models\Promotion;
+use App\Models\RestoProfile;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -241,6 +243,63 @@ class HomeController extends Controller
                 ->latest()
                 ->take(8)
                 ->get()),
+            'isFoodPick' => (bool) config('app.is_foodpick', false),
+            'foodpickSettings' => config('app.foodpick', []),
+            'restoPartners' => config('app.is_foodpick', false) ? RestoProfile::with(['user' => function ($q) {
+                $q->select('id', 'name', 'store_name', 'store_slug', 'store_logo', 'store_description');
+            }])
+                ->withAvg(['reviews' => fn ($q) => $q->where('is_public', true)], 'rating')
+                ->withCount(['reviews' => fn ($q) => $q->where('is_public', true)])
+                ->where('approval_status', 'approved')
+                ->orderByDesc('is_open_now')
+                ->latest()
+                ->get()
+                ->map(function ($resto) {
+                    $slug = $resto->slug ?: ($resto->user?->store_slug ?: Str::slug($resto->resto_name));
+
+                    $firstProductImage = $resto->user_id ? Product::where('user_id', $resto->user_id)
+                        ->with('images')
+                        ->first()
+                        ?->images
+                        ->first()
+                        ?->url : null;
+
+                    $bannerUrl = $resto->banner_path
+                        ? (str_starts_with($resto->banner_path, 'http') ? $resto->banner_path : ('/storage/'.ltrim($resto->banner_path, '/')))
+                        : ($firstProductImage ?: '/images/default-resto-dish.jpg');
+
+                    $avgRating = $resto->reviews_avg_rating !== null ? round((float) $resto->reviews_avg_rating, 1) : null;
+                    $reviewCount = (int) ($resto->reviews_count ?? 0);
+
+                    return [
+                        'id' => $resto->id,
+                        'user_id' => $resto->user_id,
+                        'resto_name' => $resto->resto_name,
+                        'slug' => $slug,
+                        'culinary_category' => $resto->culinary_category ?: 'Aneka Kuliner',
+                        'description' => $resto->description ?: ($resto->user?->store_description ?? ''),
+                        'address' => $resto->address ?: '',
+                        'latitude' => $resto->latitude,
+                        'longitude' => $resto->longitude,
+                        'is_open_now' => $resto->is_open_now !== false,
+                        'avg_prep_time_minutes' => $resto->avg_prep_time_minutes ?: (int) config('app.foodpick.default_prep_minutes', 20),
+                        'logo_url' => $resto->logo_path ? (str_starts_with($resto->logo_path, 'http') ? $resto->logo_path : ('/storage/'.ltrim($resto->logo_path, '/'))) : ($resto->user?->store_logo ? ('/storage/'.ltrim($resto->user->store_logo, '/')) : null),
+                        'banner_url' => $bannerUrl,
+                        'store_url' => '/'.$slug,
+                        'rating' => $avgRating,
+                        'review_count' => $reviewCount,
+                    ];
+                }) : [],
+            'culinaryCategories' => config('app.is_foodpick', false) ? [
+                ['name' => 'Aneka Ayam & Bebek', 'icon' => '🍗', 'slug' => 'aneka-ayam'],
+                ['name' => 'Kopi & Minuman', 'icon' => '☕', 'slug' => 'kopi-minuman'],
+                ['name' => 'Bakso, Mie & Soto', 'icon' => '🍜', 'slug' => 'bakso-mie'],
+                ['name' => 'Cepat Saji & Burger', 'icon' => '🍔', 'slug' => 'cepat-saji'],
+                ['name' => 'Aneka Nasi Nusantara', 'icon' => '🍚', 'slug' => 'aneka-nasi'],
+                ['name' => 'Cemilan & Jajanan', 'icon' => '🥟', 'slug' => 'cemilan-jajanan'],
+                ['name' => 'Seafood & Ikan Bakar', 'icon' => '🐟', 'slug' => 'seafood'],
+                ['name' => 'Roti & Dessert Manis', 'icon' => '🍰', 'slug' => 'roti-kue'],
+            ] : [],
             'storeName' => $storeName,
             'storeLogo' => $storeLogo,
             'heroBanners' => $heroBanners,

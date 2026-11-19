@@ -16,8 +16,15 @@ class ConfirmPaymentAction
      */
     public function execute(Transaction $transaction, ?string $notes, User $adminUser): array
     {
-        if (in_array($transaction->status, ['selesai', 'batal'])) {
-            return ['success' => false, 'message' => 'Transaksi yang sudah selesai atau batal tidak dapat menerima konfirmasi pembayaran.'];
+        if ($transaction->status === 'batal') {
+            return ['success' => false, 'message' => 'Transaksi yang sudah batal tidak dapat menerima konfirmasi pembayaran.'];
+        }
+
+        $isCod = str_contains(strtolower($transaction->paymentMethod?->name ?? ''), 'cod')
+            || str_contains(strtolower($transaction->paymentMethod?->name ?? ''), 'bayar di tempat');
+
+        if ($transaction->status === 'selesai' && ! $isCod) {
+            return ['success' => false, 'message' => 'Transaksi yang sudah selesai tidak dapat menerima konfirmasi pembayaran.'];
         }
 
         $payment = $transaction->payment;
@@ -33,10 +40,13 @@ class ConfirmPaymentAction
                 'notes' => $notes,
             ]);
 
-            $newStatus = 'diproses';
-            $isRajaOngkir = ! in_array($transaction->shipping_courier, ['self_pickup', 'digital', 'store_courier']);
-            if ($isRajaOngkir && ! KomerceService::isDeliveryEnabled()) {
-                $newStatus = 'dikemas';
+            $newStatus = $transaction->status;
+            if ($transaction->status !== 'selesai') {
+                $newStatus = 'diproses';
+                $isRajaOngkir = ! in_array($transaction->shipping_courier, ['self_pickup', 'digital', 'store_courier']);
+                if ($isRajaOngkir && ! KomerceService::isDeliveryEnabled()) {
+                    $newStatus = 'dikemas';
+                }
             }
 
             $transaction->update([

@@ -6,8 +6,25 @@
     const primary = $derived(page.props.theme?.primary_color || '#fa7315');
     const secondary = $derived(page.props.theme?.secondary_color || '#0c4cb4');
     const user = $derived(page.props.auth?.user);
+    const isAdmin = $derived(
+        Boolean(
+            user?.roles?.some(
+                (r: any) => r.name === 'Super Admin' || r.name === 'Admin',
+            ) ||
+                user?.is_admin ||
+                user?.email === 'admin@bizmate.com' ||
+                user?.email === 'superadmin@bizmate.com',
+        ),
+    );
     const membershipInfo = $derived((page.props as any).membershipInfo ?? null);
     const isSellerEnabled = $derived(((page.props as any).app_config?.is_seller_enabled ?? (page.props as any).settings?.is_seller_enabled) ?? false);
+    const isFoodPick = $derived(
+        Boolean((page.props as any).is_foodpick) ||
+            Boolean((page.props as any).app_config?.is_foodpick) ||
+            Boolean((page.props as any).settings?.is_foodpick) ||
+            Boolean((page.props as any).isFoodPick) ||
+            false,
+    );
 
     function fmtCurrency(n: number): string {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n ?? 0);
@@ -298,32 +315,58 @@
 
     <div class="space-y-6">
         {#if activeTab === 'profile'}
-            <!-- BANNER BUKA TOKO (Jika user belum jadi seller dan seller mode aktif) -->
-            {#if isSellerEnabled && !user?.is_seller}
-                <div class="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50/50 border border-orange-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
-                    <div class="flex items-center gap-3.5">
-                        <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-orange-500/20">
-                            <i class="ti ti-building-store text-xl sm:text-2xl"></i>
+            <!-- BANNER BUKA TOKO / MITRA RESTO (Hanya jika user BUKAN seller dan BUKAN admin) -->
+            {#if !isAdmin && !user?.is_seller}
+                {#if isFoodPick}
+                    <div class="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/20">
+                                <i class="ti ti-tools-kitchen-2 text-xl sm:text-2xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-outfit font-black text-sm sm:text-base text-slate-900">
+                                    Gabung Jadi Mitra Resto & Dapur
+                                </h3>
+                                <p class="text-xs text-slate-600 font-medium mt-0.5">
+                                    Daftarkan resto atau dapur kuliner Anda dan nikmati pesanan online instan langsung ke dapur.
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="font-outfit font-black text-sm sm:text-base text-slate-800">
-                                Mulai Jual Barang & Buka Toko
-                            </h3>
-                            <p class="text-xs text-slate-600 font-medium mt-0.5">
-                                Lengkapi identitas toko, nomor kontak pengiriman, dan alamat gudang untuk mulai berjualan.
-                            </p>
-                        </div>
+                        <a
+                            href="/resto/register"
+                            class="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs text-white shadow-xs hover:opacity-90 active:scale-95 transition flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                            style="background-color: {primary};"
+                        >
+                            <i class="ti ti-plus text-sm"></i>
+                            <span>Daftar Mitra Resto</span>
+                        </a>
                     </div>
-                    <button
-                        type="button"
-                        onclick={openSellerOnboarding}
-                        class="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs text-white shadow-md hover:opacity-90 active:scale-95 transition flex items-center justify-center gap-2 shrink-0 cursor-pointer"
-                        style="background-color: {primary};"
-                    >
-                        <i class="ti ti-plus text-sm"></i>
-                        <span>Buka Toko Sekarang</span>
-                    </button>
-                </div>
+                {:else if isSellerEnabled}
+                    <div class="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-sm">
+                                <i class="ti ti-building-store text-xl sm:text-2xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-outfit font-black text-sm sm:text-base text-slate-900">
+                                    Mulai Jual Barang & Buka Toko
+                                </h3>
+                                <p class="text-xs text-slate-600 font-medium mt-0.5">
+                                    Lengkapi identitas toko dan nomor kontak pengiriman untuk mulai berjualan.
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onclick={openSellerOnboarding}
+                            class="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold text-xs text-white shadow-xs hover:opacity-90 active:scale-95 transition flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                            style="background-color: {primary};"
+                        >
+                            <i class="ti ti-plus text-sm"></i>
+                            <span>Buka Toko Sekarang</span>
+                        </button>
+                    </div>
+                {/if}
             {/if}
 
             <!-- PROFIL SAYA CARD -->
@@ -477,37 +520,31 @@
                             <span class="text-xs font-semibold text-slate-500 sm:text-right">
                                 Jenis Kelamin
                             </span>
-                            <div class="sm:col-span-3 flex items-center gap-6">
-                                <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
-                                    <input
-                                        type="radio"
-                                        name="gender"
-                                        value="Laki-laki"
-                                        bind:group={profileForm.gender}
-                                        class="w-4 h-4 text-amber-500 focus:ring-amber-400"
-                                    />
-                                    Laki-laki
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
-                                    <input
-                                        type="radio"
-                                        name="gender"
-                                        value="Perempuan"
-                                        bind:group={profileForm.gender}
-                                        class="w-4 h-4 text-amber-500 focus:ring-amber-400"
-                                    />
-                                    Perempuan
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
-                                    <input
-                                        type="radio"
-                                        name="gender"
-                                        value="Lainnya"
-                                        bind:group={profileForm.gender}
-                                        class="w-4 h-4 text-amber-500 focus:ring-amber-400"
-                                    />
-                                    Lainnya
-                                </label>
+                            <div class="sm:col-span-3 flex items-center gap-2 flex-wrap">
+                                <button
+                                    type="button"
+                                    onclick={() => profileForm.gender = 'Laki-laki'}
+                                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer {profileForm.gender === 'Laki-laki' ? 'bg-slate-900 text-white border-slate-900 shadow-2xs' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}"
+                                >
+                                    <i class="ti ti-gender-male text-sm"></i>
+                                    <span>Laki-laki</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onclick={() => profileForm.gender = 'Perempuan'}
+                                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer {profileForm.gender === 'Perempuan' ? 'bg-slate-900 text-white border-slate-900 shadow-2xs' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}"
+                                >
+                                    <i class="ti ti-gender-female text-sm"></i>
+                                    <span>Perempuan</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onclick={() => profileForm.gender = 'Lainnya'}
+                                    class="px-3.5 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer {profileForm.gender === 'Lainnya' ? 'bg-slate-900 text-white border-slate-900 shadow-2xs' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}"
+                                >
+                                    <i class="ti ti-user text-sm"></i>
+                                    <span>Lainnya</span>
+                                </button>
                             </div>
                         </div>
 
@@ -533,7 +570,7 @@
                                 <button
                                     type="submit"
                                     disabled={profileForm.processing}
-                                    class="px-8 py-2.5 rounded-xl font-bold text-xs text-white shadow-md hover:opacity-90 active:scale-95 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                                    class="px-8 py-2.5 rounded-xl font-bold text-xs text-white shadow-xs hover:opacity-90 active:scale-95 transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                                     style="background-color: {primary};"
                                 >
                                     {#if profileForm.processing}
@@ -552,22 +589,21 @@
                         <button
                             type="button"
                             onclick={() => fileInput.click()}
-                            class="relative group cursor-pointer"
+                            class="relative group cursor-pointer focus:outline-none"
                         >
-                            <div class="w-32 h-32 rounded-full border-4 border-slate-100 shadow-md overflow-hidden relative flex items-center justify-center bg-slate-100">
+                            <div class="w-32 h-32 rounded-full border-4 border-slate-100 shadow-sm overflow-hidden relative flex items-center justify-center bg-slate-900 ring-2 ring-slate-200/60">
                                 {#if previewUrl}
                                     <img src={previewUrl} alt="Avatar Preview" class="w-full h-full object-cover rounded-full" />
                                 {:else}
                                     <div
-                                        class="w-full h-full text-white font-black text-3xl flex items-center justify-center uppercase"
-                                        style="background: linear-gradient(135deg, {primary}, {secondary});"
+                                        class="w-full h-full text-white font-black text-3xl flex items-center justify-center uppercase tracking-wider"
                                     >
                                         {user ? user.name.substring(0, 2) : 'CS'}
                                     </div>
                                 {/if}
-                                <div class="absolute inset-0 bg-black/40 flex flex-col items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition">
+                                <div class="absolute inset-0 bg-black/50 flex flex-col items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition duration-150">
                                     <i class="ti ti-camera text-white text-2xl mb-1"></i>
-                                    <span class="text-[10px] text-white font-bold tracking-wider">UBAH FOTO</span>
+                                    <span class="text-[10px] text-white font-black tracking-wider">UBAH FOTO</span>
                                 </div>
                             </div>
                         </button>
@@ -575,14 +611,15 @@
                         <button
                             type="button"
                             onclick={() => fileInput.click()}
-                            class="px-4 py-2 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-2xs"
+                            class="px-4 py-2 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 transition shadow-2xs cursor-pointer flex items-center gap-1.5"
                         >
-                            Pilih Gambar
+                            <i class="ti ti-photo-up text-sm text-slate-500"></i>
+                            <span>Pilih Foto Profil</span>
                         </button>
 
-                        <div class="text-[11px] text-slate-400 font-medium space-y-1 max-w-[200px]">
+                        <div class="text-[11px] text-slate-400 font-medium space-y-0.5 max-w-[200px]">
                             <p>Ukuran gambar: maks. 2 MB</p>
-                            <p>Format gambar: .JPEG, .PNG</p>
+                            <p>Format: JPEG, PNG, WEBP</p>
                         </div>
                     </div>
                 </form>
@@ -798,8 +835,7 @@
             <div class="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/80">
                 <div class="flex items-center gap-2.5 sm:gap-3">
                     <div
-                        class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
-                        style="background: linear-gradient(135deg, {primary}, {secondary});"
+                        class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white shrink-0 shadow-xs bg-slate-900"
                     >
                         <i class="ti ti-building-store text-lg sm:text-xl"></i>
                     </div>

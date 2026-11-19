@@ -72,6 +72,13 @@
     const isSellerEnabled = $derived(
         ((page.props as any).app_config?.is_seller_enabled ?? (page.props as any).settings?.is_seller_enabled ?? (page.props as any).is_seller_enabled) ?? false
     );
+    const isFoodPick = $derived(
+        Boolean((page.props as any).is_foodpick) ||
+            Boolean((page.props as any).app_config?.is_foodpick) ||
+            Boolean((page.props as any).settings?.is_foodpick) ||
+            Boolean((page.props as any).isFoodPick) ||
+            false,
+    );
 
     const sortOptions = $derived([
         { id: 'latest', label: 'Terbaru' },
@@ -797,30 +804,32 @@
 
                 <hr class="border-slate-100" />
 
-                <!-- Kondisi Produk Filter -->
-                <div class="space-y-2.5">
-                    <span
-                        class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                    >
-                        Kondisi Produk
-                    </span>
-                    <div class="grid grid-cols-4 gap-1">
-                        {#each [{ id: 'all', label: 'Semua' }, { id: 'new', label: 'New' }, { id: 'second', label: 'Second' }, { id: 'rent', label: 'Rent' }] as cond}
-                            <button
-                                onclick={() => {
-                                    selectedCondition = cond.id;
-                                    applyFilters(false);
-                                }}
-                                class="py-1.5 text-[11px] font-bold rounded-lg border transition text-center
-                                       {selectedCondition === cond.id
-                                    ? 'bg-slate-800 text-white border-slate-800'
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
-                            >
-                                {cond.label}
-                            </button>
-                        {/each}
+                {#if !isFoodPick}
+                    <!-- Kondisi Produk Filter -->
+                    <div class="space-y-2.5">
+                        <span
+                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                        >
+                            Kondisi Produk
+                        </span>
+                        <div class="grid grid-cols-4 gap-1">
+                            {#each [{ id: 'all', label: 'Semua' }, { id: 'new', label: 'New' }, { id: 'second', label: 'Second' }, { id: 'rent', label: 'Rent' }] as cond}
+                                <button
+                                    onclick={() => {
+                                        selectedCondition = cond.id;
+                                        applyFilters(false);
+                                    }}
+                                    class="py-1.5 text-[11px] font-bold rounded-lg border transition text-center
+                                           {selectedCondition === cond.id
+                                        ? 'bg-slate-800 text-white border-slate-800'
+                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}"
+                                >
+                                    {cond.label}
+                                </button>
+                            {/each}
+                        </div>
                     </div>
-                </div>
+                {/if}
 
                 {#if !isSellerEnabled}
                     <hr class="border-slate-100" />
@@ -1023,7 +1032,7 @@
                                         {/if}
                                         <div class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none">
 
-                                            {#if isSellerEnabled}
+                                            {#if isSellerEnabled && !isFoodPick}
                                                 <span
                                                     class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition === 'rent' ? 'bg-purple-600' : (product.condition === 'used' || product.condition === 'second' ? 'bg-amber-600' : 'bg-emerald-600')}"
                                                 >
@@ -1279,27 +1288,29 @@
                         </select>
                     </div>
 
-                    <!-- Kondisi Produk Filter -->
-                    <div class="space-y-3 mt-6">
-                        <span
-                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
-                        >
-                            Kondisi Produk
-                        </span>
-                        <div class="grid grid-cols-4 gap-1.5">
-                            {#each [{ id: 'all', label: 'Semua' }, { id: 'new', label: 'New' }, { id: 'second', label: 'Second' }, { id: 'rent', label: 'Rent' }] as cond}
-                                <button
-                                    onclick={() => (selectedCondition = cond.id)}
-                                    class="py-2 text-[11px] font-bold rounded-lg border transition text-center
-                                           {selectedCondition === cond.id
-                                        ? 'bg-slate-800 text-white border-slate-800'
-                                        : 'bg-white border-slate-200 text-slate-600'}"
-                                >
-                                    {cond.label}
-                                </button>
-                            {/each}
+                    {#if !isFoodPick}
+                        <!-- Kondisi Produk Filter -->
+                        <div class="space-y-3 mt-6">
+                            <span
+                                class="text-xs font-bold text-slate-400 uppercase tracking-wider block"
+                            >
+                                Kondisi Produk
+                            </span>
+                            <div class="grid grid-cols-4 gap-1.5">
+                                {#each [{ id: 'all', label: 'Semua' }, { id: 'new', label: 'New' }, { id: 'second', label: 'Second' }, { id: 'rent', label: 'Rent' }] as cond}
+                                    <button
+                                        onclick={() => (selectedCondition = cond.id)}
+                                        class="py-2 text-[11px] font-bold rounded-lg border transition text-center
+                                               {selectedCondition === cond.id
+                                            ? 'bg-slate-800 text-white border-slate-800'
+                                            : 'bg-white border-slate-200 text-slate-600'}"
+                                    >
+                                        {cond.label}
+                                    </button>
+                                {/each}
+                            </div>
                         </div>
-                    </div>
+                    {/if}
 
                     {#if !isSellerEnabled}
                         <!-- Rating Filter -->

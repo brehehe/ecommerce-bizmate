@@ -403,6 +403,60 @@ class TransactionController extends Controller
     }
 
     /**
+     * Print customer thermal receipt.
+     */
+    public function printThermalReceipt(Request $request, Transaction $transaction)
+    {
+        $user = $request->user();
+        $isOwnerLoggedIn = $user && $user->id === $transaction->user_id;
+        $isSessionAuthorized = session('guest_order_'.$transaction->transaction_number) === true;
+
+        $contact = trim((string) ($request->query('contact') ?? ''));
+        $isContactMatched = false;
+        if (! empty($contact)) {
+            $cleanContact = strtolower($contact);
+            $targetEmail = strtolower((string) $transaction->customer_email);
+            $targetPhone = preg_replace('/\D/', '', (string) $transaction->customer_phone);
+            $inputPhone = preg_replace('/\D/', '', $contact);
+
+            if ($cleanContact === $targetEmail) {
+                $isContactMatched = true;
+            } elseif (! empty($inputPhone) && strlen($inputPhone) >= 6 && str_contains($targetPhone, $inputPhone)) {
+                $isContactMatched = true;
+            }
+        }
+
+        if (! $isOwnerLoggedIn && ! $isSessionAuthorized && ! $isContactMatched) {
+            abort(403, 'Akses tidak sah untuk mencetak bukti struk pesanan ini.');
+        }
+
+        $transaction->load([
+            'items.product',
+            'items.productVariant',
+            'user:id,name,phone_number,email',
+            'customerAddress',
+            'paymentMethod',
+            'restoProfile',
+            'resto',
+        ]);
+
+        $format = $request->query('format', '58mm');
+        if (! in_array($format, ['58mm', '80mm'])) {
+            $format = '58mm';
+        }
+
+        $type = $request->query('type', 'cashier');
+        if (! in_array($type, ['kitchen', 'cashier'])) {
+            $type = 'cashier';
+        }
+
+        $autoPrint = $request->boolean('autoprint', true);
+        $storeName = Setting::where('key', 'store_name')->value('value') ?? config('app.name');
+
+        return view('print.thermal-receipt', compact('transaction', 'format', 'type', 'autoPrint', 'storeName'));
+    }
+
+    /**
      * Cancel a transaction (customer-initiated).
      * Only allowed when status is belum_bayar or menunggu.
      */

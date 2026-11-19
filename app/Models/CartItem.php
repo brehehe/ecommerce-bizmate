@@ -9,10 +9,11 @@ class CartItem extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['user_id', 'product_id', 'product_variant_id', 'quantity', 'is_checked'];
+    protected $fillable = ['id', 'user_id', 'product_id', 'product_variant_id', 'quantity', 'is_checked', 'note', 'selected_modifiers'];
 
     protected $casts = [
         'is_checked' => 'boolean',
+        'selected_modifiers' => 'array',
     ];
 
     protected $appends = [
@@ -38,15 +39,19 @@ class CartItem extends Model
             $product = $this->product;
         }
 
+        $base = 0.0;
         if ($variant) {
-            return (float) ($variant->is_promo ? $variant->promo_price : ($variant->productPrice?->price ?? 0));
+            $base = (float) ($variant->is_promo ? $variant->promo_price : ($variant->productPrice?->price ?? 0));
+        } elseif ($product) {
+            $base = (float) ($product->is_promo ? $product->promo_price : ($product->productPrice?->price ?? 0));
         }
 
-        if ($product) {
-            return (float) ($product->is_promo ? $product->promo_price : ($product->productPrice?->price ?? 0));
+        $extra = 0.0;
+        if (! empty($this->selected_modifiers) && is_iterable($this->selected_modifiers)) {
+            $extra = (float) collect($this->selected_modifiers)->sum('additional_price');
         }
 
-        return 0.0;
+        return $base + $extra;
     }
 
     public function getSubtotalAttribute(): float

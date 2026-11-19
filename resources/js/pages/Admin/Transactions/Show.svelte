@@ -1,5 +1,6 @@
 <script lang="ts">
     import AdminLayout from '@/components/layouts/AdminLayout.svelte';
+    import OrderItemModifiers from '@/components/Storefront/OrderItemModifiers.svelte';
     import { page, router } from '@inertiajs/svelte';
     import { showToast } from '@/utils/toast';
 
@@ -483,7 +484,7 @@
     let customDeliveryLog = $state('');
     let showStoreResiForm = $state(false);
     let storeActionLoading = $state(false);
-    let selectedCourierId = $state(transaction.courier_user_id ?? '');
+    let selectedCourierId = $state('');
     let deliveryFileInput: HTMLInputElement | null = $state(null);
     let isUploadingPhotos = $state(false);
 
@@ -1116,6 +1117,17 @@
                     Invoice
                 </a>
 
+                <!-- Print thermal receipt -->
+                <a
+                    href="/admin/transactions/{transaction.id}/print-thermal?format=58mm&type=cashier"
+                    target="_blank"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 hover:text-orange-600"
+                    title="Cetak Struk Thermal (58mm/80mm)"
+                >
+                    <i class="ti ti-receipt text-sm text-slate-400"></i>
+                    Struk Thermal
+                </a>
+
                 <!-- Print shipping label -->
                 {#if transaction.tracking_number}
                     <a
@@ -1342,9 +1354,7 @@
                                     {#if item.variant_name}
                                         <p class="text-xs text-slate-400">{item.variant_name}</p>
                                     {/if}
-                                    {#if item.note}
-                                        <p class="mt-1 text-xs text-slate-500 italic">{item.note}</p>
-                                    {/if}
+                                    <OrderItemModifiers {item} class="mt-1.5" />
                                 </div>
                                 <div class="shrink-0 text-right">
                                     <p class="text-sm font-semibold text-slate-800">

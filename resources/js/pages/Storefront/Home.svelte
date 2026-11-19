@@ -19,6 +19,9 @@
         middleWideBanner = null,
         recentReviews = undefined,
         popupBanner = null,
+        isFoodPick: propIsFoodPick = false,
+        restoPartners = undefined,
+        culinaryCategories = undefined,
     } = $props();
 
     let showIntro = $state(false);
@@ -46,6 +49,66 @@
             false,
         ),
     );
+
+    const isFoodPick = $derived(
+        propIsFoodPick ||
+            Boolean((page.props as any).isFoodPick) ||
+            Boolean((page.props as any).is_foodpick) ||
+            Boolean((page.props as any).app_config?.is_foodpick) ||
+            Boolean((page.props as any).settings?.is_foodpick) ||
+            false,
+    );
+
+    let selectedCulinaryCategory = $state<string | null>(null);
+    let culinarySearch = $state<string>('');
+    let categoryScrollContainer = $state<HTMLDivElement | null>(null);
+
+    function scrollCategoriesRight() {
+        if (categoryScrollContainer) {
+            categoryScrollContainer.scrollBy({ left: 240, behavior: 'smooth' });
+        }
+    }
+
+    const detectedCity = $derived.by(() => {
+        if (!restoPartners || !Array.isArray(restoPartners) || restoPartners.length === 0) {
+            return 'Surabaya';
+        }
+        for (const r of restoPartners) {
+            if (r.address) {
+                const parts = r.address.split(',').map((p: string) => p.trim());
+                if (parts.length > 1) {
+                    const last = parts[parts.length - 1];
+                    if (last && last.length > 2) return last;
+                }
+                if (r.address.toLowerCase().includes('surabaya')) return 'Surabaya';
+                if (r.address.toLowerCase().includes('jakarta')) return 'Jakarta';
+                if (r.address.toLowerCase().includes('malang')) return 'Malang';
+                if (r.address.toLowerCase().includes('bandung')) return 'Bandung';
+            }
+        }
+        return 'Surabaya';
+    });
+
+    const filteredRestoPartners = $derived.by(() => {
+        if (!restoPartners || !Array.isArray(restoPartners)) return [];
+        let list = restoPartners;
+        if (selectedCulinaryCategory) {
+            const cat = selectedCulinaryCategory.toLowerCase();
+            list = list.filter((r: any) =>
+                r.culinary_category?.toLowerCase().includes(cat) ||
+                r.resto_name?.toLowerCase().includes(cat)
+            );
+        }
+        if (culinarySearch.trim()) {
+            const q = culinarySearch.toLowerCase().trim();
+            list = list.filter((r: any) =>
+                r.resto_name?.toLowerCase().includes(q) ||
+                r.culinary_category?.toLowerCase().includes(q) ||
+                r.address?.toLowerCase().includes(q)
+            );
+        }
+        return list;
+    });
 
     let selectedVariantProduct = $state<any>(null);
     let showVariantModal = $state(false);
@@ -560,23 +623,30 @@
     let selectedBrandId = $state<string | null>(null);
 
     const availableBrands = $derived.by(() => {
+        if (isFoodPick) return [];
         if (brands && brands.length > 0) {
-            return brands;
+            return brands.filter((b: any) => b && (b.name || b.brand_name || b.title));
         }
         if (!newProducts || newProducts.length === 0) return [];
         const map = new Map();
         newProducts.forEach((p: any) => {
             if (p.brands && p.brands.length > 0) {
                 p.brands.forEach((b: any) => {
-                    const bId = b.id || b.name;
-                    if (!map.has(bId)) {
-                        map.set(bId, { id: bId, name: b.name, slug: b.slug || b.name });
+                    const bName = b?.name || b?.brand_name || b?.title;
+                    if (b && bName) {
+                        const bId = b.id || bName;
+                        if (!map.has(bId)) {
+                            map.set(bId, { id: bId, name: bName, slug: b.slug || bName, logo: b.logo || b.image });
+                        }
                     }
                 });
             } else if (p.brand) {
-                const bId = p.brand.id || p.brand.name;
-                if (!map.has(bId)) {
-                    map.set(bId, { id: bId, name: p.brand.name, slug: p.brand.slug || p.brand.name });
+                const bName = p.brand?.name || p.brand?.brand_name || p.brand?.title;
+                if (p.brand && bName) {
+                    const bId = p.brand.id || bName;
+                    if (!map.has(bId)) {
+                        map.set(bId, { id: bId, name: bName, slug: p.brand.slug || bName, logo: p.brand.logo || p.brand.image });
+                    }
                 }
             }
         });
@@ -723,10 +793,344 @@
 </svelte:head>
 
 <StorefrontLayout hideMobileFooter={true}>
+    {#if isFoodPick}
+        <!-- ═══════════════════════════════════════════════════
+         FOODPICK CULINARY HERO & RESTO DIRECTORY
+        ═══════════════════════════════════════════════════ -->
+        <section class="px-3 sm:px-5 lg:px-8 pt-2 sm:pt-4 pb-2">
+            <div class="max-w-6xl mx-auto">
+                <!-- ── Main Hero Banners (CMS: /admin/cms/banners) ── -->
+                {#if heroBanners && heroBanners.length > 0}
+                    <!-- Mobile Banner Slider -->
+                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                    <div
+                        role="presentation"
+                        ontouchstart={handleTouchStart}
+                        ontouchend={handleTouchEnd}
+                        class="sm:hidden relative w-full overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800 group cursor-pointer aspect-[2.8/1] shadow-2xs border border-slate-100 dark:border-slate-800"
+                    >
+                        {#each heroBanners as banner, i}
+                            <button
+                                type="button"
+                                onclick={(e) => handleBannerClick(banner, e)}
+                                class="w-full h-full text-left cursor-pointer {i === activeHero ? 'block' : 'hidden'}"
+                            >
+                                <img
+                                    src={banner.mobile_image || banner.image}
+                                    alt={banner.alt || 'Promo Spesial Resto'}
+                                    fetchpriority={i === 0 ? 'high' : 'low'}
+                                    loading={i === 0 ? 'eager' : 'lazy'}
+                                    decoding={i === 0 ? 'sync' : 'async'}
+                                    class="w-full h-full object-cover block"
+                                />
+                            </button>
+                        {/each}
+
+                        {#if heroBanners.length > 1}
+                            <div class="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
+                                {#each heroBanners as _, i}
+                                    <button
+                                        type="button"
+                                        aria-label="Slide {i + 1}"
+                                        onclick={() => goHero(i)}
+                                        class="rounded-full transition-all duration-300 {activeHero === i ? 'w-5 h-2 bg-white shadow-xs' : 'w-2 h-2 bg-white/60'}"
+                                    ></button>
+                                {/each}
+                            </div>
+                        {/if}
+                    </div>
+
+                    <!-- Desktop Banner Slider -->
+                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                    <div
+                        role="presentation"
+                        ontouchstart={handleTouchStart}
+                        ontouchend={handleTouchEnd}
+                        class="hidden sm:block relative rounded-2xl sm:rounded-3xl overflow-hidden w-full bg-slate-100 dark:bg-slate-800 group cursor-pointer aspect-[3.75/1] shadow-xs border border-slate-100 dark:border-slate-800"
+                    >
+                        {#each heroBanners as banner, i}
+                            <button
+                                type="button"
+                                onclick={(e) => handleBannerClick(banner, e)}
+                                class="absolute inset-0 w-full h-full transition-opacity duration-700 {i === activeHero
+                                    ? 'opacity-100 z-10 pointer-events-auto'
+                                    : 'opacity-0 z-0 pointer-events-none'} text-left cursor-pointer overflow-hidden"
+                            >
+                                <img
+                                    src={banner.image}
+                                    alt=""
+                                    loading="lazy"
+                                    decoding="async"
+                                    class="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none"
+                                    aria-hidden="true"
+                                />
+                                <img
+                                    src={banner.image}
+                                    alt={banner.alt || 'Promo Spesial Resto'}
+                                    fetchpriority={i === 0 ? 'high' : 'low'}
+                                    loading={i === 0 ? 'eager' : 'lazy'}
+                                    decoding={i === 0 ? 'sync' : 'async'}
+                                    class="absolute inset-0 z-10 w-full h-full {banner.fit === 'contain' ? 'object-contain' : 'object-cover'} object-center block"
+                                />
+                            </button>
+                        {/each}
+
+                        {#if heroBanners.length > 1}
+                            <!-- Prev / Next arrows -->
+                            <button
+                                type="button"
+                                aria-label="Slide sebelumnya"
+                                onclick={() => goHero((activeHero - 1 + heroBanners.length) % heroBanners.length)}
+                                class="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/35 hover:bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition backdrop-blur-sm cursor-pointer"
+                            >
+                                <i class="ti ti-chevron-left text-base"></i>
+                            </button>
+                            <button
+                                type="button"
+                                aria-label="Slide berikutnya"
+                                onclick={() => goHero((activeHero + 1) % heroBanners.length)}
+                                class="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/35 hover:bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition backdrop-blur-sm cursor-pointer"
+                            >
+                                <i class="ti ti-chevron-right text-base"></i>
+                            </button>
+
+                            <!-- Dots -->
+                            <div class="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
+                                {#each heroBanners as _, i}
+                                    <button
+                                        type="button"
+                                        aria-label="Slide {i + 1}"
+                                        onclick={() => goHero(i)}
+                                        class="rounded-full transition-all duration-300 {activeHero === i
+                                            ? 'w-5 h-2 bg-white shadow-xs'
+                                            : 'w-2 h-2 bg-white/60'}"
+                                    ></button>
+                                {/each}
+                            </div>
+                        {/if}
+                    </div>
+                {/if}
+
+                <!-- Culinary Category Pills -->
+                {#if culinaryCategories && culinaryCategories.length > 0}
+                    <div class="mt-3.5 relative">
+                        <div
+                            bind:this={categoryScrollContainer}
+                            class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 scroll-smooth"
+                        >
+                            <button
+                                onclick={() => selectedCulinaryCategory = null}
+                                class="shrink-0 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap {selectedCulinaryCategory === null ? 'text-white shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/80 shadow-2xs'}"
+                                style={selectedCulinaryCategory === null ? `background-color: ${primary}; color: white;` : ''}
+                                type="button"
+                            >
+                                Semua Kuliner
+                            </button>
+                            {#each culinaryCategories as cat}
+                                <button
+                                    onclick={() => selectedCulinaryCategory = selectedCulinaryCategory === cat.name ? null : cat.name}
+                                    class="shrink-0 px-4 py-2 rounded-xl text-xs sm:text-sm transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap {selectedCulinaryCategory === cat.name ? 'text-white font-bold shadow-xs' : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200/80 font-medium shadow-2xs'}"
+                                    style={selectedCulinaryCategory === cat.name ? `background-color: ${primary}; color: white;` : ''}
+                                    type="button"
+                                >
+                                    <span>{cat.icon}</span>
+                                    <span>{cat.name}</span>
+                                </button>
+                            {/each}
+                        </div>
+
+                        <!-- Desktop Scroll Right Button -->
+                        <button
+                            onclick={scrollCategoriesRight}
+                            type="button"
+                            aria-label="Geser kategori ke kanan"
+                            class="hidden sm:flex absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl bg-white border border-slate-200 items-center justify-center text-slate-600 hover:bg-slate-50 shadow-2xs cursor-pointer z-10"
+                        >
+                            <i class="ti ti-chevron-right text-sm"></i>
+                        </button>
+                    </div>
+                {/if}
+
+                <!-- Resto Directory Section -->
+                <div class="mt-6 mb-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-0.5">
+                        <div>
+                            <!-- Desktop Title -->
+                            <div class="hidden sm:block">
+                                <h2 class="font-outfit font-black text-xl lg:text-2xl text-slate-900 tracking-tight">
+                                    Pilihan resto di {detectedCity}
+                                </h2>
+                                <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+                                    Pesan menu favorit Anda langsung dari resto terpercaya.
+                                </p>
+                            </div>
+
+                            <!-- Mobile Title -->
+                            <div class="block sm:hidden">
+                                <div class="flex items-center gap-2">
+                                    <h2 class="font-outfit font-bold text-base text-slate-900 tracking-tight">
+                                        Mitra Resto & Dapur Pilihan
+                                    </h2>
+                                    <span class="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">
+                                        {filteredRestoPartners.length} Resto
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-0.5">Pesan menu favorit Anda langsung dari resto terpercaya</p>
+                            </div>
+                        </div>
+
+                        <!-- Search and Mitra Link -->
+                        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                            <div class="relative flex-1 sm:flex-none">
+                                <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input
+                                    type="text"
+                                    bind:value={culinarySearch}
+                                    placeholder="Cari resto..."
+                                    class="w-full sm:w-48 pl-8 pr-7 py-2 text-xs text-slate-800 placeholder-slate-400 bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:border-slate-400 shadow-2xs transition"
+                                />
+                                {#if culinarySearch}
+                                    <button
+                                        onclick={() => culinarySearch = ''}
+                                        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+                                        type="button"
+                                    >
+                                        <i class="ti ti-x"></i>
+                                    </button>
+                                {/if}
+                            </div>
+
+                            <Link
+                                href="/register-resto"
+                                class="text-xs sm:text-sm font-bold inline-flex items-center gap-1 hover:underline whitespace-nowrap cursor-pointer shrink-0"
+                                style="color: {primary};"
+                            >
+                                <span>Daftar Mitra</span>
+                                <i class="ti ti-chevron-right text-2xs"></i>
+                            </Link>
+                        </div>
+                    </div>
+
+                    <!-- Resto Cards Grid (Clean, Responsive, Anti-Slop) -->
+                    {#if filteredRestoPartners.length === 0}
+                        <div class="mt-4 p-8 text-center bg-white rounded-2xl border border-slate-200/80 shadow-2xs">
+                            <div class="w-12 h-12 mx-auto rounded-full flex items-center justify-center text-2xl mb-2" style="background-color: {primary}15; color: {primary};">
+                                <i class="ti ti-building-store"></i>
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-800">Belum Ada Resto yang Cocok</h3>
+                            <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                                {culinarySearch || selectedCulinaryCategory ? 'Coba ganti kata kunci pencarian atau kategori kuliner.' : 'Jadilah mitra resto pertama di platform ini.'}
+                            </p>
+                            {#if !culinarySearch && !selectedCulinaryCategory}
+                                <Link
+                                    href="/register-resto"
+                                    class="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-2xs transition cursor-pointer hover:opacity-95"
+                                    style="background-color: {primary};"
+                                >
+                                    <i class="ti ti-plus"></i>
+                                    <span>Daftarkan Resto Sekarang</span>
+                                </Link>
+                            {/if}
+                        </div>
+                    {:else}
+                        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                            {#each filteredRestoPartners as resto}
+                                <Link
+                                    href={resto.store_url}
+                                    class="rounded-2xl border p-3 sm:p-3.5 shadow-2xs transition-all duration-200 flex items-stretch gap-3 sm:gap-4 group cursor-pointer {resto.is_open_now ? 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700' : 'bg-slate-100/90 dark:bg-slate-900/60 border-slate-300 dark:border-slate-700 grayscale opacity-75'}"
+                                >
+                                    <!-- Resto Photo -->
+                                    <div class="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-xl overflow-hidden shrink-0 bg-slate-100 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 relative">
+                                        <img
+                                            src={resto.banner_url || resto.logo_url || '/images/default-resto-dish.jpg'}
+                                            alt={resto.resto_name}
+                                            class="w-full h-full object-cover group-hover:scale-103 transition-transform duration-300"
+                                            onerror={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/default-resto-dish.jpg'; }}
+                                        />
+                                        {#if !resto.is_open_now}
+                                            <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] flex items-center justify-center p-1 text-center">
+                                                <span class="text-[10px] font-black uppercase tracking-wider text-white bg-slate-900/80 px-2 py-0.5 rounded-md shadow-xs">
+                                                    Tutup
+                                                </span>
+                                            </div>
+                                        {/if}
+                                    </div>
+
+                                    <!-- Resto Details -->
+                                    <div class="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                                        <div>
+                                            <!-- Title & Badges -->
+                                            <div class="flex items-start justify-between gap-2">
+                                                <h3 class="font-outfit font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
+                                                    {resto.resto_name}
+                                                </h3>
+                                                <div class="flex items-center gap-1.5 shrink-0">
+                                                    {#if resto.is_open_now}
+                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/80">
+                                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                            Buka
+                                                        </span>
+                                                    {:else}
+                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/80">
+                                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                                            Tutup
+                                                        </span>
+                                                    {/if}
+                                                    <span class="inline-flex items-center gap-0.5 text-xs font-bold text-amber-700 dark:text-amber-400">
+                                                        <i class="ti ti-star-filled text-[11px] text-amber-500"></i>
+                                                        {resto.rating !== null && resto.rating !== undefined ? resto.rating : 'Baru'}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <!-- Category -->
+                                            <p class="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                                {resto.culinary_category}
+                                            </p>
+
+                                            <!-- Address -->
+                                            {#if resto.address}
+                                                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1 truncate flex items-center gap-1">
+                                                    <i class="ti ti-map-pin text-slate-400 shrink-0 text-xs"></i>
+                                                    <span class="truncate">{resto.address}</span>
+                                                </p>
+                                            {/if}
+                                        </div>
+
+                                        <!-- Footer Meta & Action -->
+                                        <div class="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                                            <span class="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                                <i class="ti ti-clock text-slate-400 text-xs"></i>
+                                                <span>Siap ~{resto.avg_prep_time_minutes} mnt</span>
+                                            </span>
+                                            {#if resto.is_open_now}
+                                                <span
+                                                    class="inline-flex items-center gap-1 text-xs font-bold whitespace-nowrap group-hover:translate-x-0.5 transition-transform"
+                                                    style="color: {primary};"
+                                                >
+                                                    <span>Lihat Menu</span>
+                                                    <i class="ti ti-chevron-right text-2xs"></i>
+                                                </span>
+                                            {:else}
+                                                <span class="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 whitespace-nowrap">
+                                                    <span>Tutup Sementara</span>
+                                                </span>
+                                            {/if}
+                                        </div>
+                                    </div>
+                                </Link>
+                            {/each}
+                        </div>
+                    {/if}
+                </div>
+            </div>
+        </section>
+    {/if}
+
     <!-- ═══════════════════════════════════════════════════
      SECTION 1: HERO BANNER (1 besar + 2 kecil kanan)
 ═══════════════════════════════════════════════════ -->
-    <section class="px-0 sm:px-5 lg:px-8 pt-0 sm:pt-4 pb-0 sm:pb-3">
+    <section class="{isFoodPick ? 'hidden' : 'block'} px-0 sm:px-5 lg:px-8 pt-0 sm:pt-4 pb-0 sm:pb-3">
         <div class="max-w-6xl mx-auto">
             <div class="flex gap-2.5 lg:gap-3 items-start">
                 <!-- ── MOBILE: Responsive aspect ratio to prevent CLS layout shift ── -->
@@ -1157,7 +1561,7 @@
                                         <div
                                             class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none"
                                         >
-                                            {#if isSellerEnabled}
+                                            {#if isSellerEnabled && !isFoodPick}
                                                 <span
                                                     class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition ===
                                                     'rent'
@@ -1425,7 +1829,7 @@
                                         class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none"
                                     >
 
-                                        {#if isSellerEnabled}
+                                        {#if isSellerEnabled && !isFoodPick}
                                             <span
                                                 class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition ===
                                                 'rent'
@@ -1545,7 +1949,7 @@
         </section>
     {/if}
 
-    {#if showBrands && availableBrands && availableBrands.length > 0}
+    {#if !isFoodPick && showBrands && availableBrands && availableBrands.length > 0}
     <!-- ═══════════════════════════════════════════════════
      SECTION 8: BRAND PILIHAN (Official Store - Sleek Cards Like Categories)
     ═══════════════════════════════════════════════════ -->
@@ -1605,32 +2009,33 @@
 
                     {#if availableBrands && availableBrands.length > 0}
                         {#each availableBrands as brand}
-                            {@const isSelected = selectedBrandId === brand.id || selectedBrandId === brand.name || selectedBrandId === brand.slug}
+                            {@const brandName = brand?.name || brand?.brand_name || brand?.title || 'Brand'}
+                            {@const isSelected = selectedBrandId === brand?.id || selectedBrandId === brandName || selectedBrandId === brand?.slug}
                             <button
                                 type="button"
-                                onclick={() => (selectedBrandId = isSelected ? null : (brand.id || brand.name))}
+                                onclick={() => (selectedBrandId = isSelected ? null : (brand?.id || brandName))}
                                 class="flex flex-col items-center gap-1.5 shrink-0 group cursor-pointer"
                             >
                                 <div
                                     class="w-13 h-13 sm:w-15 sm:h-15 rounded-[1.25rem] sm:rounded-2xl flex items-center justify-center border transition-all duration-200 group-hover:scale-105 group-hover:shadow-md relative overflow-hidden bg-white shadow-2xs {isSelected ? 'ring-2 ring-offset-2 border-transparent' : 'border-slate-200/80 hover:border-slate-300'}"
                                     style={isSelected ? `box-shadow: 0 0 0 2px ${primary};` : ''}
                                 >
-                                    {#if brand.logo || brand.image}
+                                    {#if brand?.logo || brand?.image}
                                         <img
                                             src={brand.logo || brand.image}
-                                            alt={brand.name}
+                                            alt={brandName}
                                             class="w-9 h-9 sm:w-10 sm:h-10 object-contain"
                                         />
                                     {:else}
                                         <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-500 text-sm uppercase">
-                                            {brand.name.charAt(0)}
+                                            {brandName ? brandName.charAt(0) : 'B'}
                                         </div>
                                     {/if}
                                 </div>
                                 <span
                                     class="text-[11px] sm:text-xs font-semibold text-slate-700 text-center leading-tight max-w-[76px] line-clamp-2 group-hover:text-slate-900 transition"
                                 >
-                                    {brand.name}
+                                    {brandName}
                                 </span>
                             </button>
                         {/each}
@@ -1652,16 +2057,21 @@
                     <h2
                         class="font-outfit font-black text-base sm:text-lg text-slate-900 tracking-tight flex items-center gap-2"
                     >
-                        <i class="ti ti-sparkles text-lg" style="color: {secondary};"></i>
-                        Rekomendasi Untuk Anda
-                        {#if selectedBrandId}
-                            {@const activeBrand = availableBrands.find(b => b.id === selectedBrandId || b.name === selectedBrandId || b.slug === selectedBrandId)}
+                        {#if isFoodPick}
+                            <i class="ti ti-tools-kitchen-2 text-lg text-amber-600" aria-hidden="true"></i>
+                            <span>Pilihan Menu Favorit</span>
+                        {:else}
+                            <i class="ti ti-thumb-up text-lg text-slate-700" aria-hidden="true"></i>
+                            <span>Rekomendasi Untuk Anda</span>
+                        {/if}
+                        {#if selectedBrandId && !isFoodPick}
+                            {@const activeBrand = availableBrands.find(b => b?.id === selectedBrandId || b?.name === selectedBrandId || b?.slug === selectedBrandId)}
                             {#if activeBrand}
                                 <span
                                     class="text-xs font-bold border px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs"
                                     style="color: {primary}; background-color: {primary}12; border-color: {primary}30;"
                                 >
-                                    Brand: {activeBrand.name}
+                                    Brand: {activeBrand?.name || 'Brand'}
                                     <button
                                         type="button"
                                         onclick={() => (selectedBrandId = null)}
@@ -1674,7 +2084,9 @@
                             {/if}
                         {/if}
                     </h2>
-                    <p class="text-xs text-slate-500 font-medium">Koleksi produk unggulan berkualitas dengan penawaran terbaik</p>
+                    <p class="text-xs text-slate-500 font-medium">
+                        {isFoodPick ? 'Pesan aneka menu hidangan lezat langsung dari dapur resto pilihan' : 'Koleksi produk unggulan berkualitas dengan penawaran terbaik'}
+                    </p>
                 </div>
             </div>
             <!-- Masonry-style grid -->
@@ -1745,7 +2157,7 @@
                                         class="absolute top-1.5 left-1.5 z-10 flex flex-col gap-1 items-start pointer-events-none"
                                     >
 
-                                        {#if isReal && isSellerEnabled}
+                                        {#if isReal && isSellerEnabled && !isFoodPick}
                                             <span
                                                 class="text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs {product.condition ===
                                                 'rent'

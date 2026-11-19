@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\RestoProfile;
 use App\Models\Transaction;
 use App\Models\TransactionPayment;
 use App\Services\WarisQrisService;
@@ -26,22 +27,6 @@ class WarisWebhookController extends Controller
         $signatureHeader = $request->header('X-WARIS-Signature')
             ?? $request->header('X-Waris-Signature')
             ?? $request->header('x-waris-signature');
-
-        $configuredSecret = WarisQrisService::getWebhookSecret();
-
-        // 1. Verify HMAC-SHA256 signature if webhook secret is configured
-        if (! empty($configuredSecret)) {
-            if (! WarisQrisService::verifyWebhookSignature($request->getContent(), $signatureHeader)) {
-                Log::warning('WARIS Webhook: Invalid Signature', [
-                    'received' => $signatureHeader,
-                ]);
-
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Invalid signature.',
-                ], 401);
-            }
-        }
 
         $payload = $request->all();
         $event = $payload['event'] ?? 'payment.received';
@@ -68,6 +53,28 @@ class WarisWebhookController extends Controller
                 'status' => 'error',
                 'message' => 'Transaction not found.',
             ], 404);
+        }
+
+        $configuredSecret = WarisQrisService::getWebhookSecret();
+        $restoSecret = null;
+        if (! empty($transaction->resto_id)) {
+            $restoProfile = RestoProfile::where('user_id', $transaction->resto_id)->first();
+            $restoSecret = $restoProfile?->payment_methods['waris']['webhook_secret'] ?? null;
+        }
+        $secretToUse = ! empty($restoSecret) ? $restoSecret : $configuredSecret;
+
+        // 1. Verify HMAC-SHA256 signature if webhook secret is configured
+        if (! empty($secretToUse)) {
+            if (! WarisQrisService::verifyWebhookSignature($request->getContent(), $signatureHeader, $secretToUse)) {
+                Log::warning('WARIS Webhook: Invalid Signature', [
+                    'received' => $signatureHeader,
+                ]);
+
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Invalid signature.',
+                ], 401);
+            }
         }
 
         // Only process if status is unpaid or waiting

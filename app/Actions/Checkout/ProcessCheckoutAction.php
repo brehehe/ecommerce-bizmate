@@ -8,6 +8,7 @@ use App\Models\CustomerAddress;
 use App\Models\PaymentMethod;
 use App\Models\ProductStock;
 use App\Models\Promotion;
+use App\Models\RestoProfile;
 use App\Models\Setting;
 use App\Models\StockMovement;
 use App\Models\Transaction;
@@ -23,6 +24,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\ValidationException;
 
 class ProcessCheckoutAction
 {
@@ -47,6 +49,20 @@ class ProcessCheckoutAction
 
         $paymentMethod = PaymentMethod::findOrFail($data['payment_method_id']);
 
+        // Validasi Resto Buka / Tutup pada saat checkout
+        if (config('app.is_foodpick', false)) {
+            foreach ($cartItems as $item) {
+                if ($item->product?->user_id) {
+                    $resto = RestoProfile::where('user_id', $item->product->user_id)->first();
+                    if ($resto && $resto->is_open_now === false) {
+                        throw ValidationException::withMessages([
+                            'error' => 'Resto "'.($resto->resto_name ?: 'Mitra').'" sedang tutup sementara dan tidak dapat menerima pesanan saat ini.',
+                        ]);
+                    }
+                }
+            }
+        }
+
         // Subtotal calculation
         $subtotal = 0;
         foreach ($cartItems as $item) {
@@ -57,13 +73,18 @@ class ProcessCheckoutAction
                 ? (float) ($variant->is_promo ? $variant->promo_price : ($variant->productPrice?->price ?? 0))
                 : (float) ($product->is_promo ? $product->promo_price : ($product->productPrice?->price ?? 0));
 
-            $effectivePrice = $basePrice;
+            $modifierExtra = 0.0;
+            if (! empty($item->selected_modifiers) && is_iterable($item->selected_modifiers)) {
+                $modifierExtra = (float) collect($item->selected_modifiers)->sum('additional_price');
+            }
+
+            $effectivePrice = $basePrice + $modifierExtra;
             $tiers = $variant ? $variant->tierPrices : $product->tierPrices;
             if ($tiers && $tiers->isNotEmpty()) {
                 $matchingTiers = $tiers->filter(fn ($t) => $item->quantity >= $t->min_qty)->sortByDesc('min_qty');
                 if ($matchingTiers->isNotEmpty()) {
                     $appliedTier = $matchingTiers->first();
-                    $tierPriceVal = (float) $appliedTier->price;
+                    $tierPriceVal = (float) $appliedTier->price + $modifierExtra;
                     if ($tierPriceVal < $effectivePrice) {
                         $effectivePrice = $tierPriceVal;
                     }
@@ -283,6 +304,13 @@ class ProcessCheckoutAction
                 'shipping_service' => $data['shipping_service'],
                 'shipping_etd' => $data['shipping_etd'] ?? null,
                 'pickup_at' => $pickupAt,
+                'resto_id' => $data['resto_id'] ?? $cartItems->first()?->product?->user_id,
+                'fulfillment_type' => $data['fulfillment_type'] ?? ($data['shipping_courier'] === 'self_pickup' ? 'self_pickup' : 'store_courier'),
+                'pickup_type' => $data['pickup_type'] ?? 'takeaway',
+                'table_number' => $data['table_number'] ?? null,
+                'scheduled_date' => $data['scheduled_date'] ?? ($data['pickup_date'] ?? null),
+                'scheduled_time_slot' => $data['scheduled_time_slot'] ?? ($data['pickup_time'] ?? null),
+                'kitchen_status' => 'pesanan_masuk',
                 'voucher_code' => $voucherCode,
                 'voucher_discount_type' => $voucherDiscountType,
                 'voucher_discount_value' => $voucherDiscountValue,
@@ -315,18 +343,22 @@ class ProcessCheckoutAction
                 $product = $item->product;
                 $variant = $item->productVariant;
 
+                $modifierExtra = ! empty($item->selected_modifiers) && is_iterable($item->selected_modifiers)
+                    ? (float) collect($item->selected_modifiers)->sum('additional_price')
+                    : 0.0;
+
                 if ($variant) {
                     $matchedVariant = $product->variants->firstWhere('id', $variant->id);
                     if ($matchedVariant) {
                         $variant = $matchedVariant;
                     }
 
-                    $hargaJual = (float) ($item->unit_price ?? ($variant->is_promo ? $variant->promo_price : ($variant->productPrice?->price ?? 0)));
+                    $hargaJual = (float) ($item->unit_price ?? (($variant->is_promo ? $variant->promo_price : ($variant->productPrice?->price ?? 0)) + $modifierExtra));
                     $hpp = (float) ($variant->productPrice?->cost ?? 0);
                     $variantName = $variant->options->pluck('name')->join(' / ');
                     $sku = $variant->sku;
                 } else {
-                    $hargaJual = (float) ($item->unit_price ?? ($product->is_promo ? $product->promo_price : ($product->productPrice?->price ?? 0)));
+                    $hargaJual = (float) ($item->unit_price ?? (($product->is_promo ? $product->promo_price : ($product->productPrice?->price ?? 0)) + $modifierExtra));
                     $hpp = (float) ($product->productPrice?->cost ?? 0);
                     $variantName = null;
                     $sku = $product->sku;
@@ -341,7 +373,8 @@ class ProcessCheckoutAction
                 $promoQtyUsed = $variant ? ($variant->promo_quantity_used ?? null) : ($product->promo_quantity_used ?? null);
 
                 $itemNotes = $data['item_notes'] ?? [];
-                $note = $itemNotes[$item->id] ?? null;
+                $submittedNote = $itemNotes[$item->id] ?? null;
+                $note = (is_string($submittedNote) && trim($submittedNote) !== '') ? trim($submittedNote) : ($item->note ?? null);
 
                 TransactionItem::create([
                     'transaction_id' => $transaction->id,
@@ -360,6 +393,7 @@ class ProcessCheckoutAction
                     'applied_promotion_id' => $appliedPromotionId,
                     'promo_quantity_used' => $promoQtyUsed,
                     'note' => $note,
+                    'selected_modifiers' => $item->selected_modifiers ?? null,
                 ]);
 
                 $stockRecord = $variant

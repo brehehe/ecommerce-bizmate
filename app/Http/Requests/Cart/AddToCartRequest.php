@@ -21,6 +21,8 @@ class AddToCartRequest extends FormRequest
             'product_variant_id' => 'nullable|exists:product_variants,id',
             'quantity' => 'required|integer|min:1',
             'is_checked' => 'nullable|boolean',
+            'note' => 'nullable|string|max:1000',
+            'selected_modifiers' => 'nullable|array',
         ];
     }
 }

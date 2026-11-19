@@ -29,7 +29,7 @@
 
     // JS CSV Parser
     function parseCSV(text) {
-        if (text.charCodeAt(0) === 0xFEFF) {
+        if (text.charCodeAt(0) === 0xfeff) {
             text = text.slice(1);
         }
         // Simple delimiter detection
@@ -100,7 +100,7 @@
         reader.onload = (event) => {
             try {
                 let text = event.target.result || '';
-                if (text.charCodeAt(0) === 0xFEFF) {
+                if (text.charCodeAt(0) === 0xfeff) {
                     text = text.slice(1);
                 }
                 const rows = parseCSV(text);
@@ -109,7 +109,12 @@
                     return;
                 }
 
-                const headers = rows[0].map((h) => h.replace(/^\uFEFF/, '').trim().toLowerCase());
+                const headers = rows[0].map((h) =>
+                    h
+                        .replace(/^\uFEFF/, '')
+                        .trim()
+                        .toLowerCase(),
+                );
 
                 const findHeader = (names) => {
                     for (const n of names) {
@@ -121,29 +126,85 @@
 
                 // Map header names to indices
                 const headerMap = {
-                    name: findHeader(['nama produk', 'nama', 'name', 'product name', 'title']),
+                    name: findHeader([
+                        'nama produk',
+                        'nama',
+                        'name',
+                        'product name',
+                        'title',
+                    ]),
                     sku: findHeader(['sku', 'kode sku', 'code']),
-                    categories: findHeader(['kategori', 'category', 'categories']),
+                    categories: findHeader([
+                        'kategori',
+                        'category',
+                        'categories',
+                    ]),
                     brand: findHeader(['brand', 'merk', 'merek']),
-                    summary: findHeader(['ringkasan singkat', 'ringkasan', 'summary']),
+                    summary: findHeader([
+                        'ringkasan singkat',
+                        'ringkasan',
+                        'summary',
+                    ]),
                     price: findHeader(['harga jual', 'harga', 'price']),
                     cost: findHeader(['harga modal', 'modal', 'cost', 'hpp']),
                     stock: findHeader(['stok', 'stock', 'qty']),
-                    min_stock: findHeader(['batas minimum', 'min stock', 'min_stock']),
-                    min_purchase: findHeader(['min pembelian', 'min purchase', 'min_purchase']),
+                    min_stock: findHeader([
+                        'batas minimum',
+                        'min stock',
+                        'min_stock',
+                    ]),
+                    min_purchase: findHeader([
+                        'min pembelian',
+                        'min purchase',
+                        'min_purchase',
+                    ]),
                     weight: findHeader(['berat (gram)', 'berat', 'weight']),
                     length: findHeader(['panjang (cm)', 'panjang', 'length']),
                     width: findHeader(['lebar (cm)', 'lebar', 'width']),
                     height: findHeader(['tinggi (cm)', 'tinggi', 'height']),
-                    description: findHeader(['deskripsi', 'description', 'detail']),
-                    is_digital: findHeader(['apakah digital', 'is_digital', 'digital']),
-                    is_unlimited: findHeader(['apakah unlimited stock', 'is_unlimited', 'unlimited']),
-                    specifications: findHeader(['spesifikasi', 'specifications', 'specs']),
-                    condition: findHeader(['kondisi (baru/bekas)', 'kondisi', 'condition']),
-                    var1_name: findHeader(['variasi 1 nama', 'variasi 1', 'variant 1 name']),
-                    var1_val: findHeader(['variasi 1 nilai', 'variant 1 value']),
-                    var2_name: findHeader(['variasi 2 nama', 'variasi 2', 'variant 2 name']),
-                    var2_val: findHeader(['variasi 2 nilai', 'variant 2 value']),
+                    description: findHeader([
+                        'deskripsi',
+                        'description',
+                        'detail',
+                    ]),
+                    is_digital: findHeader([
+                        'apakah digital',
+                        'is_digital',
+                        'digital',
+                    ]),
+                    is_unlimited: findHeader([
+                        'apakah unlimited stock',
+                        'is_unlimited',
+                        'unlimited',
+                    ]),
+                    specifications: findHeader([
+                        'spesifikasi',
+                        'specifications',
+                        'specs',
+                    ]),
+                    condition: findHeader([
+                        'kondisi (baru/bekas)',
+                        'kondisi',
+                        'condition',
+                    ]),
+                    var1_name: findHeader([
+                        'variasi 1 nama',
+                        'variasi 1',
+                        'variant 1 name',
+                    ]),
+                    var1_val: findHeader([
+                        'variasi 1 nilai',
+                        'variant 1 value',
+                    ]),
+                    var2_name: findHeader([
+                        'variasi 2 nama',
+                        'variasi 2',
+                        'variant 2 name',
+                    ]),
+                    var2_val: findHeader([
+                        'variasi 2 nilai',
+                        'variant 2 value',
+                    ]),
                     var_price: findHeader(['harga varian', 'variant price']),
                     var_stock: findHeader(['stok varian', 'variant stock']),
                 };
@@ -256,7 +317,9 @@
                             condition:
                                 headerMap.condition !== -1
                                     ? ['used', 'bekas', 'second'].includes(
-                                          row[headerMap.condition]?.trim().toLowerCase()
+                                          row[headerMap.condition]
+                                              ?.trim()
+                                              .toLowerCase(),
                                       )
                                         ? 'used'
                                         : 'new'
@@ -413,14 +476,19 @@
                         if (match) {
                             const rowIndex = parseInt(match[1]) + 1;
                             const field = match[2];
-                            errorMessages.push(`Baris ${rowIndex} (${field}): ${messages.join(', ')}`);
+                            errorMessages.push(
+                                `Baris ${rowIndex} (${field}): ${messages.join(', ')}`,
+                            );
                         } else {
-                            errorMessages.push(`${key}: ${messages.join(', ')}`);
+                            errorMessages.push(
+                                `${key}: ${messages.join(', ')}`,
+                            );
                         }
                     }
                     importError = errorMessages.join('\n');
                 } else {
-                    importError = data.message || 'Gagal melakukan import produk.';
+                    importError =
+                        data.message || 'Gagal melakukan import produk.';
                 }
             }
         } catch (err) {
@@ -460,9 +528,19 @@
 
     let isSuperAdmin = $derived(
         Boolean(
-            page.props.auth?.user?.roles?.some((r) => r.name === 'Super Admin' || r.name === 'Admin') ||
-            !page.props.auth?.user?.is_seller
-        )
+            page.props.auth?.user?.roles?.some(
+                (r) => r.name === 'Super Admin' || r.name === 'Admin',
+            ) || !page.props.auth?.user?.is_seller,
+        ),
+    );
+    const isFoodPick = $derived(
+        Boolean(
+            page.props?.is_foodpick ??
+            page.props?.isFoodPick ??
+            page.props?.app_config?.is_foodpick ??
+            page.props?.settings?.is_foodpick ??
+            false,
+        ),
     );
 
     // Renew & History Modal State
@@ -474,9 +552,15 @@
     let qrisModalData = $state(null);
 
     const selectedRenewPackage = $derived(
-        (listingPricing.packages || []).find((p) => (p.id || p.days) === renewDurationType || String(p.days) === String(renewDurationType)) || (listingPricing.packages || [])[0]
+        (listingPricing.packages || []).find(
+            (p) =>
+                (p.id || p.days) === renewDurationType ||
+                String(p.days) === String(renewDurationType),
+        ) || (listingPricing.packages || [])[0],
     );
-    const isRenewSelectedFree = $derived(selectedRenewPackage ? Number(selectedRenewPackage.price) === 0 : false);
+    const isRenewSelectedFree = $derived(
+        selectedRenewPackage ? Number(selectedRenewPackage.price) === 0 : false,
+    );
 
     // History Modal State
     let isHistoryModalOpen = $state(false);
@@ -507,21 +591,31 @@
         console.log(
             '%c[Reverb WebSocket] ⚡ EVENT BROADCAST DITERIMA!',
             'color: #10b981; font-weight: bold; font-size: 13px; background: #ecfdf5; padding: 4px 8px; rounded: 4px;',
-            eventData
+            eventData,
         );
         const payload = eventData?.data || eventData || {};
         const status = payload.status || eventData?.status;
         const orderId = payload.order_id || eventData?.order_id;
         const productId = payload.product_id || eventData?.product_id;
 
-        console.log('[Reverb WebSocket] Parsed payload status:', status, 'orderId:', orderId);
+        console.log(
+            '[Reverb WebSocket] Parsed payload status:',
+            status,
+            'orderId:',
+            orderId,
+        );
 
-        if (qrisModalData && (
-            !orderId ||
-            orderId === qrisModalData.order_id ||
-            String(productId) === String(qrisModalData.product_id)
-        )) {
-            if (status === 'paid' || status === 'settlement' || status === 'success') {
+        if (
+            qrisModalData &&
+            (!orderId ||
+                orderId === qrisModalData.order_id ||
+                String(productId) === String(qrisModalData.product_id))
+        ) {
+            if (
+                status === 'paid' ||
+                status === 'settlement' ||
+                status === 'success'
+            ) {
                 qrisPollingStatus = 'paid';
                 stopQrisPolling();
                 stopReverbListener();
@@ -539,35 +633,54 @@
             stopReverbListener();
             activeListeningOrderId = orderId;
 
-            const connectionState = window.Echo?.connector?.pusher?.connection?.state || 'unknown';
+            const connectionState =
+                window.Echo?.connector?.pusher?.connection?.state || 'unknown';
             console.log(
                 `%c[Reverb WebSocket] 🟢 Subscribing ke Order ID: ${orderId} (Status Server WebSocket: ${connectionState})`,
-                'color: #2563eb; font-weight: bold; background: #eff6ff; padding: 4px 8px; rounded: 4px;'
+                'color: #2563eb; font-weight: bold; background: #eff6ff; padding: 4px 8px; rounded: 4px;',
             );
 
             // Direct public channel specifically for this order ID (instant, no auth overhead)
-            window.Echo.channel(`listing-payment.${orderId}`)
-                .listen('.listing.payment.confirmed', (e) => {
-                    console.log('[Reverb WebSocket] Channel listing-payment.' + orderId + ' event:', e);
+            window.Echo.channel(`listing-payment.${orderId}`).listen(
+                '.listing.payment.confirmed',
+                (e) => {
+                    console.log(
+                        '[Reverb WebSocket] Channel listing-payment.' +
+                            orderId +
+                            ' event:',
+                        e,
+                    );
                     handleListingPaymentConfirmed(e);
-                });
+                },
+            );
 
             // User & Admin private channels
             const currentUser = page.props?.auth?.user;
             if (currentUser?.id) {
-                window.Echo.private(`user.${currentUser.id}`)
-                    .listen('.listing.payment.confirmed', (e) => {
-                        console.log('[Reverb WebSocket] Channel user.' + currentUser.id + ' event:', e);
+                window.Echo.private(`user.${currentUser.id}`).listen(
+                    '.listing.payment.confirmed',
+                    (e) => {
+                        console.log(
+                            '[Reverb WebSocket] Channel user.' +
+                                currentUser.id +
+                                ' event:',
+                            e,
+                        );
                         handleListingPaymentConfirmed(e);
-                    });
+                    },
+                );
             }
-            window.Echo.private('admin')
-                .listen('.listing.payment.confirmed', (e) => {
+            window.Echo.private('admin').listen(
+                '.listing.payment.confirmed',
+                (e) => {
                     console.log('[Reverb WebSocket] Channel admin event:', e);
                     handleListingPaymentConfirmed(e);
-                });
+                },
+            );
         } else {
-            console.warn('[Reverb WebSocket] ⚠️ window.Echo belum terinisialisasi.');
+            console.warn(
+                '[Reverb WebSocket] ⚠️ window.Echo belum terinisialisasi.',
+            );
         }
     }
 
@@ -588,7 +701,11 @@
     let checkingQrisStatusManual = $state(false);
 
     $effect(() => {
-        if (qrisModalData?.order_id && qrisPollingInterval === null && qrisPollingStatus === 'pending') {
+        if (
+            qrisModalData?.order_id &&
+            qrisPollingInterval === null &&
+            qrisPollingStatus === 'pending'
+        ) {
             startQrisPolling(qrisModalData.order_id);
         }
     });
@@ -599,29 +716,45 @@
 
         try {
             // Strictly check status directly from Midtrans Core API via backend
-            const res = await fetch(`/admin/listing-payment-status/${encodeURIComponent(qrisModalData.order_id)}`, {
-                headers: { Accept: 'application/json' },
-            });
+            const res = await fetch(
+                `/admin/listing-payment-status/${encodeURIComponent(qrisModalData.order_id)}`,
+                {
+                    headers: { Accept: 'application/json' },
+                },
+            );
             if (res.ok) {
                 const data = await res.json();
                 if (data.status === 'paid' || data.status === 'settlement') {
                     qrisPollingStatus = 'paid';
                     stopQrisPolling();
                     stopReverbListener();
-                    showToast('Pembayaran QRIS Berhasil Dikonfirmasi Lunas di Midtrans!', 'success');
+                    showToast(
+                        'Pembayaran QRIS Berhasil Dikonfirmasi Lunas di Midtrans!',
+                        'success',
+                    );
                     setTimeout(() => {
                         closeQrisModal();
                         router.reload({ only: ['products'] });
                     }, 1500);
                     return;
-                } else if (data.status === 'failed' || data.status === 'expire' || data.status === 'cancel') {
+                } else if (
+                    data.status === 'failed' ||
+                    data.status === 'expire' ||
+                    data.status === 'cancel'
+                ) {
                     qrisPollingStatus = 'failed';
                     stopQrisPolling();
                     stopReverbListener();
-                    showToast('Pembayaran Gagal atau Kedaluwarsa di Midtrans.', 'warning');
+                    showToast(
+                        'Pembayaran Gagal atau Kedaluwarsa di Midtrans.',
+                        'warning',
+                    );
                     return;
                 } else {
-                    showToast('Pembayaran belum terdeteksi di Midtrans. Silakan selesaikan pembayaran.', 'info');
+                    showToast(
+                        'Pembayaran belum terdeteksi di Midtrans. Silakan selesaikan pembayaran.',
+                        'info',
+                    );
                     return;
                 }
             }
@@ -633,7 +766,6 @@
         }
     }
 
-
     function startQrisPolling(orderId) {
         stopQrisPolling();
         qrisPollingStatus = 'pending';
@@ -641,16 +773,22 @@
 
         qrisPollingInterval = setInterval(async () => {
             try {
-                const res = await fetch(`/admin/listing-payment-status/${encodeURIComponent(orderId)}`, {
-                    headers: { Accept: 'application/json' },
-                });
+                const res = await fetch(
+                    `/admin/listing-payment-status/${encodeURIComponent(orderId)}`,
+                    {
+                        headers: { Accept: 'application/json' },
+                    },
+                );
                 if (!res.ok) return;
                 const data = await res.json();
                 if (data.status === 'paid' || data.status === 'settlement') {
                     qrisPollingStatus = 'paid';
                     stopQrisPolling();
                     stopReverbListener();
-                    showToast('Pembayaran QRIS Berhasil Dikonfirmasi!', 'success');
+                    showToast(
+                        'Pembayaran QRIS Berhasil Dikonfirmasi!',
+                        'success',
+                    );
                     setTimeout(() => {
                         closeQrisModal();
                         router.reload({ only: ['products'] });
@@ -660,7 +798,9 @@
                     stopQrisPolling();
                     stopReverbListener();
                 }
-            } catch { /* ignore network errors */ }
+            } catch {
+                /* ignore network errors */
+            }
         }, 2000);
     }
 
@@ -678,25 +818,33 @@
 
         try {
             const tokenMeta = document.querySelector('meta[name="csrf-token"]');
-            const csrfToken = tokenMeta ? tokenMeta.getAttribute('content') : '';
-            const res = await fetch(`/admin/products/${productToRenew.id}/get-qris-listing`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken || '',
-                    'Accept': 'application/json',
+            const csrfToken = tokenMeta
+                ? tokenMeta.getAttribute('content')
+                : '';
+            const res = await fetch(
+                `/admin/products/${productToRenew.id}/get-qris-listing`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken || '',
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        listing_duration_type: renewDurationType,
+                        custom_days: renewCustomDays,
+                    }),
                 },
-                body: JSON.stringify({
-                    listing_duration_type: renewDurationType,
-                    custom_days: renewCustomDays,
-                }),
-            });
+            );
 
             const data = await res.json();
             if (data.success && data.free_auto_activated) {
                 isRenewModalOpen = false;
                 productToRenew = null;
-                showToast(data.message || 'Produk berhasil diaktifkan secara GRATIS!', 'success');
+                showToast(
+                    data.message || 'Produk berhasil diaktifkan secara GRATIS!',
+                    'success',
+                );
                 router.reload({ only: ['products'] });
             } else if (data.success && data.qris_payment) {
                 qrisModalData = data.qris_payment;
@@ -704,7 +852,10 @@
                 // Start polling for payment confirmation
                 startQrisPolling(data.qris_payment.order_id);
             } else {
-                showToast(data.message || 'Gagal memuat pembayaran QRIS', 'error');
+                showToast(
+                    data.message || 'Gagal memuat pembayaran QRIS',
+                    'error',
+                );
             }
         } catch (err) {
             showToast('Terjadi kesalahan koneksi', 'error');
@@ -717,9 +868,12 @@
         isHistoryModalOpen = true;
         loadingHistory = true;
         try {
-            const res = await fetch('/admin/products/listing-payments-history', {
-                headers: { 'Accept': 'application/json' },
-            });
+            const res = await fetch(
+                '/admin/products/listing-payments-history',
+                {
+                    headers: { Accept: 'application/json' },
+                },
+            );
             const data = await res.json();
             if (data.success) {
                 paymentHistory = data.payments?.data || [];
@@ -741,20 +895,33 @@
     }
 
     function getExpirationStatus(prod) {
-        if (!isSellerProduct(prod)) {
+        if (!isSellerProduct(prod) || !listingPricing?.fee_enabled) {
             return null;
         }
         if (!prod.listing_expires_at) {
-            return { text: 'Perlu Diposting', color: 'bg-amber-50 text-amber-700 border-amber-200', isExpired: true };
+            return {
+                text: 'Perlu Diposting',
+                color: 'bg-amber-50 text-amber-700 border-amber-200',
+                isExpired: true,
+            };
         }
         const exp = new Date(prod.listing_expires_at);
         const now = new Date();
         if (exp <= now) {
-            return { text: 'Kadaluarsa', color: 'bg-rose-50 text-rose-700 border-rose-200', isExpired: true };
+            return {
+                text: 'Kadaluarsa',
+                color: 'bg-rose-50 text-rose-700 border-rose-200',
+                isExpired: true,
+            };
         }
         const diffTime = exp.getTime() - now.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 3600 * 24));
-        return { text: `Aktif (${diffDays} Hari)`, color: 'bg-blue-50 text-blue-700 border-blue-200', isExpired: false, daysLeft: diffDays };
+        return {
+            text: `Aktif (${diffDays} Hari)`,
+            color: 'bg-blue-50 text-blue-700 border-blue-200',
+            isExpired: false,
+            daysLeft: diffDays,
+        };
     }
 
     function fmt(val) {
@@ -807,7 +974,9 @@
         productToAdjust = product;
         adminAdjustAction = 'add_days';
         adminAdjustDays = 30;
-        adminAdjustDate = product.listing_expires_at ? new Date(product.listing_expires_at).toISOString().slice(0, 16) : '';
+        adminAdjustDate = product.listing_expires_at
+            ? new Date(product.listing_expires_at).toISOString().slice(0, 16)
+            : '';
         isAdminAdjustModalOpen = true;
     }
 
@@ -817,29 +986,40 @@
 
         try {
             const tokenMeta = document.querySelector('meta[name="csrf-token"]');
-            const csrfToken = tokenMeta ? tokenMeta.getAttribute('content') : '';
-            const res = await fetch(`/admin/products/${productToAdjust.id}/admin-adjust-listing`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken || '',
-                    'Accept': 'application/json',
+            const csrfToken = tokenMeta
+                ? tokenMeta.getAttribute('content')
+                : '';
+            const res = await fetch(
+                `/admin/products/${productToAdjust.id}/admin-adjust-listing`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken || '',
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: adminAdjustAction,
+                        days: adminAdjustDays,
+                        expires_at: adminAdjustDate,
+                    }),
                 },
-                body: JSON.stringify({
-                    action: adminAdjustAction,
-                    days: adminAdjustDays,
-                    expires_at: adminAdjustDate,
-                }),
-            });
+            );
 
             const data = await res.json();
             if (data.success) {
-                showToast(data.message || 'Masa aktif berhasil diperbarui!', 'success');
+                showToast(
+                    data.message || 'Masa aktif berhasil diperbarui!',
+                    'success',
+                );
                 isAdminAdjustModalOpen = false;
                 productToAdjust = null;
                 router.reload({ only: ['products'] });
             } else {
-                showToast(data.message || 'Gagal mengubah masa aktif.', 'error');
+                showToast(
+                    data.message || 'Gagal mengubah masa aktif.',
+                    'error',
+                );
             }
         } catch {
             showToast('Terjadi kesalahan sistem.', 'error');
@@ -1066,7 +1246,7 @@
                 onFinish: () => {
                     isReordering = false;
                 },
-            }
+            },
         );
     }
 </script>
@@ -1076,14 +1256,26 @@
 </svelte:head>
 
 <AdminLayout>
-    <main class="w-full max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5">
+    <main
+        class="w-full max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5"
+    >
         <!-- Page Header -->
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div
+            class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        >
             <div>
-                <h1 class="text-lg sm:text-xl font-semibold tracking-tight text-slate-900">Katalog Produk</h1>
-                <p class="mt-0.5 text-xs sm:text-sm text-slate-500">Kelola stok, harga, dan variasi produk Anda</p>
+                <h1
+                    class="text-lg sm:text-xl font-semibold tracking-tight text-slate-900"
+                >
+                    Katalog Produk
+                </h1>
+                <p class="mt-0.5 text-xs sm:text-sm text-slate-500">
+                    Kelola stok, harga, dan variasi produk Anda
+                </p>
             </div>
-            <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar flex-nowrap sm:flex-wrap">
+            <div
+                class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar flex-nowrap sm:flex-wrap"
+            >
                 <button
                     onclick={() => (isImportModalOpen = true)}
                     class="h-9 shrink-0 rounded-lg border border-slate-200 bg-white px-3 sm:px-4 text-xs sm:text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-2xs"
@@ -1096,12 +1288,13 @@
                 >
                     <i class="ti ti-file-export"></i> <span>Export</span>
                 </a>
-                {#if isSellerMode}
+                {#if isSellerMode && !isFoodPick}
                     <Link
                         href="/admin/listing-payments"
                         class="h-9 shrink-0 rounded-lg border border-blue-200 bg-blue-50/80 px-3 sm:px-4 text-xs sm:text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-2xs"
                     >
-                        <i class="ti ti-history text-base"></i> <span>Riwayat Pembayaran</span>
+                        <i class="ti ti-history text-base"></i>
+                        <span>Riwayat Pembayaran</span>
                     </Link>
                 {/if}
                 <Link
@@ -1109,38 +1302,73 @@
                     class="h-9 shrink-0 rounded-lg px-3.5 sm:px-4 text-xs sm:text-sm font-semibold text-white transition-opacity hover:opacity-90 flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-2xs"
                     style="background-color: {secondary};"
                 >
-                    <i class="ti ti-plus font-bold"></i> <span>Tambah Baru</span>
+                    <i class="ti ti-plus font-bold"></i>
+                    <span>{isFoodPick ? 'Tambah Menu' : 'Tambah Baru'}</span>
                 </Link>
             </div>
         </div>
 
         <!-- Metrics Overview -->
         <div class="grid grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-4">
-            <div class="border border-slate-200 bg-white rounded-xl p-3 sm:p-4 shadow-xs">
-                <p class="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 sm:mb-1 truncate">Semua Produk</p>
-                <p class="text-xl sm:text-2xl font-bold text-slate-900">{products.total}</p>
+            <div
+                class="border border-slate-200 bg-white rounded-xl p-3 sm:p-4 shadow-xs"
+            >
+                <p
+                    class="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 sm:mb-1 truncate"
+                >
+                    Semua Produk
+                </p>
+                <p class="text-xl sm:text-2xl font-bold text-slate-900">
+                    {products.total}
+                </p>
             </div>
-            <div class="border border-slate-200 bg-white rounded-xl p-3 sm:p-4 shadow-xs">
-                <p class="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 sm:mb-1 truncate">Aktif &amp; Ditampilkan</p>
+            <div
+                class="border border-slate-200 bg-white rounded-xl p-3 sm:p-4 shadow-xs"
+            >
+                <p
+                    class="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 sm:mb-1 truncate"
+                >
+                    Aktif &amp; Ditampilkan
+                </p>
                 <p class="text-xl sm:text-2xl font-bold text-emerald-600">-</p>
             </div>
-            <div class="border border-slate-200 bg-white rounded-xl p-3 sm:p-4 shadow-xs">
-                <p class="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 sm:mb-1 truncate">Status Draft</p>
+            <div
+                class="border border-slate-200 bg-white rounded-xl p-3 sm:p-4 shadow-xs"
+            >
+                <p
+                    class="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 sm:mb-1 truncate"
+                >
+                    Status Draft
+                </p>
                 <p class="text-xl sm:text-2xl font-bold text-amber-600">-</p>
             </div>
-            <div class="border border-slate-200 bg-white rounded-xl p-3 sm:p-4 shadow-xs">
-                <p class="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 sm:mb-1 truncate">Stok Habis</p>
+            <div
+                class="border border-slate-200 bg-white rounded-xl p-3 sm:p-4 shadow-xs"
+            >
+                <p
+                    class="text-[11px] sm:text-xs font-semibold text-slate-500 mb-0.5 sm:mb-1 truncate"
+                >
+                    Stok Habis
+                </p>
                 <p class="text-xl sm:text-2xl font-bold text-rose-600">-</p>
             </div>
         </div>
 
         <!-- Advanced Data Table -->
-        <div class="border border-slate-200 bg-white rounded-xl flex flex-col overflow-hidden shadow-xs">
+        <div
+            class="border border-slate-200 bg-white rounded-xl flex flex-col overflow-hidden shadow-xs"
+        >
             <!-- Filters Bar -->
-            <div class="p-3 sm:p-4 border-b border-slate-150 flex flex-col xl:flex-row xl:flex-wrap gap-2.5 sm:gap-3 justify-between items-stretch xl:items-center bg-slate-50/50">
-                <div class="flex-grow flex flex-col sm:flex-row gap-2.5 sm:gap-3 items-stretch sm:items-center flex-wrap">
+            <div
+                class="p-3 sm:p-4 border-b border-slate-150 flex flex-col xl:flex-row xl:flex-wrap gap-2.5 sm:gap-3 justify-between items-stretch xl:items-center bg-slate-50/50"
+            >
+                <div
+                    class="flex-grow flex flex-col sm:flex-row gap-2.5 sm:gap-3 items-stretch sm:items-center flex-wrap"
+                >
                     <div class="relative flex-1 min-w-[200px] w-full">
-                        <i class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
+                        <i
+                            class="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"
+                        ></i>
                         <input
                             type="text"
                             bind:value={searchInput}
@@ -1149,7 +1377,9 @@
                             class="h-9 w-full rounded-lg border border-slate-200 bg-white pl-8 pr-3 text-xs sm:text-sm text-slate-700 placeholder-slate-400 focus:border-slate-400 focus:outline-none focus:ring-0 transition-colors"
                         />
                     </div>
-                    <div class="grid grid-cols-2 sm:flex sm:flex-row sm:flex-wrap gap-2 sm:gap-2.5 items-stretch sm:items-center">
+                    <div
+                        class="grid grid-cols-2 sm:flex sm:flex-row sm:flex-wrap gap-2 sm:gap-2.5 items-stretch sm:items-center"
+                    >
                         <div class="w-full sm:w-48">
                             <SelectSearchMultiple
                                 bind:value={filterCategories}
@@ -1158,14 +1388,16 @@
                                 onchange={applyFilters}
                             />
                         </div>
-                        <div class="w-full sm:w-48">
-                            <SelectSearchMultiple
-                                bind:value={filterBrands}
-                                options={brandOptions}
-                                placeholder="Semua Brand"
-                                onchange={applyFilters}
-                            />
-                        </div>
+                        {#if !isFoodPick}
+                            <div class="w-full sm:w-48">
+                                <SelectSearchMultiple
+                                    bind:value={filterBrands}
+                                    options={brandOptions}
+                                    placeholder="Semua Brand"
+                                    onchange={applyFilters}
+                                />
+                            </div>
+                        {/if}
                         <div class="w-full sm:w-36">
                             <select
                                 bind:value={filterStatus}
@@ -1186,10 +1418,17 @@
                                 <option value="order-asc">Urutan Kustom</option>
                                 <option value="name-asc">Nama: A - Z</option>
                                 <option value="name-desc">Nama: Z - A</option>
-                                <option value="price-asc">Harga: Terendah</option>
-                                <option value="price-desc">Harga: Tertinggi</option>
-                                <option value="stock-asc">Stok: Terendah</option>
-                                <option value="stock-desc">Stok: Tertinggi</option>
+                                <option value="price-asc"
+                                    >Harga: Terendah</option
+                                >
+                                <option value="price-desc"
+                                    >Harga: Tertinggi</option
+                                >
+                                <option value="stock-asc">Stok: Terendah</option
+                                >
+                                <option value="stock-desc"
+                                    >Stok: Tertinggi</option
+                                >
                                 <option value="latest">Terbaru</option>
                                 <option value="oldest">Terlama</option>
                             </select>
@@ -1211,10 +1450,13 @@
                 </div>
 
                 <!-- View Switcher -->
-                <div class="flex items-center justify-between sm:justify-start bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 shrink-0 self-auto">
+                <div
+                    class="flex items-center justify-between sm:justify-start bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 shrink-0 self-auto"
+                >
                     <button
                         onclick={() => (currentViewMode = 'list')}
-                        class="flex-1 sm:flex-initial px-3 py-1 rounded-md text-xs font-semibold transition flex items-center justify-center gap-1.5 {currentViewMode === 'list'
+                        class="flex-1 sm:flex-initial px-3 py-1 rounded-md text-xs font-semibold transition flex items-center justify-center gap-1.5 {currentViewMode ===
+                        'list'
                             ? 'bg-white text-slate-800 shadow-xs border border-slate-200/50'
                             : 'text-slate-500 hover:text-slate-800'}"
                         aria-label="Tampilan Daftar"
@@ -1224,7 +1466,8 @@
                     </button>
                     <button
                         onclick={() => (currentViewMode = 'grid')}
-                        class="flex-1 sm:flex-initial px-3 py-1 rounded-md text-xs font-semibold transition flex items-center justify-center gap-1.5 {currentViewMode === 'grid'
+                        class="flex-1 sm:flex-initial px-3 py-1 rounded-md text-xs font-semibold transition flex items-center justify-center gap-1.5 {currentViewMode ===
+                        'grid'
                             ? 'bg-white text-slate-800 shadow-xs border border-slate-200/50'
                             : 'text-slate-500 hover:text-slate-800'}"
                         aria-label="Tampilan Kartu"
@@ -1265,20 +1508,20 @@
                 </div>
             {/if}
 
-                <!-- Table List View Container -->
-                <div
-                    class="overflow-x-auto flex-grow custom-scrollbar {currentViewMode ===
-                    'grid'
-                        ? 'hidden'
-                        : ''}"
-                >
+            <!-- Table List View Container -->
+            <div
+                class="overflow-x-auto flex-grow custom-scrollbar {currentViewMode ===
+                'grid'
+                    ? 'hidden'
+                    : ''}"
+            >
                 {#key products.data}
-                    <table
-                        class="w-full responsive-table sm:table-fixed"
-                    >
+                    <table class="w-full responsive-table sm:table-fixed">
                         <thead>
                             <tr class="bg-white">
-                                <th class="px-2 py-4 w-8 border-b border-slate-100"></th>
+                                <th
+                                    class="px-2 py-4 w-8 border-b border-slate-100"
+                                ></th>
                                 <th
                                     class="px-3 xl:px-4 py-4 w-10 border-b border-slate-100"
                                     ><input
@@ -1341,7 +1584,8 @@
                                     {@const hasVariants =
                                         product.variants &&
                                         product.variants.length > 0}
-                                    {@const expStatus = getExpirationStatus(product)}
+                                    {@const expStatus =
+                                        getExpirationStatus(product)}
                                     <tr
                                         class="product-row table-row-hover transition {!product.active
                                             ? 'bg-slate-50/30'
@@ -1353,11 +1597,18 @@
                                         data-id={product.id}
                                     >
                                         <td class="px-2 py-4 w-8 text-center">
-                                            <span class="text-slate-400 cursor-move product-drag-handle flex items-center justify-center" title="Geser Urutan">
-                                                <i class="ti ti-grip-vertical text-base"></i>
+                                            <span
+                                                class="text-slate-400 cursor-move product-drag-handle flex items-center justify-center"
+                                                title="Geser Urutan"
+                                            >
+                                                <i
+                                                    class="ti ti-grip-vertical text-base"
+                                                ></i>
                                             </span>
                                         </td>
-                                        <td class="px-3 xl:px-4 py-4" data-label="Pilih"
+                                        <td
+                                            class="px-3 xl:px-4 py-4"
+                                            data-label="Pilih"
                                             ><input
                                                 type="checkbox"
                                                 checked={selectedProducts.includes(
@@ -1368,7 +1619,10 @@
                                                 class="rounded border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 w-4 h-4 cursor-pointer"
                                             /></td
                                         >
-                                        <td class="px-3 xl:px-4 py-4" data-label="Info Produk">
+                                        <td
+                                            class="px-3 xl:px-4 py-4"
+                                            data-label="Info Produk"
+                                        >
                                             <div
                                                 class="flex items-center gap-3 {!product.active
                                                     ? 'opacity-60 grayscale'
@@ -1401,7 +1655,10 @@
                                                     src={getImageUrl(
                                                         product.image,
                                                     )}
-                                                    onerror={(e) => { e.target.src = '/noimage/image.png'; }}
+                                                    onerror={(e) => {
+                                                        e.target.src =
+                                                            '/noimage/image.png';
+                                                    }}
                                                     alt={product.name}
                                                 />
                                                 <div class="min-w-0">
@@ -1418,26 +1675,48 @@
                                                         title={product.name}
                                                         >{product.name}</Link
                                                     >
-                                                    <div class="flex items-center flex-wrap gap-1.5 mt-0.5">
-                                                        <p class="text-[11px] text-slate-500 font-mono shrink-0">
+                                                    <div
+                                                        class="flex items-center flex-wrap gap-1.5 mt-0.5"
+                                                    >
+                                                        <p
+                                                            class="text-[11px] text-slate-500 font-mono shrink-0"
+                                                        >
                                                             SKU Induk: {product.sku}
                                                         </p>
                                                         {#if product.condition === 'rent'}
-                                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-purple-100/90 text-purple-800 border border-purple-200 shrink-0 whitespace-nowrap">
-                                                                <i class="ti ti-repeat text-[10px]"></i> Rent
+                                                            <span
+                                                                class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-purple-100/90 text-purple-800 border border-purple-200 shrink-0 whitespace-nowrap"
+                                                            >
+                                                                <i
+                                                                    class="ti ti-repeat text-[10px]"
+                                                                ></i> Rent
                                                             </span>
                                                         {:else if product.condition === 'used' || product.condition === 'second'}
-                                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-amber-100/90 text-amber-800 border border-amber-200 shrink-0 whitespace-nowrap">
-                                                                <i class="ti ti-refresh text-[10px]"></i> Second
+                                                            <span
+                                                                class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-amber-100/90 text-amber-800 border border-amber-200 shrink-0 whitespace-nowrap"
+                                                            >
+                                                                <i
+                                                                    class="ti ti-refresh text-[10px]"
+                                                                ></i> Second
                                                             </span>
                                                         {:else}
-                                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-emerald-100/90 text-emerald-800 border border-emerald-200 shrink-0 whitespace-nowrap">
-                                                                <i class="ti ti-sparkles text-[10px]"></i> New
+                                                            <span
+                                                                class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-emerald-100/90 text-emerald-800 border border-emerald-200 shrink-0 whitespace-nowrap"
+                                                            >
+                                                                <i
+                                                                    class="ti ti-sparkles text-[10px]"
+                                                                ></i> New
                                                             </span>
                                                         {/if}
-                                                        {#if isSellerMode && isSellerProduct(product) && expStatus}
-                                                            <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold border shrink-0 whitespace-nowrap {expStatus.color}">
-                                                                <i class="ti {expStatus.isExpired ? 'ti-alert-triangle' : 'ti-clock'} text-[10px]"></i>
+                                                        {#if isSellerMode && isSellerProduct(product) && expStatus && listingPricing?.fee_enabled}
+                                                            <span
+                                                                class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold border shrink-0 whitespace-nowrap {expStatus.color}"
+                                                            >
+                                                                <i
+                                                                    class="ti {expStatus.isExpired
+                                                                        ? 'ti-alert-triangle'
+                                                                        : 'ti-clock'} text-[10px]"
+                                                                ></i>
                                                                 {expStatus.text}
                                                             </span>
                                                         {/if}
@@ -1497,7 +1776,10 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td class="px-3 xl:px-4 py-4" data-label="Kategori">
+                                        <td
+                                            class="px-3 xl:px-4 py-4"
+                                            data-label="Kategori"
+                                        >
                                             {#if product.categories && product.categories.length > 0}
                                                 <div
                                                     class="flex flex-wrap gap-1 max-w-[120px]"
@@ -1532,7 +1814,10 @@
                                                 >
                                             {/if}
                                         </td>
-                                        <td class="px-3 xl:px-4 py-4" data-label="Harga & Stok">
+                                        <td
+                                            class="px-3 xl:px-4 py-4"
+                                            data-label="Harga & Stok"
+                                        >
                                             <div class="flex flex-col gap-0.5">
                                                 {#if hasVariants}
                                                     {@const prices =
@@ -1635,7 +1920,10 @@
                                                 {/if}
                                             </div>
                                         </td>
-                                        <td class="px-3 xl:px-4 py-4" data-label="Performa">
+                                        <td
+                                            class="px-3 xl:px-4 py-4"
+                                            data-label="Performa"
+                                        >
                                             <div class="flex flex-col">
                                                 <div
                                                     class="flex items-center gap-1 text-slate-700 font-extrabold text-[13px]"
@@ -1643,16 +1931,25 @@
                                                     <i
                                                         class="ti ti-trending-up text-emerald-500"
                                                     ></i>
-                                                    <span>{product.performance_sold ?? 0}</span>
+                                                    <span
+                                                        >{product.performance_sold ??
+                                                            0}</span
+                                                    >
                                                 </div>
                                                 <span
                                                     class="text-[10px] text-slate-400 font-bold mt-0.5 uppercase tracking-wide leading-snug"
-                                                    >Rp {Number(product.performance_revenue ?? 0).toLocaleString('id-ID')}</span
+                                                    >Rp {Number(
+                                                        product.performance_revenue ??
+                                                            0,
+                                                    ).toLocaleString(
+                                                        'id-ID',
+                                                    )}</span
                                                 >
                                             </div>
                                         </td>
                                         <td
-                                            class="px-3 xl:px-4 py-4 text-center" data-label="Tampil"
+                                            class="px-3 xl:px-4 py-4 text-center"
+                                            data-label="Tampil"
                                         >
                                             <label
                                                 class="relative inline-flex items-center cursor-pointer"
@@ -1672,30 +1969,45 @@
                                             </label>
                                         </td>
                                         <td
-                                            class="px-3 xl:px-4 py-4 text-right whitespace-nowrap" data-label="Aksi"
+                                            class="px-3 xl:px-4 py-4 text-right whitespace-nowrap"
+                                            data-label="Aksi"
                                         >
                                             {#if isSellerMode}
                                                 {#if isSellerProduct(product)}
-                                                    <button
+                                                    <!-- <button
                                                         type="button"
                                                         onclick={() => openRenewModal(product)}
                                                         class="p-2 text-blue-600 hover:text-blue-800 rounded-lg transition inline-block cursor-pointer"
                                                         title="Perpanjang Masa Aktif via QRIS"
                                                     >
                                                         <i class="ti ti-history text-base"></i>
-                                                    </button>
+                                                    </button> -->
                                                 {/if}
                                                 {#if isSuperAdmin}
                                                     <button
                                                         type="button"
-                                                        onclick={() => openAdminAdjustModal(product)}
+                                                        onclick={() =>
+                                                            openAdminAdjustModal(
+                                                                product,
+                                                            )}
                                                         class="p-2 text-purple-600 hover:text-purple-800 rounded-lg transition inline-block cursor-pointer"
                                                         title="Kelola, Atur, & Reset Masa Aktif (Super Admin)"
                                                     >
-                                                        <i class="ti ti-adjustments-alt text-base"></i>
+                                                        <i
+                                                            class="ti ti-adjustments-alt text-base"
+                                                        ></i>
                                                     </button>
                                                 {/if}
                                             {/if}
+                                            <Link
+                                                href={`/admin/products/${product.id}/modifiers`}
+                                                class="p-2 text-slate-400 hover:text-amber-600 rounded-lg transition inline-block"
+                                                title="Kustomisasi Menu & Topping (FoodPick)"
+                                            >
+                                                <i
+                                                    class="ti ti-tools-kitchen text-base"
+                                                ></i>
+                                            </Link>
                                             <Link
                                                 href={adminProductsEdit.url({
                                                     product: product.id,
@@ -1726,7 +2038,8 @@
                                                 product.product_stock,
                                             )}
                                             {@const variantName =
-                                                variant.options && variant.options.length > 0
+                                                variant.options &&
+                                                variant.options.length > 0
                                                     ? variant.options
                                                           .map((o) => o.name)
                                                           .join(' - ')
@@ -1734,8 +2047,10 @@
                                             <tr
                                                 class="variant-row bg-slate-50/20 hover:bg-slate-50/50 border-b border-slate-100/80 transition duration-150"
                                             >
-                                                <td class="px-3 xl:px-4 py-3"></td>
-                                                <td class="px-3 xl:px-4 py-3"></td>
+                                                <td class="px-3 xl:px-4 py-3"
+                                                ></td>
+                                                <td class="px-3 xl:px-4 py-3"
+                                                ></td>
                                                 <td
                                                     class="px-3 xl:px-4 py-3 pl-10 xl:pl-12"
                                                     data-label="Varian"
@@ -1752,7 +2067,12 @@
                                                                 src={getImageUrl(
                                                                     variant.image,
                                                                 )}
-                                                                onerror={(e) => { e.target.src = '/noimage/image.png'; }}
+                                                                onerror={(
+                                                                    e,
+                                                                ) => {
+                                                                    e.target.src =
+                                                                        '/noimage/image.png';
+                                                                }}
                                                                 alt={variant.sku}
                                                             />
                                                         {:else}
@@ -1776,7 +2096,8 @@
                                                                     class="text-[10px] text-slate-400 font-mono truncate max-w-[180px] xl:max-w-[240px] mt-0.5"
                                                                     title={`Kode Variasi: ${variant.sku}`}
                                                                 >
-                                                                    Kode Variasi: {variant.sku}
+                                                                    Kode
+                                                                    Variasi: {variant.sku}
                                                                 </p>
                                                             {/if}
                                                         </div>
@@ -1788,7 +2109,10 @@
                                                         >-</span
                                                     >
                                                 </td>
-                                                <td class="px-3 xl:px-4 py-3" data-label="Harga & Stok">
+                                                <td
+                                                    class="px-3 xl:px-4 py-3"
+                                                    data-label="Harga & Stok"
+                                                >
                                                     <div class="flex flex-col">
                                                         <span
                                                             class="font-extrabold text-xs text-slate-700"
@@ -1826,11 +2150,19 @@
                                                             <i
                                                                 class="ti ti-trending-up text-emerald-500"
                                                             ></i>
-                                                            <span>{variant.performance_sold ?? 0}</span>
+                                                            <span
+                                                                >{variant.performance_sold ??
+                                                                    0}</span
+                                                            >
                                                         </div>
                                                         <span
                                                             class="text-[10px] text-slate-400 font-bold mt-0.5 uppercase tracking-wide"
-                                                            >Rp {Number(variant.performance_revenue ?? 0).toLocaleString('id-ID')}</span
+                                                            >Rp {Number(
+                                                                variant.performance_revenue ??
+                                                                    0,
+                                                            ).toLocaleString(
+                                                                'id-ID',
+                                                            )}</span
                                                         >
                                                     </div>
                                                 </td>
@@ -1858,419 +2190,415 @@
                         </tbody>
                     </table>
                 {/key}
-                </div>
+            </div>
 
-                <!-- Grid Card View Container -->
-                <div
-                    class="p-3 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 bg-slate-50/20 {currentViewMode ===
-                    'list'
-                        ? 'hidden'
-                        : ''}"
-                >
-                    {#if products.data.length === 0}
-                        <div
-                            class="col-span-full py-16 text-center text-slate-400 font-medium bg-white rounded-3xl border border-slate-200/60 shadow-soft flex flex-col items-center justify-center w-full"
+            <!-- Grid Card View Container -->
+            <div
+                class="p-3 sm:p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 bg-slate-50/20 {currentViewMode ===
+                'list'
+                    ? 'hidden'
+                    : ''}"
+            >
+                {#if products.data.length === 0}
+                    <div
+                        class="col-span-full py-16 text-center text-slate-400 font-medium bg-white rounded-3xl border border-slate-200/60 shadow-soft flex flex-col items-center justify-center w-full"
+                    >
+                        <i
+                            class="ti ti-box-off text-5xl block mb-3 text-slate-300"
+                        ></i>
+                        <p
+                            class="font-outfit font-bold text-slate-700 text-base"
                         >
-                            <i
-                                class="ti ti-box-off text-5xl block mb-3 text-slate-300"
-                            ></i>
-                            <p
-                                class="font-outfit font-bold text-slate-700 text-base"
-                            >
-                                Tidak ada produk ditemukan
-                            </p>
-                            <p class="text-xs text-slate-400 mt-1">
-                                Coba sesuaikan kata kunci pencarian atau filter
-                                Anda.
-                            </p>
-                        </div>
-                    {:else}
-                        {#each products.data as product (product.id)}
-                            {@const info = getStockInfo(product)}
-                            {@const hasVariants =
-                                product.variants && product.variants.length > 0}
+                            Tidak ada produk ditemukan
+                        </p>
+                        <p class="text-xs text-slate-400 mt-1">
+                            Coba sesuaikan kata kunci pencarian atau filter
+                            Anda.
+                        </p>
+                    </div>
+                {:else}
+                    {#each products.data as product (product.id)}
+                        {@const info = getStockInfo(product)}
+                        {@const hasVariants =
+                            product.variants && product.variants.length > 0}
+                        <div
+                            class="rounded-3xl border bg-white hover:shadow-card hover:border-slate-300/80 transition-all duration-300 flex flex-col justify-between overflow-hidden relative group p-4 space-y-4 {selectedProducts.includes(
+                                product.id,
+                            )
+                                ? 'ring-2 ring-brand-blueRoyal/30 border-brand-blueRoyal bg-brand-blueRoyal/[0.01]'
+                                : 'border-slate-200'}"
+                        >
+                            <!-- Image Container -->
                             <div
-                                class="rounded-3xl border bg-white hover:shadow-card hover:border-slate-300/80 transition-all duration-300 flex flex-col justify-between overflow-hidden relative group p-4 space-y-4 {selectedProducts.includes(
-                                    product.id,
-                                )
-                                    ? 'ring-2 ring-brand-blueRoyal/30 border-brand-blueRoyal bg-brand-blueRoyal/[0.01]'
-                                    : 'border-slate-200'}"
+                                class="relative w-full aspect-square rounded-2xl overflow-hidden bg-slate-50 border border-slate-100"
                             >
-                                <!-- Image Container -->
-                                <div
-                                    class="relative w-full aspect-square rounded-2xl overflow-hidden bg-slate-50 border border-slate-100"
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedProducts.includes(
-                                            product.id,
-                                        )}
-                                        onchange={() =>
-                                            toggleSelect(product.id)}
-                                        class="absolute top-3 left-3 z-10 w-5 h-5 rounded-md border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 bg-white/95 shadow-soft cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95"
-                                        aria-label={`Pilih ${product.name}`}
-                                    />
-                                    <img
-                                        class="w-full h-full object-cover group-hover:scale-105 transition duration-500 {!product.active
-                                            ? 'opacity-60 grayscale'
-                                            : ''}"
-                                        src={getImageUrl(product.image)}
-                                        onerror={(e) => { e.target.src = '/noimage/image.png'; }}
-                                        alt={product.name}
-                                    />
+                                <input
+                                    type="checkbox"
+                                    checked={selectedProducts.includes(
+                                        product.id,
+                                    )}
+                                    onchange={() => toggleSelect(product.id)}
+                                    class="absolute top-3 left-3 z-10 w-5 h-5 rounded-md border-slate-300 text-brand-blueRoyal focus:ring-brand-blueRoyal/20 bg-white/95 shadow-soft cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95"
+                                    aria-label={`Pilih ${product.name}`}
+                                />
+                                <img
+                                    class="w-full h-full object-cover group-hover:scale-105 transition duration-500 {!product.active
+                                        ? 'opacity-60 grayscale'
+                                        : ''}"
+                                    src={getImageUrl(product.image)}
+                                    onerror={(e) => {
+                                        e.target.src = '/noimage/image.png';
+                                    }}
+                                    alt={product.name}
+                                />
 
-                                    {#if product.categories && product.categories.length > 0}
-                                        <span
-                                            class="absolute top-3 left-10 px-2 py-0.5 bg-white/95 backdrop-blur border border-slate-100 rounded-lg text-[9px] font-black uppercase tracking-wider text-slate-600 shadow-soft"
-                                        >
-                                            {product.categories[0].name}
-                                            {#if product.categories.length > 1}
-                                                <span
-                                                    class="text-brand-blueRoyal ml-0.5 font-extrabold text-[8px]"
-                                                    >(+{product.categories
-                                                        .length - 1})</span
-                                                >
-                                            {/if}
-                                        </span>
-                                    {:else}
-                                        <span
-                                            class="absolute top-3 left-10 px-2 py-0.5 bg-white/95 backdrop-blur border border-slate-100 rounded-lg text-[9px] font-black uppercase tracking-wider text-slate-400 shadow-soft"
-                                        >
-                                            -
-                                        </span>
-                                    {/if}
-
-                                    {#if !product.active}
-                                        <span
-                                            class="absolute top-3 right-3 px-2 py-0.5 bg-slate-100/90 backdrop-blur border border-slate-200 rounded-lg text-[9px] font-extrabold uppercase tracking-wider text-slate-500 shadow-soft"
-                                        >
-                                            Draft
-                                        </span>
-                                    {/if}
-
+                                {#if product.categories && product.categories.length > 0}
                                     <span
-                                        class="absolute bottom-3 left-3 px-2 py-0.5 border rounded-lg text-[9px] font-black uppercase tracking-wider shadow-soft bg-white/95 backdrop-blur border-slate-100 flex items-center gap-1"
+                                        class="absolute top-3 left-10 px-2 py-0.5 bg-white/95 backdrop-blur border border-slate-100 rounded-lg text-[9px] font-black uppercase tracking-wider text-slate-600 shadow-soft"
                                     >
-                                        <span class="text-slate-400">Stok:</span
-                                        >
-                                        {#if hasVariants}
-                                            {@const customStockSum =
-                                                product.variants
-                                                    .filter(
-                                                        (v) => v.product_stock,
-                                                    )
-                                                    .reduce(
-                                                        (sum, v) =>
-                                                            sum +
-                                                            (v.product_stock
-                                                                .stock ?? 0),
-                                                        0,
-                                                    )}
-                                            {@const hasAnyVariantUsingMasterStock =
-                                                product.variants.some(
-                                                    (v) => !v.product_stock,
-                                                )}
-                                            {@const totalStock =
-                                                customStockSum +
-                                                (hasAnyVariantUsingMasterStock
-                                                    ? (product.product_stock
-                                                          ?.stock ?? 0)
-                                                    : 0)}
+                                        {product.categories[0].name}
+                                        {#if product.categories.length > 1}
                                             <span
-                                                class={totalStock === 0
-                                                    ? 'text-rose-500 font-extrabold'
-                                                    : 'text-emerald-600 font-extrabold'}
-                                                >{totalStock}</span
-                                            >
-                                        {:else}
-                                            <span
-                                                class={info.color.includes(
-                                                    'rose',
-                                                )
-                                                    ? 'text-rose-500 font-extrabold'
-                                                    : info.color.includes(
-                                                            'amber',
-                                                        )
-                                                      ? 'text-amber-600 font-extrabold'
-                                                      : info.color.includes(
-                                                              'emerald',
-                                                          )
-                                                        ? 'text-emerald-600 font-extrabold'
-                                                        : 'text-slate-500 font-bold'}
-                                                >{info.text}</span
+                                                class="text-brand-blueRoyal ml-0.5 font-extrabold text-[8px]"
+                                                >(+{product.categories.length -
+                                                    1})</span
                                             >
                                         {/if}
                                     </span>
-                                </div>
+                                {:else}
+                                    <span
+                                        class="absolute top-3 left-10 px-2 py-0.5 bg-white/95 backdrop-blur border border-slate-100 rounded-lg text-[9px] font-black uppercase tracking-wider text-slate-400 shadow-soft"
+                                    >
+                                        -
+                                    </span>
+                                {/if}
 
-                                <!-- Info Area -->
-                                <div
-                                    class="flex-grow flex flex-col justify-between"
+                                {#if !product.active}
+                                    <span
+                                        class="absolute top-3 right-3 px-2 py-0.5 bg-slate-100/90 backdrop-blur border border-slate-200 rounded-lg text-[9px] font-extrabold uppercase tracking-wider text-slate-500 shadow-soft"
+                                    >
+                                        Draft
+                                    </span>
+                                {/if}
+
+                                <span
+                                    class="absolute bottom-3 left-3 px-2 py-0.5 border rounded-lg text-[9px] font-black uppercase tracking-wider shadow-soft bg-white/95 backdrop-blur border-slate-100 flex items-center gap-1"
                                 >
-                                    <div>
-                                        <div
-                                            class="flex items-start justify-between gap-3"
+                                    <span class="text-slate-400">Stok:</span>
+                                    {#if hasVariants}
+                                        {@const customStockSum =
+                                            product.variants
+                                                .filter((v) => v.product_stock)
+                                                .reduce(
+                                                    (sum, v) =>
+                                                        sum +
+                                                        (v.product_stock
+                                                            .stock ?? 0),
+                                                    0,
+                                                )}
+                                        {@const hasAnyVariantUsingMasterStock =
+                                            product.variants.some(
+                                                (v) => !v.product_stock,
+                                            )}
+                                        {@const totalStock =
+                                            customStockSum +
+                                            (hasAnyVariantUsingMasterStock
+                                                ? (product.product_stock
+                                                      ?.stock ?? 0)
+                                                : 0)}
+                                        <span
+                                            class={totalStock === 0
+                                                ? 'text-rose-500 font-extrabold'
+                                                : 'text-emerald-600 font-extrabold'}
+                                            >{totalStock}</span
                                         >
-                                            <div class="min-w-0 flex-grow">
-                                                <Link
-                                                    href={adminProductsEdit.url(
-                                                        { product: product.id },
-                                                    )}
-                                                    class="font-outfit font-bold text-sm cursor-pointer transition line-clamp-2 {product.active
-                                                        ? 'text-slate-800 hover:text-brand-blueRoyal'
-                                                        : 'text-slate-400'}"
-                                                    title={product.name}
-                                                >
-                                                    {product.name}
-                                                </Link>
-                                                <p
-                                                    class="text-[10px] text-slate-400 font-mono mt-1"
-                                                >
-                                                    {hasVariants
-                                                        ? 'SKU Induk'
-                                                        : 'SKU'}: {product.sku}
-                                                </p>
-                                                {#if product.brands && product.brands.length > 0}
-                                                    <p
-                                                        class="text-[10px] text-brand-blueRoyal font-bold uppercase tracking-wider mt-0.5"
-                                                    >
-                                                        {product.brands
-                                                            .map((b) => b.name)
-                                                            .join(', ')}
-                                                    </p>
-                                                {/if}
-                                            </div>
+                                    {:else}
+                                        <span
+                                            class={info.color.includes('rose')
+                                                ? 'text-rose-500 font-extrabold'
+                                                : info.color.includes('amber')
+                                                  ? 'text-amber-600 font-extrabold'
+                                                  : info.color.includes(
+                                                          'emerald',
+                                                      )
+                                                    ? 'text-emerald-600 font-extrabold'
+                                                    : 'text-slate-500 font-bold'}
+                                            >{info.text}</span
+                                        >
+                                    {/if}
+                                </span>
+                            </div>
 
-                                            <!-- Toggle Active Status -->
-                                            <label
-                                                class="relative inline-flex items-center cursor-pointer shrink-0 animate-fade-in"
-                                                title="Tampilkan/Sembunyikan"
+                            <!-- Info Area -->
+                            <div
+                                class="flex-grow flex flex-col justify-between"
+                            >
+                                <div>
+                                    <div
+                                        class="flex items-start justify-between gap-3"
+                                    >
+                                        <div class="min-w-0 flex-grow">
+                                            <Link
+                                                href={adminProductsEdit.url({
+                                                    product: product.id,
+                                                })}
+                                                class="font-outfit font-bold text-sm cursor-pointer transition line-clamp-2 {product.active
+                                                    ? 'text-slate-800 hover:text-brand-blueRoyal'
+                                                    : 'text-slate-400'}"
+                                                title={product.name}
                                             >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={product.active}
-                                                    onchange={() =>
-                                                        toggleActive(product)}
-                                                    class="sr-only peer"
-                                                    aria-label={`Aktifkan produk ${product.name}`}
-                                                />
-                                                <div
-                                                    class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-blueRoyal"
-                                                ></div>
-                                            </label>
+                                                {product.name}
+                                            </Link>
+                                            <p
+                                                class="text-[10px] text-slate-400 font-mono mt-1"
+                                            >
+                                                {hasVariants
+                                                    ? 'SKU Induk'
+                                                    : 'SKU'}: {product.sku}
+                                            </p>
+                                            {#if product.brands && product.brands.length > 0}
+                                                <p
+                                                    class="text-[10px] text-brand-blueRoyal font-bold uppercase tracking-wider mt-0.5"
+                                                >
+                                                    {product.brands
+                                                        .map((b) => b.name)
+                                                        .join(', ')}
+                                                </p>
+                                            {/if}
                                         </div>
 
-                                        <div class="mt-3">
-                                            {#if hasVariants}
-                                                {@const prices =
-                                                    product.variants.map((v) =>
-                                                        Number(
-                                                            v.product_price
+                                        <!-- Toggle Active Status -->
+                                        <label
+                                            class="relative inline-flex items-center cursor-pointer shrink-0 animate-fade-in"
+                                            title="Tampilkan/Sembunyikan"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={product.active}
+                                                onchange={() =>
+                                                    toggleActive(product)}
+                                                class="sr-only peer"
+                                                aria-label={`Aktifkan produk ${product.name}`}
+                                            />
+                                            <div
+                                                class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-blueRoyal"
+                                            ></div>
+                                        </label>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        {#if hasVariants}
+                                            {@const prices =
+                                                product.variants.map((v) =>
+                                                    Number(
+                                                        v.product_price
+                                                            ?.price ??
+                                                            v.price ??
+                                                            product
+                                                                .product_price
                                                                 ?.price ??
-                                                                v.price ??
+                                                            0,
+                                                    ),
+                                                )}
+                                            {@const minPrice = prices.length
+                                                ? Math.min(...prices)
+                                                : 0}
+                                            {@const maxPrice = prices.length
+                                                ? Math.max(...prices)
+                                                : 0}
+                                            <p
+                                                class="font-outfit font-black text-slate-800 text-[13px] xl:text-[14px] leading-none"
+                                            >
+                                                {minPrice === maxPrice
+                                                    ? `Rp ${minPrice.toLocaleString('id-ID')}`
+                                                    : `Rp ${minPrice.toLocaleString('id-ID')} - Rp ${maxPrice.toLocaleString('id-ID')}`}
+                                            </p>
+                                            <div
+                                                class="flex flex-col gap-1.5 mt-2.5"
+                                            >
+                                                <span
+                                                    class="inline-flex items-center gap-1.5 self-start px-2 py-0.5 bg-brand-blueLight text-brand-blueRoyal border border-blue-100 rounded-lg text-[9px] font-black uppercase tracking-wider"
+                                                >
+                                                    <i
+                                                        class="ti ti-layers-difference text-[10px]"
+                                                    ></i>
+                                                    <span
+                                                        >{product.variants
+                                                            .length} Varian</span
+                                                    >
+                                                </span>
+                                                <span
+                                                    class="text-[9px] text-slate-400 font-bold bg-slate-100 self-start px-2 py-0.5 rounded-lg border border-slate-200/40 truncate max-w-full uppercase tracking-wide"
+                                                    title={(
+                                                        product.variations || []
+                                                    )
+                                                        .map((v) => v.name)
+                                                        .join(', ')}
+                                                >
+                                                    {(product.variations || [])
+                                                        .map((v) => v.name)
+                                                        .join(', ')}
+                                                </span>
+                                            </div>
+                                        {:else}
+                                            <p
+                                                class="font-outfit font-black text-slate-800 text-[15px] leading-none"
+                                            >
+                                                Rp {Number(
+                                                    product.product_price
+                                                        ?.price ?? 0,
+                                                ).toLocaleString('id-ID')}
+                                            </p>
+                                        {/if}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Collapsible Variants Area (Grid view) -->
+                            {#if hasVariants && expandedProducts.has(product.id)}
+                                <div
+                                    class="mt-3 pt-3 border-t border-dashed border-slate-200/80 space-y-2 max-h-48 overflow-y-auto custom-scrollbar"
+                                >
+                                    {#each product.variants as variant}
+                                        {@const vStockInfo = getStockInfo(
+                                            {
+                                                product_stock:
+                                                    variant.product_stock,
+                                            },
+                                            product.product_stock,
+                                        )}
+                                        {@const variantName = variant.options
+                                            ? variant.options
+                                                  .map((o) => o.name)
+                                                  .join(' - ')
+                                            : variant.sku}
+                                        <div
+                                            class="flex items-start gap-2.5 p-2 bg-slate-50/50 hover:bg-slate-50 border border-slate-100 rounded-xl transition duration-150"
+                                        >
+                                            {#if variant.image}
+                                                <img
+                                                    class="w-9 h-9 rounded-lg border border-slate-200 object-cover bg-white shrink-0"
+                                                    src={getImageUrl(
+                                                        variant.image,
+                                                    )}
+                                                    onerror={(e) => {
+                                                        e.target.src =
+                                                            '/noimage/image.png';
+                                                    }}
+                                                    alt={variant.sku}
+                                                />
+                                            {:else}
+                                                <div
+                                                    class="w-9 h-9 rounded-lg bg-white border border-dashed border-slate-200 flex items-center justify-center text-slate-400 shrink-0"
+                                                >
+                                                    <i class="ti ti-box text-xs"
+                                                    ></i>
+                                                </div>
+                                            {/if}
+                                            <div class="flex-grow min-w-0">
+                                                <p
+                                                    class="font-bold text-xs text-slate-700 truncate"
+                                                    title={variantName}
+                                                >
+                                                    {variantName}
+                                                </p>
+                                                <p
+                                                    class="text-[9px] text-slate-400 font-mono"
+                                                >
+                                                    SKU: {variant.sku}
+                                                </p>
+                                                <div
+                                                    class="flex items-center justify-between mt-1 text-[10px]"
+                                                >
+                                                    <span
+                                                        class="font-extrabold text-slate-700"
+                                                        >Rp {Number(
+                                                            variant
+                                                                .product_price
+                                                                ?.price ??
                                                                 product
                                                                     .product_price
                                                                     ?.price ??
                                                                 0,
-                                                        ),
-                                                    )}
-                                                {@const minPrice = prices.length
-                                                    ? Math.min(...prices)
-                                                    : 0}
-                                                {@const maxPrice = prices.length
-                                                    ? Math.max(...prices)
-                                                    : 0}
-                                                <p
-                                                    class="font-outfit font-black text-slate-800 text-[13px] xl:text-[14px] leading-none"
-                                                >
-                                                    {minPrice === maxPrice
-                                                        ? `Rp ${minPrice.toLocaleString('id-ID')}`
-                                                        : `Rp ${minPrice.toLocaleString('id-ID')} - Rp ${maxPrice.toLocaleString('id-ID')}`}
-                                                </p>
-                                                <div
-                                                    class="flex flex-col gap-1.5 mt-2.5"
-                                                >
+                                                        ).toLocaleString(
+                                                            'id-ID',
+                                                        )}</span
+                                                    >
                                                     <span
-                                                        class="inline-flex items-center gap-1.5 self-start px-2 py-0.5 bg-brand-blueLight text-brand-blueRoyal border border-blue-100 rounded-lg text-[9px] font-black uppercase tracking-wider"
-                                                    >
-                                                        <i
-                                                            class="ti ti-layers-difference text-[10px]"
-                                                        ></i>
-                                                        <span
-                                                            >{product.variants
-                                                                .length} Varian</span
-                                                        >
-                                                    </span>
-                                                    <span
-                                                        class="text-[9px] text-slate-400 font-bold bg-slate-100 self-start px-2 py-0.5 rounded-lg border border-slate-200/40 truncate max-w-full uppercase tracking-wide"
-                                                        title={(
-                                                            product.variations ||
-                                                            []
+                                                        class={vStockInfo.color.includes(
+                                                            'rose',
                                                         )
-                                                            .map((v) => v.name)
-                                                            .join(', ')}
+                                                            ? 'text-rose-500 font-extrabold'
+                                                            : vStockInfo.color.includes(
+                                                                    'amber',
+                                                                )
+                                                              ? 'text-amber-600 font-extrabold'
+                                                              : 'text-slate-500 font-bold'}
+                                                        >{vStockInfo.text}</span
                                                     >
-                                                        {(
-                                                            product.variations ||
-                                                            []
-                                                        )
-                                                            .map((v) => v.name)
-                                                            .join(', ')}
-                                                    </span>
-                                                </div>
-                                            {:else}
-                                                <p
-                                                    class="font-outfit font-black text-slate-800 text-[15px] leading-none"
-                                                >
-                                                    Rp {Number(
-                                                        product.product_price
-                                                            ?.price ?? 0,
-                                                    ).toLocaleString('id-ID')}
-                                                </p>
-                                            {/if}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Collapsible Variants Area (Grid view) -->
-                                {#if hasVariants && expandedProducts.has(product.id)}
-                                    <div
-                                        class="mt-3 pt-3 border-t border-dashed border-slate-200/80 space-y-2 max-h-48 overflow-y-auto custom-scrollbar"
-                                    >
-                                        {#each product.variants as variant}
-                                            {@const vStockInfo = getStockInfo(
-                                                {
-                                                    product_stock:
-                                                        variant.product_stock,
-                                                },
-                                                product.product_stock,
-                                            )}
-                                            {@const variantName =
-                                                variant.options
-                                                    ? variant.options
-                                                          .map((o) => o.name)
-                                                          .join(' - ')
-                                                    : variant.sku}
-                                            <div
-                                                class="flex items-start gap-2.5 p-2 bg-slate-50/50 hover:bg-slate-50 border border-slate-100 rounded-xl transition duration-150"
-                                            >
-                                                {#if variant.image}
-                                                    <img
-                                                        class="w-9 h-9 rounded-lg border border-slate-200 object-cover bg-white shrink-0"
-                                                        src={getImageUrl(
-                                                            variant.image,
-                                                        )}
-                                                        onerror={(e) => { e.target.src = '/noimage/image.png'; }}
-                                                        alt={variant.sku}
-                                                    />
-                                                {:else}
-                                                    <div
-                                                        class="w-9 h-9 rounded-lg bg-white border border-dashed border-slate-200 flex items-center justify-center text-slate-400 shrink-0"
-                                                    >
-                                                        <i
-                                                            class="ti ti-box text-xs"
-                                                        ></i>
-                                                    </div>
-                                                {/if}
-                                                <div class="flex-grow min-w-0">
-                                                    <p
-                                                        class="font-bold text-xs text-slate-700 truncate"
-                                                        title={variantName}
-                                                    >
-                                                        {variantName}
-                                                    </p>
-                                                    <p
-                                                        class="text-[9px] text-slate-400 font-mono"
-                                                    >
-                                                        SKU: {variant.sku}
-                                                    </p>
-                                                    <div
-                                                        class="flex items-center justify-between mt-1 text-[10px]"
-                                                    >
-                                                        <span
-                                                            class="font-extrabold text-slate-700"
-                                                            >Rp {Number(
-                                                                variant
-                                                                    .product_price
-                                                                    ?.price ??
-                                                                    product
-                                                                        .product_price
-                                                                        ?.price ??
-                                                                    0,
-                                                            ).toLocaleString(
-                                                                'id-ID',
-                                                            )}</span
-                                                        >
-                                                        <span
-                                                            class={vStockInfo.color.includes(
-                                                                'rose',
-                                                            )
-                                                                ? 'text-rose-500 font-extrabold'
-                                                                : vStockInfo.color.includes(
-                                                                        'amber',
-                                                                    )
-                                                                  ? 'text-amber-600 font-extrabold'
-                                                                  : 'text-slate-500 font-bold'}
-                                                            >{vStockInfo.text}</span
-                                                        >
-                                                    </div>
                                                 </div>
                                             </div>
-                                        {/each}
-                                    </div>
-                                {/if}
+                                        </div>
+                                    {/each}
+                                </div>
+                            {/if}
 
-                                <!-- Action Buttons Footer -->
-                                <div
-                                    class="pt-3 border-t border-slate-100/80 flex items-center justify-between gap-2 shrink-0"
-                                >
-                                    {#if hasVariants}
-                                        <button
-                                            onclick={() =>
-                                                toggleVariantDrawer(product.id)}
-                                            class="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-brand-blueLight hover:text-brand-blueRoyal border border-slate-200/60 hover:border-brand-blueRoyal/20 flex items-center gap-1 text-slate-500 hover:text-brand-blueRoyal font-extrabold text-xs transition duration-200 shadow-soft"
-                                        >
-                                            <span>Varian</span>
-                                            <i
-                                                class="ti ti-chevron-down text-[10px] transition-transform duration-300 {expandedProducts.has(
-                                                    product.id,
-                                                )
-                                                    ? 'rotate-180'
-                                                    : ''}"
-                                            ></i>
-                                        </button>
-                                    {/if}
-                                    <div
-                                        class="flex items-center gap-1.5 ml-auto"
+                            <!-- Action Buttons Footer -->
+                            <div
+                                class="pt-3 border-t border-slate-100/80 flex items-center justify-between gap-2 shrink-0"
+                            >
+                                {#if hasVariants}
+                                    <button
+                                        onclick={() =>
+                                            toggleVariantDrawer(product.id)}
+                                        class="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-brand-blueLight hover:text-brand-blueRoyal border border-slate-200/60 hover:border-brand-blueRoyal/20 flex items-center gap-1 text-slate-500 hover:text-brand-blueRoyal font-extrabold text-xs transition duration-200 shadow-soft"
                                     >
-                                        <Link
-                                            href={adminProductsEdit.url({
-                                                product: product.id,
-                                            })}
-                                            class="w-8 h-8 rounded-xl bg-slate-50 border border-slate-200 hover:bg-brand-blueRoyal/5 hover:text-brand-blueRoyal hover:border-brand-blueRoyal/20 flex items-center justify-center text-slate-500 transition duration-200 shadow-soft"
-                                            title="Edit"
-                                        >
-                                            <i class="ti ti-edit text-sm"></i>
-                                        </Link>
-                                        <button
-                                            onclick={() =>
-                                                deleteProduct(product)}
-                                            class="w-8 h-8 rounded-xl bg-slate-50 border border-slate-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200 flex items-center justify-center text-slate-500 transition duration-200 shadow-soft"
-                                            title="Hapus"
-                                        >
-                                            <i class="ti ti-trash text-sm"></i>
-                                        </button>
-                                    </div>
+                                        <span>Varian</span>
+                                        <i
+                                            class="ti ti-chevron-down text-[10px] transition-transform duration-300 {expandedProducts.has(
+                                                product.id,
+                                            )
+                                                ? 'rotate-180'
+                                                : ''}"
+                                        ></i>
+                                    </button>
+                                {/if}
+                                <div class="flex items-center gap-1.5 ml-auto">
+                                    <Link
+                                        href={`/admin/products/${product.id}/modifiers`}
+                                        class="w-8 h-8 rounded-xl bg-slate-50 border border-slate-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 flex items-center justify-center text-slate-500 transition duration-200 shadow-soft"
+                                        title="Kustomisasi Menu & Topping"
+                                    >
+                                        <i class="ti ti-tools-kitchen text-sm"
+                                        ></i>
+                                    </Link>
+                                    <Link
+                                        href={adminProductsEdit.url({
+                                            product: product.id,
+                                        })}
+                                        class="w-8 h-8 rounded-xl bg-slate-50 border border-slate-200 hover:bg-brand-blueRoyal/5 hover:text-brand-blueRoyal hover:border-brand-blueRoyal/20 flex items-center justify-center text-slate-500 transition duration-200 shadow-soft"
+                                        title="Edit"
+                                    >
+                                        <i class="ti ti-edit text-sm"></i>
+                                    </Link>
+                                    <button
+                                        onclick={() => deleteProduct(product)}
+                                        class="w-8 h-8 rounded-xl bg-slate-50 border border-slate-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200 flex items-center justify-center text-slate-500 transition duration-200 shadow-soft"
+                                        title="Hapus"
+                                    >
+                                        <i class="ti ti-trash text-sm"></i>
+                                    </button>
                                 </div>
                             </div>
-                        {/each}
-                    {/if}
-                </div>
-
-                <!-- Pagination -->
-                <Pagination paginator={products} />
+                        </div>
+                    {/each}
+                {/if}
             </div>
-        </main>
+
+            <!-- Pagination -->
+            <Pagination paginator={products} />
+        </div>
+    </main>
 
     <!-- Import Modal -->
     {#if isImportModalOpen}
@@ -2400,8 +2728,6 @@
                             />
                         </div>
                     {/if}
-
-
                 </div>
 
                 <!-- Step 2: Preview Area (Main Workspace Pane) -->
@@ -2417,7 +2743,7 @@
 
                     {#if importError}
                         <div
-                             class="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-2.5 text-xs text-rose-700 font-medium"
+                            class="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-2.5 text-xs text-rose-700 font-medium"
                         >
                             <i
                                 class="ti ti-alert-circle text-lg shrink-0 mt-0.5"
@@ -3773,21 +4099,38 @@
 
     <!-- RENEW LISTING MODAL -->
     {#if isRenewModalOpen && productToRenew}
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+        >
+            <div
+                class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4"
+            >
+                <div
+                    class="flex items-center justify-between border-b border-slate-100 pb-3"
+                >
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0"
+                        >
                             <i class="ti ti-history text-xl"></i>
                         </div>
                         <div>
-                            <h3 class="font-bold text-sm text-slate-900">Perpanjang Masa Aktif</h3>
-                            <p class="text-xs text-slate-400 truncate max-w-[200px]">{productToRenew.name}</p>
+                            <h3 class="font-bold text-sm text-slate-900">
+                                Perpanjang Masa Aktif
+                            </h3>
+                            <p
+                                class="text-xs text-slate-400 truncate max-w-[200px]"
+                            >
+                                {productToRenew.name}
+                            </p>
                         </div>
                     </div>
                     <button
                         type="button"
-                        onclick={() => { isRenewModalOpen = false; productToRenew = null; }}
+                        onclick={() => {
+                            isRenewModalOpen = false;
+                            productToRenew = null;
+                        }}
                         class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center cursor-pointer"
                     >
                         <i class="ti ti-x"></i>
@@ -3795,46 +4138,73 @@
                 </div>
 
                 <div class="space-y-3">
-                    <p class="text-xs text-slate-600">Pilih paket perpanjangan masa aktif untuk produk ini:</p>
+                    <p class="text-xs text-slate-600">
+                        Pilih paket perpanjangan masa aktif untuk produk ini:
+                    </p>
 
-                    <div class="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
-                        {#each (listingPricing.packages || []) as pkg}
+                    <div
+                        class="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar"
+                    >
+                        {#each listingPricing.packages || [] as pkg}
                             {@const pkgKey = pkg.id || pkg.days}
                             <button
                                 type="button"
-                                onclick={() => renewDurationType = pkgKey}
+                                onclick={() => (renewDurationType = pkgKey)}
                                 class="w-full p-3 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer
-                                       {renewDurationType === pkgKey ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20' : 'border-slate-200 bg-white hover:bg-slate-50'}"
+                                       {renewDurationType === pkgKey
+                                    ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/20'
+                                    : 'border-slate-200 bg-white hover:bg-slate-50'}"
                             >
                                 <div class="space-y-0.5">
                                     <div class="flex items-center gap-2">
-                                        <span class="text-xs font-bold text-slate-800">{pkg.name}</span>
+                                        <span
+                                            class="text-xs font-bold text-slate-800"
+                                            >{pkg.name}</span
+                                        >
                                         {#if pkg.promo_name}
-                                            <span class="px-1.5 py-0.5 rounded-md bg-amber-50 text-[10px] font-extrabold text-amber-800 border border-amber-200">
+                                            <span
+                                                class="px-1.5 py-0.5 rounded-md bg-amber-50 text-[10px] font-extrabold text-amber-800 border border-amber-200"
+                                            >
                                                 {pkg.promo_name}
                                             </span>
                                         {/if}
                                     </div>
-                                    <span class="text-[10px] text-slate-500 block">Aktif {pkg.days} Hari</span>
+                                    <span
+                                        class="text-[10px] text-slate-500 block"
+                                        >Aktif {pkg.days} Hari</span
+                                    >
                                 </div>
                                 <div class="text-right">
                                     {#if pkg.original_price && Number(pkg.original_price) > Number(pkg.price)}
-                                        <span class="text-[10px] text-slate-400 line-through font-medium block">{fmt(pkg.original_price)}</span>
-                                        <span class="text-xs font-black text-emerald-600">{fmt(pkg.price)}</span>
+                                        <span
+                                            class="text-[10px] text-slate-400 line-through font-medium block"
+                                            >{fmt(pkg.original_price)}</span
+                                        >
+                                        <span
+                                            class="text-xs font-black text-emerald-600"
+                                            >{fmt(pkg.price)}</span
+                                        >
                                     {:else}
-                                        <span class="text-xs font-black text-blue-700">{fmt(pkg.price)}</span>
+                                        <span
+                                            class="text-xs font-black text-blue-700"
+                                            >{fmt(pkg.price)}</span
+                                        >
                                     {/if}
                                 </div>
                             </button>
                         {/each}
                     </div>
-
                 </div>
 
-                <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <div
+                    class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2"
+                >
                     <button
                         type="button"
-                        onclick={() => { isRenewModalOpen = false; productToRenew = null; }}
+                        onclick={() => {
+                            isRenewModalOpen = false;
+                            productToRenew = null;
+                        }}
                         class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition cursor-pointer"
                     >
                         Batal
@@ -3844,7 +4214,9 @@
                         onclick={submitRenewListing}
                         disabled={submittingRenew}
                         class="px-5 py-2.5 rounded-xl font-bold text-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md
-                               {isRenewSelectedFree ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20'}"
+                               {isRenewSelectedFree
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20'}"
                     >
                         {#if submittingRenew}
                             <i class="ti ti-loader animate-spin text-sm"></i>
@@ -3864,18 +4236,34 @@
 
     <!-- SUPER ADMIN LISTING ADJUSTMENT MODAL -->
     {#if isAdminAdjustModalOpen && productToAdjust}
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-left border border-slate-100 animate-scale-up">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+        >
+            <div
+                class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-left border border-slate-100 animate-scale-up"
+            >
+                <div
+                    class="flex items-center justify-between border-b border-slate-100 pb-3"
+                >
                     <div class="flex items-center gap-2">
-                        <span class="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold text-xs border border-purple-200 flex items-center gap-1.5">
-                            <i class="ti ti-shield-check text-sm"></i> Super Admin Control
+                        <span
+                            class="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold text-xs border border-purple-200 flex items-center gap-1.5"
+                        >
+                            <i class="ti ti-shield-check text-sm"></i> Super Admin
+                            Control
                         </span>
-                        <h3 class="font-bold text-sm text-slate-900 line-clamp-1">{productToAdjust.name}</h3>
+                        <h3
+                            class="font-bold text-sm text-slate-900 line-clamp-1"
+                        >
+                            {productToAdjust.name}
+                        </h3>
                     </div>
                     <button
                         type="button"
-                        onclick={() => { isAdminAdjustModalOpen = false; productToAdjust = null; }}
+                        onclick={() => {
+                            isAdminAdjustModalOpen = false;
+                            productToAdjust = null;
+                        }}
                         class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
                     >
                         <i class="ti ti-x"></i>
@@ -3883,42 +4271,55 @@
                 </div>
 
                 <div class="space-y-3">
-                    <p class="text-xs text-slate-500">Atur, tambah, kurangi, atau reset masa aktif listing produk secara langsung tanpa pembayaran:</p>
+                    <p class="text-xs text-slate-500">
+                        Atur, tambah, kurangi, atau reset masa aktif listing
+                        produk secara langsung tanpa pembayaran:
+                    </p>
 
                     <!-- Option Selection -->
                     <div class="grid grid-cols-2 gap-2">
                         <button
                             type="button"
-                            onclick={() => adminAdjustAction = 'add_days'}
+                            onclick={() => (adminAdjustAction = 'add_days')}
                             class="p-2.5 rounded-xl border text-left text-xs font-bold transition flex items-center gap-2 cursor-pointer
-                                   {adminAdjustAction === 'add_days' ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-500/20' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}"
+                                   {adminAdjustAction === 'add_days'
+                                ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-500/20'
+                                : 'border-slate-200 text-slate-700 hover:bg-slate-50'}"
                         >
-                            <i class="ti ti-calendar-plus text-sm"></i> Tambah Hari (+Hari)
+                            <i class="ti ti-calendar-plus text-sm"></i> Tambah Hari
+                            (+Hari)
                         </button>
 
                         <button
                             type="button"
-                            onclick={() => adminAdjustAction = 'set_days'}
+                            onclick={() => (adminAdjustAction = 'set_days')}
                             class="p-2.5 rounded-xl border text-left text-xs font-bold transition flex items-center gap-2 cursor-pointer
-                                   {adminAdjustAction === 'set_days' ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-500/20' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}"
+                                   {adminAdjustAction === 'set_days'
+                                ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-500/20'
+                                : 'border-slate-200 text-slate-700 hover:bg-slate-50'}"
                         >
                             <i class="ti ti-adjustments text-sm"></i> Set Jumlah Hari
                         </button>
 
                         <button
                             type="button"
-                            onclick={() => adminAdjustAction = 'set_date'}
+                            onclick={() => (adminAdjustAction = 'set_date')}
                             class="p-2.5 rounded-xl border text-left text-xs font-bold transition flex items-center gap-2 cursor-pointer
-                                   {adminAdjustAction === 'set_date' ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-500/20' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}"
+                                   {adminAdjustAction === 'set_date'
+                                ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-500/20'
+                                : 'border-slate-200 text-slate-700 hover:bg-slate-50'}"
                         >
                             <i class="ti ti-calendar text-sm"></i> Tanggal Spesifik
                         </button>
 
                         <button
                             type="button"
-                            onclick={() => adminAdjustAction = 'set_unlimited'}
+                            onclick={() =>
+                                (adminAdjustAction = 'set_unlimited')}
                             class="p-2.5 rounded-xl border text-left text-xs font-bold transition flex items-center gap-2 cursor-pointer
-                                   {adminAdjustAction === 'set_unlimited' ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-500/20' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}"
+                                   {adminAdjustAction === 'set_unlimited'
+                                ? 'border-purple-600 bg-purple-50 text-purple-700 ring-2 ring-purple-500/20'
+                                : 'border-slate-200 text-slate-700 hover:bg-slate-50'}"
                         >
                             <i class="ti ti-infinity text-sm"></i> Unlimited
                         </button>
@@ -3926,8 +4327,13 @@
 
                     <!-- Dynamic Input Fields based on action -->
                     {#if adminAdjustAction === 'add_days'}
-                        <div class="bg-purple-50/50 p-3 rounded-xl border border-purple-100 space-y-1.5">
-                            <label class="text-xs font-bold text-slate-700 block">Tambah Jumlah Hari:</label>
+                        <div
+                            class="bg-purple-50/50 p-3 rounded-xl border border-purple-100 space-y-1.5"
+                        >
+                            <label
+                                class="text-xs font-bold text-slate-700 block"
+                                >Tambah Jumlah Hari:</label
+                            >
                             <div class="flex items-center gap-2">
                                 <input
                                     type="number"
@@ -3935,13 +4341,24 @@
                                     class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-800 bg-white focus:outline-none"
                                     placeholder="Contoh: 30"
                                 />
-                                <span class="text-xs font-bold text-slate-600 whitespace-nowrap">Hari</span>
+                                <span
+                                    class="text-xs font-bold text-slate-600 whitespace-nowrap"
+                                    >Hari</span
+                                >
                             </div>
-                            <p class="text-[10px] text-slate-500">Masa aktif produk akan ditambah +{adminAdjustDays} hari dari tanggal aktif terakhir.</p>
+                            <p class="text-[10px] text-slate-500">
+                                Masa aktif produk akan ditambah +{adminAdjustDays}
+                                hari dari tanggal aktif terakhir.
+                            </p>
                         </div>
                     {:else if adminAdjustAction === 'set_days'}
-                        <div class="bg-purple-50/50 p-3 rounded-xl border border-purple-100 space-y-1.5">
-                            <label class="text-xs font-bold text-slate-700 block">Set Masa Aktif (Dari Sekarang):</label>
+                        <div
+                            class="bg-purple-50/50 p-3 rounded-xl border border-purple-100 space-y-1.5"
+                        >
+                            <label
+                                class="text-xs font-bold text-slate-700 block"
+                                >Set Masa Aktif (Dari Sekarang):</label
+                            >
                             <div class="flex items-center gap-2">
                                 <input
                                     type="number"
@@ -3950,13 +4367,24 @@
                                     class="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-800 bg-white focus:outline-none"
                                     placeholder="Contoh: 15"
                                 />
-                                <span class="text-xs font-bold text-slate-600 whitespace-nowrap">Hari</span>
+                                <span
+                                    class="text-xs font-bold text-slate-600 whitespace-nowrap"
+                                    >Hari</span
+                                >
                             </div>
-                            <p class="text-[10px] text-slate-500">Masa aktif produk akan diatur persis {adminAdjustDays} hari dari hari ini.</p>
+                            <p class="text-[10px] text-slate-500">
+                                Masa aktif produk akan diatur persis {adminAdjustDays}
+                                hari dari hari ini.
+                            </p>
                         </div>
                     {:else if adminAdjustAction === 'set_date'}
-                        <div class="bg-purple-50/50 p-3 rounded-xl border border-purple-100 space-y-1.5">
-                            <label class="text-xs font-bold text-slate-700 block">Pilih Tanggal Kedaluwarsa:</label>
+                        <div
+                            class="bg-purple-50/50 p-3 rounded-xl border border-purple-100 space-y-1.5"
+                        >
+                            <label
+                                class="text-xs font-bold text-slate-700 block"
+                                >Pilih Tanggal Kedaluwarsa:</label
+                            >
                             <input
                                 type="datetime-local"
                                 bind:value={adminAdjustDate}
@@ -3964,17 +4392,29 @@
                             />
                         </div>
                     {:else if adminAdjustAction === 'set_unlimited'}
-                        <div class="bg-blue-50 p-3 rounded-xl border border-blue-100 text-center space-y-1">
-                            <i class="ti ti-infinity text-2xl text-blue-600"></i>
-                            <p class="text-xs font-bold text-blue-900">Ubah Menjadi Produk Unlimited</p>
-                            <p class="text-[10px] text-blue-700">Produk ini tidak akan pernah kedaluwarsa.</p>
+                        <div
+                            class="bg-blue-50 p-3 rounded-xl border border-blue-100 text-center space-y-1"
+                        >
+                            <i class="ti ti-infinity text-2xl text-blue-600"
+                            ></i>
+                            <p class="text-xs font-bold text-blue-900">
+                                Ubah Menjadi Produk Unlimited
+                            </p>
+                            <p class="text-[10px] text-blue-700">
+                                Produk ini tidak akan pernah kedaluwarsa.
+                            </p>
                         </div>
                     {/if}
 
-                    <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <div
+                        class="pt-2 border-t border-slate-100 flex items-center justify-between"
+                    >
                         <button
                             type="button"
-                            onclick={() => { adminAdjustAction = 'reset_expired'; submitAdminAdjustListing(); }}
+                            onclick={() => {
+                                adminAdjustAction = 'reset_expired';
+                                submitAdminAdjustListing();
+                            }}
                             disabled={submittingAdminAdjust}
                             class="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-[11px] transition cursor-pointer flex items-center gap-1"
                             title="Reset / Nonaktifkan Masa Aktif Produk"
@@ -3986,7 +4426,10 @@
                         <div class="flex items-center gap-2">
                             <button
                                 type="button"
-                                onclick={() => { isAdminAdjustModalOpen = false; productToAdjust = null; }}
+                                onclick={() => {
+                                    isAdminAdjustModalOpen = false;
+                                    productToAdjust = null;
+                                }}
                                 class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition cursor-pointer"
                             >
                                 Batal
@@ -3998,7 +4441,8 @@
                                 class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-md shadow-purple-600/20 disabled:opacity-50"
                             >
                                 {#if submittingAdminAdjust}
-                                    <i class="ti ti-loader animate-spin text-sm"></i>
+                                    <i class="ti ti-loader animate-spin text-sm"
+                                    ></i>
                                     <span>Menyimpan...</span>
                                 {:else}
                                     <i class="ti ti-check text-sm"></i>
@@ -4014,16 +4458,26 @@
 
     <!-- MIDTRANS QRIS PAYMENT MODAL -->
     {#if qrisModalData}
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center max-h-[90vh] overflow-y-auto">
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+        >
+            <div
+                class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center max-h-[90vh] overflow-y-auto"
+            >
                 <!-- Header -->
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div
+                    class="flex items-center justify-between border-b border-slate-100 pb-3"
+                >
                     <div class="flex items-center gap-2 flex-wrap">
-                        <span class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 font-bold text-xs border border-rose-200/80 flex items-center gap-1.5">
+                        <span
+                            class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 font-bold text-xs border border-rose-200/80 flex items-center gap-1.5"
+                        >
                             <i class="ti ti-qrcode text-sm"></i> Midtrans QRIS
                         </span>
                         {#if qrisModalData.is_sandbox}
-                            <span class="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold text-[10px] border border-amber-200">
+                            <span
+                                class="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 font-bold text-[10px] border border-amber-200"
+                            >
                                 <i class="ti ti-flask text-[9px]"></i> SANDBOX
                             </span>
                         {/if}
@@ -4039,60 +4493,108 @@
 
                 <div class="space-y-3">
                     <div>
-                        <p class="text-xs font-semibold text-slate-600">Scan QR Code di bawah dengan E-Wallet / Mobile Banking:</p>
-                        <p class="text-[11px] font-medium text-slate-400 mt-0.5">GoPay, ShopeePay, OVO, Dana, LinkAja, BCA, Mandiri, dll.</p>
+                        <p class="text-xs font-semibold text-slate-600">
+                            Scan QR Code di bawah dengan E-Wallet / Mobile
+                            Banking:
+                        </p>
+                        <p
+                            class="text-[11px] font-medium text-slate-400 mt-0.5"
+                        >
+                            GoPay, ShopeePay, OVO, Dana, LinkAja, BCA, Mandiri,
+                            dll.
+                        </p>
                     </div>
 
                     {#if qrisModalData.qr_image}
-                        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 inline-block shadow-sm">
-                            <img src={qrisModalData.qr_image} alt="QRIS Code" class="w-52 h-52 object-contain mx-auto rounded-lg" />
+                        <div
+                            class="bg-white p-4 rounded-2xl border border-slate-200/80 inline-block shadow-sm"
+                        >
+                            <img
+                                src={qrisModalData.qr_image}
+                                alt="QRIS Code"
+                                class="w-52 h-52 object-contain mx-auto rounded-lg"
+                            />
                         </div>
                     {:else if qrisModalData.qr_string}
-                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 inline-block shadow-inner">
-                            <p class="text-xs font-mono break-all text-slate-700">{qrisModalData.qr_string}</p>
+                        <div
+                            class="bg-slate-50 p-4 rounded-2xl border border-slate-200 inline-block shadow-inner"
+                        >
+                            <p
+                                class="text-xs font-mono break-all text-slate-700"
+                            >
+                                {qrisModalData.qr_string}
+                            </p>
                         </div>
                     {/if}
 
-                    <div class="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-100/80 space-y-1">
-                        <span class="text-[11px] text-slate-500 font-medium">Total Biaya Perpanjangan:</span>
-                        <p class="text-xl font-black text-blue-700">{fmt(qrisModalData.fee)}</p>
-                        <p class="text-[11px] font-bold text-slate-600">Durasi: {qrisModalData.days} Hari Masa Aktif</p>
+                    <div
+                        class="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-100/80 space-y-1"
+                    >
+                        <span class="text-[11px] text-slate-500 font-medium"
+                            >Total Biaya Perpanjangan:</span
+                        >
+                        <p class="text-xl font-black text-blue-700">
+                            {fmt(qrisModalData.fee)}
+                        </p>
+                        <p class="text-[11px] font-bold text-slate-600">
+                            Durasi: {qrisModalData.days} Hari Masa Aktif
+                        </p>
                     </div>
 
                     <!-- Staging Debug: Show Order ID & QR Image URL Link -->
                     {#if qrisModalData.order_id}
-                        <div class="bg-amber-50/90 rounded-2xl border border-amber-200/80 p-3 text-left space-y-2">
+                        <div
+                            class="bg-amber-50/90 rounded-2xl border border-amber-200/80 p-3 text-left space-y-2"
+                        >
                             <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-bold text-amber-800 flex items-center gap-1">
-                                    <i class="ti ti-ticket text-[11px]"></i> Order ID (Untuk Midtrans Simulator):
+                                <span
+                                    class="text-[10px] font-bold text-amber-800 flex items-center gap-1"
+                                >
+                                    <i class="ti ti-ticket text-[11px]"></i> Order
+                                    ID (Untuk Midtrans Simulator):
                                 </span>
                                 <button
                                     type="button"
                                     onclick={() => {
                                         if (qrisModalData.order_id) {
-                                            navigator.clipboard?.writeText(qrisModalData.order_id);
-                                            showToast('Order ID berhasil disalin!', 'info');
+                                            navigator.clipboard?.writeText(
+                                                qrisModalData.order_id,
+                                            );
+                                            showToast(
+                                                'Order ID berhasil disalin!',
+                                                'info',
+                                            );
                                         }
                                     }}
                                     class="text-[10px] font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1 cursor-pointer underline"
                                 >
-                                    <i class="ti ti-copy text-[11px]"></i> Salin Order ID
+                                    <i class="ti ti-copy text-[11px]"></i> Salin Order
+                                    ID
                                 </button>
                             </div>
-                            <p class="text-xs font-mono font-bold text-slate-800 bg-white/90 p-1.5 rounded-lg border border-amber-200 text-center tracking-wider">
+                            <p
+                                class="text-xs font-mono font-bold text-slate-800 bg-white/90 p-1.5 rounded-lg border border-amber-200 text-center tracking-wider"
+                            >
                                 {qrisModalData.order_id}
                             </p>
 
                             {#if qrisModalData.qr_image_url || qrisModalData.qr_image}
-                                <div class="pt-1 border-t border-amber-200/60 flex items-center justify-between gap-1">
-                                    <span class="text-[10px] text-amber-700 font-medium">QR Image URL:</span>
+                                <div
+                                    class="pt-1 border-t border-amber-200/60 flex items-center justify-between gap-1"
+                                >
+                                    <span
+                                        class="text-[10px] text-amber-700 font-medium"
+                                        >QR Image URL:</span
+                                    >
                                     <a
-                                        href={qrisModalData.qr_image_url || qrisModalData.qr_image}
+                                        href={qrisModalData.qr_image_url ||
+                                            qrisModalData.qr_image}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         class="text-[10px] font-mono text-blue-600 hover:underline truncate max-w-[180px]"
                                     >
-                                        {qrisModalData.qr_image_url || qrisModalData.qr_image}
+                                        {qrisModalData.qr_image_url ||
+                                            qrisModalData.qr_image}
                                     </a>
                                 </div>
                             {/if}
@@ -4104,25 +4606,49 @@
                 <div class="pt-2 flex flex-col gap-2">
                     {#if qrisPollingStatus === 'paid'}
                         <!-- SUCCESS SCREEN -->
-                        <div class="flex flex-col items-center gap-2.5 py-6 px-4 bg-emerald-50/90 rounded-2xl border border-emerald-200 shadow-xs text-center animate-fade-in">
-                            <div class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center animate-bounce shadow-inner">
-                                <i class="ti ti-circle-check-filled text-4xl text-emerald-600"></i>
+                        <div
+                            class="flex flex-col items-center gap-2.5 py-6 px-4 bg-emerald-50/90 rounded-2xl border border-emerald-200 shadow-xs text-center animate-fade-in"
+                        >
+                            <div
+                                class="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center animate-bounce shadow-inner"
+                            >
+                                <i
+                                    class="ti ti-circle-check-filled text-4xl text-emerald-600"
+                                ></i>
                             </div>
                             <div class="space-y-1">
-                                <h4 class="font-extrabold text-base text-emerald-900">Terima Kasih!</h4>
-                                <p class="font-bold text-xs text-emerald-700">Pembayaran Berhasil Diterima</p>
+                                <h4
+                                    class="font-extrabold text-base text-emerald-900"
+                                >
+                                    Terima Kasih!
+                                </h4>
+                                <p class="font-bold text-xs text-emerald-700">
+                                    Pembayaran Berhasil Diterima
+                                </p>
                             </div>
-                            <p class="text-[11px] text-emerald-600/90 font-medium leading-relaxed">
-                                Masa aktif listing produk Anda telah resmi diperpanjang. Halaman akan otomatis diperbarui dalam sekejap...
+                            <p
+                                class="text-[11px] text-emerald-600/90 font-medium leading-relaxed"
+                            >
+                                Masa aktif listing produk Anda telah resmi
+                                diperpanjang. Halaman akan otomatis diperbarui
+                                dalam sekejap...
                             </p>
                         </div>
                     {:else if qrisPollingStatus === 'failed'}
                         <!-- FAILED -->
-                        <div class="flex flex-col items-center gap-2 py-3 bg-rose-50 rounded-2xl border border-rose-200">
-                            <div class="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center">
-                                <i class="ti ti-circle-x-filled text-2xl text-rose-600"></i>
+                        <div
+                            class="flex flex-col items-center gap-2 py-3 bg-rose-50 rounded-2xl border border-rose-200"
+                        >
+                            <div
+                                class="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center"
+                            >
+                                <i
+                                    class="ti ti-circle-x-filled text-2xl text-rose-600"
+                                ></i>
                             </div>
-                            <p class="font-bold text-xs text-rose-700">Pembayaran dibatalkan atau kedaluwarsa</p>
+                            <p class="font-bold text-xs text-rose-700">
+                                Pembayaran dibatalkan atau kedaluwarsa
+                            </p>
                         </div>
                         <button
                             type="button"
@@ -4133,16 +4659,30 @@
                         </button>
                     {:else}
                         <!-- WAITING / REVERB REALTIME LISTENER -->
-                        <div class="flex flex-col items-center gap-2 py-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+                        <div
+                            class="flex flex-col items-center gap-2 py-3 bg-slate-50 rounded-2xl border border-slate-200/80"
+                        >
                             <div class="flex items-center gap-2">
                                 <span class="relative flex h-3 w-3">
-                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                                    <span
+                                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
+                                    ></span>
+                                    <span
+                                        class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"
+                                    ></span>
                                 </span>
-                                <span class="text-xs font-bold text-slate-700">Menunggu Pembayaran</span>
+                                <span class="text-xs font-bold text-slate-700"
+                                    >Menunggu Pembayaran</span
+                                >
                             </div>
-                            <p class="text-[10px] text-slate-500 font-medium px-2">
-                                Pembayaran terhubung dengan <span class="font-bold text-emerald-600">Reverb Realtime WebSocket</span>. Produk akan otomatis aktif seketika Anda selesai membayar.
+                            <p
+                                class="text-[10px] text-slate-500 font-medium px-2"
+                            >
+                                Pembayaran terhubung dengan <span
+                                    class="font-bold text-emerald-600"
+                                    >Reverb Realtime WebSocket</span
+                                >. Produk akan otomatis aktif seketika Anda
+                                selesai membayar.
                             </p>
                         </div>
                         <button
@@ -4152,9 +4692,11 @@
                             class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-sm cursor-pointer disabled:opacity-50"
                         >
                             {#if checkingQrisStatusManual}
-                                <i class="ti ti-loader-2 animate-spin text-sm"></i> Mengecek Status Pembayaran...
+                                <i class="ti ti-loader-2 animate-spin text-sm"
+                                ></i> Mengecek Status Pembayaran...
                             {:else}
-                                <i class="ti ti-refresh text-sm"></i> Cek Status Pembayaran Sekarang
+                                <i class="ti ti-refresh text-sm"></i> Cek Status Pembayaran
+                                Sekarang
                             {/if}
                         </button>
                         <button
@@ -4170,30 +4712,44 @@
         </div>
     {/if}
 
-
-
     <!-- PAYMENT HISTORY MODAL -->
     {#if isHistoryModalOpen}
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <div class="bg-white rounded-3xl p-6 max-w-3xl w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+        >
+            <div
+                class="bg-white rounded-3xl p-6 max-w-3xl w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col"
+            >
+                <div
+                    class="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0"
+                >
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold shrink-0">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold shrink-0"
+                        >
                             <i class="ti ti-receipt text-xl"></i>
                         </div>
                         <div>
-                            <h3 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+                            <h3
+                                class="font-bold text-sm text-slate-900 flex items-center gap-2"
+                            >
                                 <span>Riwayat Pembayaran Listing</span>
                                 {#if isHistorySuperAdmin}
-                                    <span class="px-2 py-0.5 rounded-md bg-purple-100 text-purple-700 text-[10px] font-bold">Semua Seller (Admin Mode)</span>
+                                    <span
+                                        class="px-2 py-0.5 rounded-md bg-purple-100 text-purple-700 text-[10px] font-bold"
+                                        >Semua Seller (Admin Mode)</span
+                                    >
                                 {/if}
                             </h3>
-                            <p class="text-xs text-slate-400">Daftar transaksi perpanjangan & listing biaya produk.</p>
+                            <p class="text-xs text-slate-400">
+                                Daftar transaksi perpanjangan & listing biaya
+                                produk.
+                            </p>
                         </div>
                     </div>
                     <button
                         type="button"
-                        onclick={() => isHistoryModalOpen = false}
+                        onclick={() => (isHistoryModalOpen = false)}
                         class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center cursor-pointer"
                     >
                         <i class="ti ti-x"></i>
@@ -4202,20 +4758,30 @@
 
                 <div class="overflow-y-auto flex-1 custom-scrollbar pr-1">
                     {#if loadingHistory}
-                        <div class="py-12 flex flex-col items-center justify-center text-slate-400 space-y-2">
+                        <div
+                            class="py-12 flex flex-col items-center justify-center text-slate-400 space-y-2"
+                        >
                             <i class="ti ti-loader animate-spin text-2xl"></i>
-                            <span class="text-xs font-semibold">Memuat riwayat pembayaran...</span>
+                            <span class="text-xs font-semibold"
+                                >Memuat riwayat pembayaran...</span
+                            >
                         </div>
                     {:else if paymentHistory.length === 0}
                         <div class="py-12 text-center text-slate-400 space-y-2">
                             <i class="ti ti-receipt-off text-3xl"></i>
-                            <p class="text-xs font-semibold">Belum ada riwayat pembayaran listing.</p>
+                            <p class="text-xs font-semibold">
+                                Belum ada riwayat pembayaran listing.
+                            </p>
                         </div>
                     {:else}
                         <div class="overflow-x-auto">
-                            <table class="w-full text-left text-xs border-collapse">
+                            <table
+                                class="w-full text-left text-xs border-collapse"
+                            >
                                 <thead>
-                                    <tr class="border-b border-slate-200 bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                                    <tr
+                                        class="border-b border-slate-200 bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px]"
+                                    >
                                         <th class="p-3">Waktu</th>
                                         <th class="p-3">Order ID</th>
                                         {#if isHistorySuperAdmin}
@@ -4229,30 +4795,64 @@
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
                                     {#each paymentHistory as item}
-                                        <tr class="hover:bg-slate-50/60 transition">
-                                            <td class="p-3 whitespace-nowrap text-slate-500 text-[11px]">
-                                                {item.paid_at ? new Date(item.paid_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
+                                        <tr
+                                            class="hover:bg-slate-50/60 transition"
+                                        >
+                                            <td
+                                                class="p-3 whitespace-nowrap text-slate-500 text-[11px]"
+                                            >
+                                                {item.paid_at
+                                                    ? new Date(
+                                                          item.paid_at,
+                                                      ).toLocaleString(
+                                                          'id-ID',
+                                                          {
+                                                              dateStyle:
+                                                                  'short',
+                                                              timeStyle:
+                                                                  'short',
+                                                          },
+                                                      )
+                                                    : '-'}
                                             </td>
-                                            <td class="p-3 font-mono font-bold text-slate-700 text-[11px] whitespace-nowrap">
+                                            <td
+                                                class="p-3 font-mono font-bold text-slate-700 text-[11px] whitespace-nowrap"
+                                            >
                                                 {item.order_id}
                                             </td>
                                             {#if isHistorySuperAdmin}
-                                                <td class="p-3 whitespace-nowrap font-bold text-slate-800">
-                                                    {item.user?.store_name || item.user?.name || '-'}
+                                                <td
+                                                    class="p-3 whitespace-nowrap font-bold text-slate-800"
+                                                >
+                                                    {item.user?.store_name ||
+                                                        item.user?.name ||
+                                                        '-'}
                                                 </td>
                                             {/if}
-                                            <td class="p-3 font-bold text-slate-800 max-w-[180px] truncate">
+                                            <td
+                                                class="p-3 font-bold text-slate-800 max-w-[180px] truncate"
+                                            >
                                                 {item.product?.name || 'Produk'}
                                             </td>
-                                            <td class="p-3 text-center font-bold text-blue-600 whitespace-nowrap">
+                                            <td
+                                                class="p-3 text-center font-bold text-blue-600 whitespace-nowrap"
+                                            >
                                                 {item.days} Hari
                                             </td>
-                                            <td class="p-3 text-right font-black text-slate-900 whitespace-nowrap">
+                                            <td
+                                                class="p-3 text-right font-black text-slate-900 whitespace-nowrap"
+                                            >
                                                 {fmt(item.amount)}
                                             </td>
-                                            <td class="p-3 text-center whitespace-nowrap">
-                                                <span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold inline-flex items-center gap-1">
-                                                    <i class="ti ti-circle-check text-xs"></i> Lunas
+                                            <td
+                                                class="p-3 text-center whitespace-nowrap"
+                                            >
+                                                <span
+                                                    class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold inline-flex items-center gap-1"
+                                                >
+                                                    <i
+                                                        class="ti ti-circle-check text-xs"
+                                                    ></i> Lunas
                                                 </span>
                                             </td>
                                         </tr>
@@ -4263,10 +4863,12 @@
                     {/if}
                 </div>
 
-                <div class="pt-3 border-t border-slate-100 flex items-center justify-end shrink-0">
+                <div
+                    class="pt-3 border-t border-slate-100 flex items-center justify-end shrink-0"
+                >
                     <button
                         type="button"
-                        onclick={() => isHistoryModalOpen = false}
+                        onclick={() => (isHistoryModalOpen = false)}
                         class="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition cursor-pointer"
                     >
                         Tutup

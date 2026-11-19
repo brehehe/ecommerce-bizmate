@@ -47,7 +47,21 @@ class UpdateTransactionStatusAction
                     'cancelled_at' => now(),
                 ]);
             } else {
-                $transaction->update(['status' => $newStatus]);
+                $updateData = ['status' => $newStatus];
+                if ($newStatus === 'selesai') {
+                    $isCod = str_contains(strtolower($transaction->paymentMethod?->name ?? ''), 'cod')
+                        || str_contains(strtolower($transaction->paymentMethod?->name ?? ''), 'bayar di tempat');
+                    if ($isCod) {
+                        $updateData['payment_status'] = 'paid';
+                        if ($transaction->payment) {
+                            $transaction->payment->update([
+                                'status' => 'confirmed',
+                                'confirmed_at' => now(),
+                            ]);
+                        }
+                    }
+                }
+                $transaction->update($updateData);
             }
         });
 

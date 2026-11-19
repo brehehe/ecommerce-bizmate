@@ -808,13 +808,22 @@
                                                         {typeof trx.payment_method === 'object' ? trx.payment_method.name : trx.payment_method}
                                                     </p>
                                                 {/if}
-                                                {#if trx.shipping_courier === 'self_pickup'}
-                                                    <div class="mt-1 flex items-center gap-1">
+                                                <div class="mt-1 flex items-center gap-1 flex-wrap">
+                                                    {#if trx.shipping_courier === 'self_pickup'}
                                                         <span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
-                                                            <i class="ti ti-building-store text-xs"></i> Self Pickup
+                                                            <i class="ti ti-building-store text-xs"></i> Ambil di Resto
                                                         </span>
-                                                    </div>
-                                                {/if}
+                                                    {:else if trx.shipping_courier === 'store_courier'}
+                                                        <span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                                            <i class="ti ti-moped text-xs"></i> Kurir Resto
+                                                        </span>
+                                                    {/if}
+                                                    {#if String(typeof trx.payment_method === 'object' ? trx.payment_method?.name : trx.payment_method || '').toLowerCase().includes('cod') || String(typeof trx.payment_method === 'object' ? trx.payment_method?.name : trx.payment_method || '').toLowerCase().includes('bayar di tempat')}
+                                                        <span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                            <i class="ti ti-cash text-xs"></i> COD
+                                                        </span>
+                                                    {/if}
+                                                </div>
                                             </div>
                                         </td>
 
@@ -883,6 +892,14 @@
                                                     title="Cetak Invoice"
                                                 >
                                                     <i class="ti ti-printer text-sm"></i>
+                                                </a>
+                                                <a
+                                                    href="/admin/transactions/{trx.id}/print-thermal?format=58mm&type=cashier"
+                                                    target="_blank"
+                                                    class="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-orange-600"
+                                                    title="Cetak Struk Thermal (58mm/80mm)"
+                                                >
+                                                    <i class="ti ti-receipt text-sm"></i>
                                                 </a>
                                             </div>
                                         </td>

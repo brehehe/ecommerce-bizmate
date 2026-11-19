@@ -243,8 +243,18 @@ class TransactionController extends Controller
             $itemsFormatted = $rawTransactions->map(function ($tx) use ($paymentsMap, $itemsMap) {
                 $payment = $paymentsMap[$tx->id] ?? null;
                 $items = $itemsMap[$tx->id] ?? [];
-                $itemNames = collect($items)->map(fn ($it) => $it['product']['name'] ?? null)->filter()->all();
-                $itemsSummary = ! empty($itemNames) ? implode(', ', $itemNames) : '—';
+                $itemNames = collect($items)->map(function ($it) {
+                    $name = $it['product']['name'] ?? $it['product_name'] ?? null;
+                    if (! empty($it['selected_modifiers']) && is_array($it['selected_modifiers'])) {
+                        $mod = collect($it['selected_modifiers'])->pluck('name')->join(', ');
+                        if ($mod) {
+                            $name .= " [{$mod}]";
+                        }
+                    }
+
+                    return $name;
+                })->filter()->all();
+                $itemsSummary = ! empty($itemNames) ? implode('; ', $itemNames) : '—';
                 $createdAtFormatted = $tx->created_at ? Carbon::parse($tx->created_at)->translatedFormat('d M Y H:i') : '—';
                 $grandTotalFormatted = 'Rp '.number_format((float) $tx->grand_total, 0, ',', '.');
 
@@ -439,6 +449,10 @@ class TransactionController extends Controller
      */
     public function updateStatus(UpdateStatusRequest $request, Transaction $transaction): RedirectResponse
     {
+        if ($request->isMethod('get')) {
+            return redirect()->route('admin.transactions.show', $transaction);
+        }
+
         $result = $this->updateTransactionStatusAction->execute(
             $transaction,
             $request->input('status'),
@@ -450,7 +464,12 @@ class TransactionController extends Controller
             return back()->with('error', $result['message']);
         }
 
-        return back()->with('success', 'Status transaksi berhasil diperbarui.');
+        $previousUrl = url()->previous();
+        if ($previousUrl && ! str_ends_with($previousUrl, '/status')) {
+            return redirect()->to($previousUrl)->with('success', 'Status transaksi berhasil diperbarui.');
+        }
+
+        return redirect()->route('admin.transactions.show', $transaction)->with('success', 'Status transaksi berhasil diperbarui.');
     }
 
     /**
@@ -740,6 +759,48 @@ class TransactionController extends Controller
         $storeName = Setting::where('key', 'store_name')->pluck('value')->first() ?? config('app.name');
 
         return view('print.invoice', compact('transaction', 'storeName'));
+    }
+
+    /**
+     * Print thermal receipt (58mm / 80mm) for cashier / kitchen.
+     */
+    public function printThermalReceipt(Request $request, Transaction $transaction)
+    {
+        $user = $request->user();
+        $isSeller = $user && $user->is_seller && ! $user->hasAnyRole(['Super Admin', 'Admin']);
+
+        if ($isSeller) {
+            $isOwner = $transaction->resto_id === $user->id ||
+                $transaction->items()->whereHas('product', fn ($q) => $q->where('user_id', $user->id))->exists();
+            if (! $isOwner) {
+                abort(403, 'Akses terbatas untuk transaksi toko/resto Anda.');
+            }
+        }
+
+        $transaction->load([
+            'items.product',
+            'items.productVariant',
+            'user:id,name,phone_number,email',
+            'customerAddress',
+            'paymentMethod',
+            'restoProfile',
+            'resto',
+        ]);
+
+        $format = $request->query('format', '58mm');
+        if (! in_array($format, ['58mm', '80mm'])) {
+            $format = '58mm';
+        }
+
+        $type = $request->query('type', 'cashier');
+        if (! in_array($type, ['kitchen', 'cashier'])) {
+            $type = 'cashier';
+        }
+
+        $autoPrint = $request->boolean('autoprint', true);
+        $storeName = Setting::where('key', 'store_name')->pluck('value')->first() ?? config('app.name');
+
+        return view('print.thermal-receipt', compact('transaction', 'format', 'type', 'autoPrint', 'storeName'));
     }
 
     /**

@@ -75,6 +75,24 @@
             false,
         ),
     );
+    const showCheckoutSettings = $derived(
+        Boolean(
+            (page.props as any).app_config?.show_checkout_settings ??
+                (page.props as any).settings?.show_checkout_settings ??
+                (page.props as any).show_checkout_settings ??
+                true,
+        ),
+    );
+    const isFoodPick = $derived(
+        Boolean((page.props as any).is_foodpick) ||
+            Boolean((page.props as any).app_config?.is_foodpick) ||
+            Boolean((page.props as any).settings?.is_foodpick) ||
+            Boolean((page.props as any).isFoodPick) ||
+            false,
+    );
+    const isCartVisible = $derived(
+        isFoodPick || showCheckoutSettings || (!isSellerEnabled && !auth?.is_seller)
+    );
     const activePath = $derived((page.url || '').split('?')[0] || '/');
 
     const adminWaNumber = $derived(
@@ -1758,7 +1776,7 @@
                             <input
                                 type="text"
                                 bind:value={searchQuery}
-                                placeholder="Cari produk, brand, kategori..."
+                                placeholder={isFoodPick ? "Cari menu atau resto favorit..." : "Cari produk, brand, kategori..."}
                                 oninput={handleSearchInput}
                                 onfocus={() => {
                                     if (searchQuery.length >= 2)
@@ -1992,12 +2010,12 @@
                     {/if}
 
                     <!-- Cart -->
-                    {#if !isSellerEnabled && !auth?.is_seller}
+                    {#if isCartVisible}
                         <div class="relative">
                             <button
                                 onclick={goToCart}
-                                class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
-                                aria-label="Keranjang"
+                                class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0 cursor-pointer"
+                                aria-label={isFoodPick ? 'Nampan Belanja' : 'Keranjang'}
                             >
                                 <div
                                     class="w-6 h-6 flex items-center justify-center relative"
@@ -2014,7 +2032,7 @@
                                 </div>
                                 <span
                                     class="text-[9px] font-bold text-white/80 mt-0.5"
-                                    >Keranjang</span
+                                    >{isFoodPick ? 'Nampan' : 'Keranjang'}</span
                                 >
                             </button>
                         </div>
@@ -2024,7 +2042,7 @@
                     <Link
                         href="/cek-pesanan"
                         prefetch
-                        class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0"
+                        class="p-2 text-white hover:bg-white/20 rounded-xl transition flex flex-col items-center shrink-0 cursor-pointer"
                         aria-label="Cek Pesanan"
                     >
                         <div class="w-6 h-6 flex items-center justify-center relative">
@@ -2568,7 +2586,7 @@
                             <input
                                 type="text"
                                 bind:value={searchQuery}
-                                placeholder="Cari produk, brand..."
+                                placeholder={isFoodPick ? "Cari menu atau resto..." : "Cari produk, brand..."}
                                 oninput={handleSearchInput}
                                 onfocus={() => {
                                     if (searchQuery.length >= 2)
@@ -2775,19 +2793,31 @@
                         {/if}
                     {/if}
 
+                    <!-- Cek Pesanan (Mobile) -->
+                    <Link
+                        href="/cek-pesanan"
+                        prefetch
+                        class="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-xl transition shrink-0 cursor-pointer"
+                        aria-label="Cek Pesanan"
+                        title="Cek Pesanan"
+                    >
+                        <i class="ti ti-receipt-2 text-xl"></i>
+                    </Link>
+
                     <!-- Cart -->
-                    {#if !isSellerEnabled && !auth?.is_seller}
+                    {#if isCartVisible}
                         <div class="relative shrink-0">
                             <button
                                 onclick={goToCart}
-                                class="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-xl transition"
-                                aria-label="Keranjang"
+                                class="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-xl transition cursor-pointer"
+                                aria-label={isFoodPick ? 'Nampan' : 'Keranjang'}
+                                title={isFoodPick ? 'Nampan' : 'Keranjang'}
                             >
                                 <i class="ti ti-shopping-cart text-xl"></i>
                             </button>
                             {#if localCartCount > 0}
                                 <span
-                                    class="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm pointer-events-none"
+                                    class="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full text-[8px] font-black flex items-center justify-center text-white border border-white/20 shadow-sm pointer-events-none"
                                     style="background-color: {secondary}; font-family: sans-serif;"
                                 >
                                     {localCartCount}
@@ -3224,7 +3254,7 @@
                 <!-- Socials -->
                 <div class="flex items-center gap-2">
                     {#if socialMediaLinks.length > 0}
-                        {#each socialMediaLinks as sm}
+                        {#each socialMediaLinks.filter(sm => !isFoodPick || sm.platform !== 'whatsapp') as sm}
                             {@const url = (() => {
                                 const u = sm.url?.trim() || '';
                                 if (
@@ -3271,14 +3301,16 @@
                         >
                             <i class="ti ti-brand-instagram text-base"></i>
                         </a>
-                        <!-- svelte-ignore a11y_invalid_attribute -->
-                        <a
-                            href="#"
-                            aria-label="WhatsApp"
-                            class="w-8 h-8 bg-white/15 hover:bg-white/30 rounded-xl flex items-center justify-center transition text-white shadow-sm"
-                        >
-                            <i class="ti ti-brand-whatsapp text-base"></i>
-                        </a>
+                        {#if !isFoodPick}
+                            <!-- svelte-ignore a11y_invalid_attribute -->
+                            <a
+                                href="#"
+                                aria-label="WhatsApp"
+                                class="w-8 h-8 bg-white/15 hover:bg-white/30 rounded-xl flex items-center justify-center transition text-white shadow-sm"
+                            >
+                                <i class="ti ti-brand-whatsapp text-base"></i>
+                            </a>
+                        {/if}
                     {/if}
                 </div>
             </div>
@@ -3791,7 +3823,7 @@
 {/if}
 
 <!-- Desktop Floating Mini Chat Window -->
-{#if desktopChatOpen}
+{#if desktopChatOpen && !isFoodPick}
     <div
         transition:fade={{ duration: 150 }}
         class="hidden md:flex fixed bottom-6 right-[88px] z-[9999] w-[600px] h-[480px] bg-white rounded-3xl shadow-2xl border border-slate-200/80 overflow-hidden flex-row"
@@ -4450,22 +4482,24 @@
 {/if}
 
 <!-- Floating Chat Button (Desktop & Tablet Only) -->
-<button
-    onclick={goToChat}
-    class="hidden md:flex fixed bottom-6 right-6 z-50 w-14 h-14 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer"
-    style="background: linear-gradient(135deg, {primary}, {secondary});"
-    aria-label="Chat"
->
-    <i class="ti ti-message-dots text-2xl"></i>
-    {#if chatUnreadCount > 0}
-        <span
-            class="absolute -top-1 -right-1 w-6 h-6 rounded-full text-[10px] font-black flex items-center justify-center text-white border-2 border-white"
-            style="background-color: {secondary};"
-        >
-            {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
-        </span>
-    {/if}
-</button>
+{#if !isFoodPick}
+    <button
+        onclick={goToChat}
+        class="hidden md:flex fixed bottom-6 right-6 z-50 w-14 h-14 items-center justify-center rounded-full text-white shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer"
+        style="background: linear-gradient(135deg, {primary}, {secondary});"
+        aria-label="Chat"
+    >
+        <i class="ti ti-message-dots text-2xl"></i>
+        {#if chatUnreadCount > 0}
+            <span
+                class="absolute -top-1 -right-1 w-6 h-6 rounded-full text-[10px] font-black flex items-center justify-center text-white border-2 border-white"
+                style="background-color: {secondary};"
+            >
+                {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+            </span>
+        {/if}
+    </button>
+{/if}
 
 <!-- Click outside to close profile dropdown -->
 {#if profileDropOpen}
@@ -5602,7 +5636,144 @@
         <div
             class="max-w-md mx-auto px-2 h-16 flex items-center justify-around relative"
         >
-            {#if isSellerMode}
+            {#if isFoodPick}
+                <!-- FOODPICK MODE: Beranda, Cek Pesanan, Nampan (Center), Chat Admin, Akun -->
+                <!-- 1. Beranda / Direktori -->
+                <Link
+                    href="/"
+                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
+                >
+                    <div class="relative flex flex-col items-center">
+                        <i
+                            class="ti ti-tools-kitchen text-xl transition-transform duration-200 group-active:scale-90 {activePath ===
+                            '/'
+                                ? 'scale-110 font-bold'
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath === '/' ? `color: ${primary}` : ''}
+                        ></i>
+                        <span
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath ===
+                            '/'
+                                ? ''
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath === '/' ? `color: ${primary}` : ''}
+                        >
+                            Direktori
+                        </span>
+                        {#if activePath === '/'}
+                            <span
+                                class="absolute -bottom-1.5 w-1 h-1 rounded-full"
+                                style="background-color: {primary};"
+                            ></span>
+                        {/if}
+                    </div>
+                </Link>
+
+                <!-- 2. Cek Pesanan -->
+                {@const isOrderActive =
+                    activePath.startsWith('/cek-pesanan') ||
+                    activePath.startsWith('/order-tracking') ||
+                    activePath.startsWith('/transactions')}
+                <Link
+                    href="/cek-pesanan"
+                    prefetch
+                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
+                >
+                    <div class="relative flex flex-col items-center">
+                        <i
+                            class="ti ti-receipt-2 text-xl transition-transform duration-200 group-active:scale-90 {isOrderActive
+                                ? 'scale-110 font-bold'
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={isOrderActive ? `color: ${primary}` : ''}
+                        ></i>
+                        <span
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {isOrderActive
+                                ? ''
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={isOrderActive ? `color: ${primary}` : ''}
+                        >
+                            Cek Pesanan
+                        </span>
+                        {#if isOrderActive}
+                            <span
+                                class="absolute -bottom-1.5 w-1 h-1 rounded-full"
+                                style="background-color: {primary};"
+                            ></span>
+                        {/if}
+                    </div>
+                </Link>
+
+                <!-- 3. CENTER BUTTON: Nampan / Keranjang Belanja -->
+                <button
+                    type="button"
+                    onclick={goToCart}
+                    class="flex flex-col items-center justify-center w-full h-full group relative cursor-pointer"
+                    aria-label="Nampan Belanja"
+                >
+                    <div class="absolute -top-5 flex flex-col items-center">
+                        <div class="relative">
+                            <div
+                                class="w-13 h-13 rounded-full p-0.5 shadow-xl transition-all duration-300 group-hover:scale-105 group-active:scale-95 flex items-center justify-center border-4 border-white dark:border-slate-900"
+                                style="background: linear-gradient(135deg, {primary}, {secondary});"
+                            >
+                                <i
+                                    class="ti ti-shopping-cart text-2xl text-white font-black"
+                                ></i>
+                            </div>
+                            {#if localCartCount > 0}
+                                <span
+                                    class="absolute -top-1 -right-1 px-1.5 py-0.2 min-w-[18px] h-[18px] bg-red-500 text-white font-black text-[9px] rounded-full flex items-center justify-center shadow-md border-2 border-white dark:border-slate-900 animate-pulse"
+                                >
+                                    {localCartCount > 99 ? '99+' : localCartCount}
+                                </span>
+                            {/if}
+                        </div>
+                        <span
+                            class="text-[10px] font-black text-slate-800 dark:text-slate-200 mt-0.5 tracking-tight group-hover:text-primary"
+                        >
+                            Nampan
+                        </span>
+                    </div>
+                </button>
+
+
+                <!-- 5. Profile -->
+                <Link
+                    href="/profile"
+                    class="flex flex-col items-center justify-center w-full h-full text-center transition-all duration-200 group relative"
+                >
+                    <div class="relative flex flex-col items-center">
+                        <i
+                            class="ti ti-user text-xl transition-transform duration-200 group-active:scale-90 {activePath.startsWith(
+                                '/profile',
+                            )
+                                ? 'scale-110 font-bold'
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/profile')
+                                ? `color: ${primary}`
+                                : ''}
+                        ></i>
+                        <span
+                            class="text-[10px] font-bold mt-0.5 transition-colors duration-200 {activePath.startsWith(
+                                '/profile',
+                            )
+                                ? ''
+                                : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-800'}"
+                            style={activePath.startsWith('/profile')
+                                ? `color: ${primary}`
+                                : ''}
+                        >
+                            Profile
+                        </span>
+                        {#if activePath.startsWith('/profile')}
+                            <span
+                                class="absolute -bottom-1.5 w-1 h-1 rounded-full"
+                                style="background-color: {primary};"
+                            ></span>
+                        {/if}
+                    </div>
+                </Link>
+            {:else if isSellerMode}
                 <!-- CONCEPT 1: IS_SELLER = TRUE (ORDER: Beranda, Toko Saya, Jual (Center), Pesan, Profile) -->
                 <!-- 1. Beranda -->
                 <Link

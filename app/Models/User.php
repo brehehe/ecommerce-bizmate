@@ -10,12 +10,15 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Crypt;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'email_verified_at', 'is_active', 'is_seller', 'store_name', 'store_slug', 'store_logo', 'store_description', 'last_active_at', 'coins_balance', 'avatar', 'phone_number', 'gender', 'birth_date', 'google_id', 'google_token', 'google_refresh_token', 'padelgigs_user_id', 'padelgigs_access_token', 'padelgigs_refresh_token', 'padelgigs_token_expires_at'])]
+#[Fillable(['name', 'email', 'password', 'email_verified_at', 'is_active', 'is_seller', 'store_name', 'store_slug', 'store_logo', 'store_description', 'resto_id', 'last_active_at', 'coins_balance', 'avatar', 'phone_number', 'gender', 'birth_date', 'google_id', 'google_token', 'google_refresh_token', 'padelgigs_user_id', 'padelgigs_access_token', 'padelgigs_refresh_token', 'padelgigs_token_expires_at'])]
 #[Hidden(['password', 'remember_token', 'google_token', 'google_refresh_token', 'padelgigs_access_token', 'padelgigs_refresh_token'])]
 class User extends Authenticatable
 {
@@ -181,6 +184,26 @@ class User extends Authenticatable
     public function productAds()
     {
         return $this->hasMany(ProductAd::class)->latest();
+    }
+
+    public function restoProfile(): HasOne
+    {
+        return $this->hasOne(RestoProfile::class);
+    }
+
+    public function assignedRestoProfile(): BelongsTo
+    {
+        return $this->belongsTo(RestoProfile::class, 'resto_id', 'user_id');
+    }
+
+    public function assignedRestoOwner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'resto_id');
+    }
+
+    public function restoCouriers(): HasMany
+    {
+        return $this->hasMany(User::class, 'resto_id');
     }
 
     /**
